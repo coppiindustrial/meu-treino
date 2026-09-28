@@ -1,0 +1,567 @@
+import { db, tableOf, type SyncedTableName } from './db';
+import { exerciseUnit } from './exercises';
+import { todayISO } from './format';
+import { newId } from './ids';
+import { scheduleSync } from './sync';
+import type {
+  BodyEntry,
+  CustomExercise,
+  DoneSet,
+  ExercisePref,
+  LoadUnit,
+  PlannedSet,
+  Profile,
+  Program,
+  Session,
+  SessionItem,
+  SetType,
+  Synced,
+  Workout,
+  WorkoutItem,
+} from './types';
+
+export const alive = <T extends { deleted?: 0 | 1 }>(r: T | undefined): r is T => !!r && !r.deleted;
+
+function stamp<T extends object>(row: T): T & { updatedAt: number; dirty: 1 } {
+  return { ...row, updatedAt: Date.now(), dirty: 1 };
+}
+
+async function put<T extends Synced>(name: SyncedTableName, row: T): Promise<void> {
+  await tableOf(name).put(stamp(row));
+  scheduleSync();
+}
+
+async function putMany<T extends Synced>(name: SyncedTableName, rows: T[]): Promise<void> {
+  if (rows.length === 0) return;
+  await tableOf(name).bulkPut(rows.map(stamp));
+  scheduleSync();
+}
+
+async function patch(name: SyncedTableName, id: string, changes: object): Promise<void> {
+  await tableOf(name).update(id, { ...changes, updatedAt: Date.now(), dirty: 1 });
+  scheduleSync();
+}
+
+async function softDelete(name: SyncedTableName, id: string): Promise<void> {
+  await patch(name, id, { deleted: 1 });
+}
+
+const byPosition = <T extends { position: number }>(a: T, b: T) => a.position - b.position;
+
+// ---------------------------------------------------------------- Perfil
+
+export const DEFAULT_PROFILE: Profile = {
+  id: 'me',
+  name: '',
+  heightCm: null,
+  goal: 'Hipertrofia',
+  weeklyGoal: 4,
+  restSeconds: 90,
+  updatedAt: 0,
+};
+
+export async function getProfile(): Promise<Profile> {
+  const p = await db.profile.get('me');
+  return p && !p.deleted ? { ...DEFAULT_PROFILE, ...p } : DEFAULT_PROFILE;
+}
+
+export async function saveProfile(changes: Partial<Profile>): Promise<void> {
+  const current = await getProfile();
+  await put('profile', { ...current, ...changes, id: 'me' });
+}
+
+// ---------------------------------------------------------------- Fichas
+
+export async function getActiveProgram(): Promise<Program | undefined> {
+  return db.programs.filter((p) => !p.deleted && p.status === 'active').first();
+}
+
+export async function createProgram(name: string): Promise<string> {
+  const hasActive = (await getActiveProgram()) !== undefined;
+  const now = Date.now();
+  const id = newId();
+  await put<Program>('programs', {
+    id,
+    name: name.trim() || 'Minha ficha',
+    status: hasActive ? 'ready' : 'active',
+    createdAt: now,
+    startedAt: hasActive ? null : now,
+    endedAt: null,
+    updatedAt: now,
+  });
+  return id;
+}
+
+export async function renameProgram(id: string, name: string): Promise<void> {
+  await patch('programs', id, { name: name.trim() || 'Minha ficha' });
+}
+
+export async function activateProgram(id: string): Promise<void> {
+  const now = Date.now();
+  const actives = await db.programs.filter((p) => !p.deleted && p.status === 'active' && p.id !== id).toArray();
+  for (const p of actives) await patch('programs', p.id, { status: 'archived', endedAt: now });
+  await patch('programs', id, { status: 'active', startedAt: now, endedAt: null });
+}
+
+export async function archiveProgram(id: string): Promise<void> {
+  await patch('programs', id, { status: 'archived', endedAt: Date.now() });
+}
+
+export async function deleteProgram(id: string): Promise<void> {
+  const workouts = await workoutsOf(id);
+  for (const w of workouts) await deleteWorkout(w.id, false);
+  await softDelete('programs', id);
+}
+
+export async function duplicateProgram(id: string): Promise<string> {
+  const source = await db.programs.get(id);
+  const now = Date.now();
+  const newProgramId = newId();
+  await put<Program>('programs', {
+    id: newProgramId,
+    name: `${source?.name ?? 'Ficha'} (cópia)`,
+    status: 'ready',
+    createdAt: now,
+    startedAt: null,
+    endedAt: null,
+    updatedAt: now,
+  });
+  for (const w of await workoutsOf(id)) {
+    const newWorkoutId = newId();
+    await put<Workout>('workouts', { ...w, id: newWorkoutId, programId: newProgramId, deleted: 0 });
+    const items = await itemsOf(w.id);
+    await putMany<WorkoutItem>(
+      'workoutItems',
+      items.map((it) => ({ ...it, id: newId(), workoutId: newWorkoutId, deleted: 0 })),
+    );
+  }
+  return newProgramId;
+}
+
+// ---------------------------------------------------------------- Treinos
+
+export async function workoutsOf(programId: string): Promise<Workout[]> {
+  const list = await db.workouts.where('programId').equals(programId).filter((w) => !w.deleted).toArray();
+  return list.sort(byPosition);
+}
+
+function nextLetter(existing: Workout[]): string {
+  const used = new Set(existing.map((w) => w.letter));
+  for (const l of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') if (!used.has(l)) return l;
+  return String(existing.length + 1);
+}
+
+export async function createWorkout(programId: string, name = 'Novo treino'): Promise<string> {
+  const list = await workoutsOf(programId);
+  const profile = await getProfile();
+  const id = newId();
+  await put<Workout>('workouts', {
+    id,
+    programId,
+    letter: nextLetter(list),
+    name,
+    position: list.length,
+    restSeconds: profile.restSeconds,
+    updatedAt: Date.now(),
+  });
+  return id;
+}
+
+export async function updateWorkout(
+  id: string,
+  changes: Partial<Pick<Workout, 'name' | 'letter' | 'restSeconds'>>,
+): Promise<void> {
+  await patch('workouts', id, changes);
+}
+
+export async function deleteWorkout(id: string, renumber = true): Promise<void> {
+  const w = await db.workouts.get(id);
+  for (const it of await itemsOf(id)) await softDelete('workoutItems', it.id);
+  await softDelete('workouts', id);
+  if (renumber && w) {
+    const rest = await workoutsOf(w.programId);
+    for (const [i, x] of rest.entries()) if (x.position !== i) await patch('workouts', x.id, { position: i });
+  }
+}
+
+// ---------------------------------------------------------------- Exercícios do treino
+
+export async function itemsOf(workoutId: string): Promise<WorkoutItem[]> {
+  const list = await db.workoutItems.where('workoutId').equals(workoutId).filter((i) => !i.deleted).toArray();
+  return list.sort(byPosition);
+}
+
+export function defaultPlannedSets(): PlannedSet[] {
+  return [0, 1, 2].map(() => ({ type: 'N' as SetType, reps: '10', load: null }));
+}
+
+export async function addExercisesToWorkout(workoutId: string, exerciseIds: string[]): Promise<void> {
+  const items = await itemsOf(workoutId);
+  const now = Date.now();
+  await putMany<WorkoutItem>(
+    'workoutItems',
+    exerciseIds.map((exerciseId, i) => ({
+      id: newId(),
+      workoutId,
+      exerciseId,
+      position: items.length + i,
+      supersetNext: false,
+      sets: defaultPlannedSets(),
+      note: '',
+      updatedAt: now,
+    })),
+  );
+}
+
+export async function updateWorkoutItem(id: string, changes: Partial<WorkoutItem>): Promise<void> {
+  await patch('workoutItems', id, changes);
+}
+
+/** Reescreve posições e garante que o último item não fique "em superset com o próximo". */
+async function normalizeItems(workoutId: string, ordered?: WorkoutItem[]): Promise<void> {
+  const items = ordered ?? (await itemsOf(workoutId));
+  for (const [i, it] of items.entries()) {
+    const isLast = i === items.length - 1;
+    const changes: Partial<WorkoutItem> = {};
+    if (it.position !== i) changes.position = i;
+    if (isLast && it.supersetNext) changes.supersetNext = false;
+    if (Object.keys(changes).length) await patch('workoutItems', it.id, changes);
+  }
+}
+
+export async function removeWorkoutItem(id: string): Promise<void> {
+  const item = await db.workoutItems.get(id);
+  if (!item) return;
+  const items = await itemsOf(item.workoutId);
+  const idx = items.findIndex((i) => i.id === id);
+  // Se o item removido fechava um superset, o anterior deixa de apontar para ele.
+  if (idx > 0 && !item.supersetNext && items[idx - 1].supersetNext) {
+    await patch('workoutItems', items[idx - 1].id, { supersetNext: false });
+  }
+  await softDelete('workoutItems', id);
+  await normalizeItems(item.workoutId);
+}
+
+export async function moveWorkoutItem(workoutId: string, from: number, to: number): Promise<void> {
+  const items = await itemsOf(workoutId);
+  if (to < 0 || to >= items.length || from === to) return;
+  const [moved] = items.splice(from, 1);
+  items.splice(to, 0, moved);
+  await normalizeItems(workoutId, items);
+}
+
+export async function toggleSuperset(itemId: string): Promise<void> {
+  const item = await db.workoutItems.get(itemId);
+  if (item) await patch('workoutItems', itemId, { supersetNext: !item.supersetNext });
+}
+
+// ---------------------------------------------------------------- Sessões (treinos feitos)
+
+export async function getActiveSession(): Promise<Session | undefined> {
+  return db.sessions.where('status').equals('active').filter((s) => !s.deleted).first();
+}
+
+export async function sessionItemsOf(sessionId: string): Promise<SessionItem[]> {
+  const list = await db.sessionItems.where('sessionId').equals(sessionId).filter((i) => !i.deleted).toArray();
+  return list.sort(byPosition);
+}
+
+function sessionSortKey(s: Session): string {
+  return `${s.date}|${String(s.startedAt ?? 0).padStart(15, '0')}`;
+}
+
+/** Último registro feito de um exercício (para mostrar "anterior" e sugerir a carga). */
+export async function lastDoneItemFor(exerciseId: string, excludeSessionId?: string): Promise<SessionItem | undefined> {
+  const items = await db.sessionItems.where('exerciseId').equals(exerciseId).filter((i) => !i.deleted).toArray();
+  if (items.length === 0) return undefined;
+  const ids = [...new Set(items.map((i) => i.sessionId))];
+  const sessions = await db.sessions.bulkGet(ids);
+  const map = new Map(sessions.filter(alive).map((s) => [s.id, s]));
+  let best: SessionItem | undefined;
+  let bestKey = '';
+  for (const it of items) {
+    const s = map.get(it.sessionId);
+    if (!s || s.status !== 'done' || s.id === excludeSessionId) continue;
+    if (!it.sets.some((x) => x.done)) continue;
+    const key = sessionSortKey(s);
+    if (key > bestKey) {
+      bestKey = key;
+      best = it;
+    }
+  }
+  return best;
+}
+
+function firstNumber(text: string | undefined): number | null {
+  if (!text) return null;
+  const m = /\d+/.exec(text);
+  return m ? Number(m[0]) : null;
+}
+
+function buildSets(planned: PlannedSet[], prev: SessionItem | undefined): DoneSet[] {
+  const prevDone = prev ? prev.sets.filter((s) => s.done) : [];
+  return planned.map((p, i) => {
+    const pv = prev?.sets[i]?.done ? prev.sets[i] : prevDone[i];
+    return {
+      type: p.type,
+      load: pv?.load ?? p.load ?? null,
+      reps: null,
+      done: false,
+      target: p.reps,
+      prevLoad: pv?.load ?? null,
+      prevReps: pv?.reps ?? null,
+    };
+  });
+}
+
+/** Completa uma série marcada como feita com os valores sugeridos, se estiverem vazios. */
+export function fillSet(s: DoneSet): DoneSet {
+  return {
+    ...s,
+    load: s.load ?? s.prevLoad ?? null,
+    reps: s.reps ?? firstNumber(s.target) ?? s.prevReps ?? null,
+    done: true,
+  };
+}
+
+async function sessionItemFrom(
+  sessionId: string,
+  exerciseId: string,
+  position: number,
+  planned: PlannedSet[],
+  supersetNext: boolean,
+  note: string,
+): Promise<SessionItem> {
+  const prev = await lastDoneItemFor(exerciseId);
+  return {
+    id: newId(),
+    sessionId,
+    exerciseId,
+    position,
+    supersetNext,
+    unit: await exerciseUnit(exerciseId),
+    done: false,
+    sets: buildSets(planned, prev),
+    note,
+    updatedAt: Date.now(),
+  };
+}
+
+export async function startSession(workoutId: string | null): Promise<string> {
+  const active = await getActiveSession();
+  if (active) return active.id;
+  const now = Date.now();
+  const id = newId();
+  let title = 'Treino livre';
+  let programId: string | null = null;
+  const items: SessionItem[] = [];
+  if (workoutId) {
+    const w = await db.workouts.get(workoutId);
+    if (w) {
+      title = `${w.letter} · ${w.name}`;
+      programId = w.programId;
+      const wItems = await itemsOf(workoutId);
+      for (const [i, wi] of wItems.entries()) {
+        items.push(await sessionItemFrom(id, wi.exerciseId, i, wi.sets, wi.supersetNext, wi.note ?? ''));
+      }
+    }
+  }
+  await put<Session>('sessions', {
+    id,
+    workoutId,
+    programId,
+    title,
+    date: todayISO(),
+    startedAt: now,
+    endedAt: null,
+    status: 'active',
+    manual: false,
+    note: '',
+    updatedAt: now,
+  });
+  await putMany('sessionItems', items);
+  return id;
+}
+
+export async function addExercisesToSession(sessionId: string, exerciseIds: string[]): Promise<void> {
+  const items = await sessionItemsOf(sessionId);
+  const created: SessionItem[] = [];
+  for (const [i, exId] of exerciseIds.entries()) {
+    created.push(await sessionItemFrom(sessionId, exId, items.length + i, defaultPlannedSets(), false, ''));
+  }
+  await putMany('sessionItems', created);
+}
+
+export async function removeSessionItem(id: string): Promise<void> {
+  const item = await db.sessionItems.get(id);
+  if (!item) return;
+  const items = await sessionItemsOf(item.sessionId);
+  const idx = items.findIndex((i) => i.id === id);
+  if (idx > 0 && !item.supersetNext && items[idx - 1].supersetNext) {
+    await patch('sessionItems', items[idx - 1].id, { supersetNext: false });
+  }
+  await softDelete('sessionItems', id);
+  const rest = await sessionItemsOf(item.sessionId);
+  for (const [i, it] of rest.entries()) if (it.position !== i) await patch('sessionItems', it.id, { position: i });
+}
+
+export async function moveSessionItem(sessionId: string, from: number, to: number): Promise<void> {
+  const items = await sessionItemsOf(sessionId);
+  if (to < 0 || to >= items.length || from === to) return;
+  const [moved] = items.splice(from, 1);
+  items.splice(to, 0, moved);
+  for (const [i, it] of items.entries()) {
+    const changes: Partial<SessionItem> = {};
+    if (it.position !== i) changes.position = i;
+    if (i === items.length - 1 && it.supersetNext) changes.supersetNext = false;
+    if (Object.keys(changes).length) await patch('sessionItems', it.id, changes);
+  }
+}
+
+export async function setSessionItemDone(itemId: string, done: boolean): Promise<void> {
+  const item = await db.sessionItems.get(itemId);
+  if (!item) return;
+  const sets = item.sets.map((s) => (done ? (s.done ? s : fillSet(s)) : { ...s, done: false }));
+  await patch('sessionItems', itemId, { done, sets });
+}
+
+export async function updateSet(itemId: string, index: number, changes: Partial<DoneSet>): Promise<void> {
+  const item = await db.sessionItems.get(itemId);
+  if (!item || !item.sets[index]) return;
+  const sets = item.sets.slice();
+  sets[index] = { ...sets[index], ...changes };
+  if (changes.done === true) sets[index] = fillSet(sets[index]);
+  const allDone = sets.length > 0 && sets.every((s) => s.done);
+  await patch('sessionItems', itemId, { sets, done: allDone });
+}
+
+export async function addSet(itemId: string): Promise<void> {
+  const item = await db.sessionItems.get(itemId);
+  if (!item) return;
+  const last = item.sets[item.sets.length - 1];
+  const next: DoneSet = {
+    type: last && last.type !== 'A' ? last.type : 'N',
+    load: last?.load ?? null,
+    reps: null,
+    done: false,
+    target: last?.target ?? '10',
+    prevLoad: null,
+    prevReps: null,
+  };
+  await patch('sessionItems', itemId, { sets: [...item.sets, next], done: false });
+}
+
+export async function removeSet(itemId: string, index: number): Promise<void> {
+  const item = await db.sessionItems.get(itemId);
+  if (!item) return;
+  const sets = item.sets.filter((_, i) => i !== index);
+  await patch('sessionItems', itemId, { sets, done: sets.length > 0 && sets.every((s) => s.done) });
+}
+
+export async function setSessionItemUnit(itemId: string, exerciseId: string, unit: LoadUnit): Promise<void> {
+  await patch('sessionItems', itemId, { unit });
+  await savePref(exerciseId, { unit });
+}
+
+export async function finishSession(id: string): Promise<void> {
+  await patch('sessions', id, { status: 'done', endedAt: Date.now() });
+}
+
+export async function deleteSession(id: string): Promise<void> {
+  for (const it of await sessionItemsOf(id)) await softDelete('sessionItems', it.id);
+  await softDelete('sessions', id);
+}
+
+export async function updateSession(id: string, changes: Partial<Session>): Promise<void> {
+  await patch('sessions', id, changes);
+}
+
+/** Cria um treino registrado à mão (sem cronômetro). */
+export async function createManualSession(input: {
+  date: string;
+  workoutId: string | null;
+  title: string;
+  startedAt: number | null;
+  endedAt: number | null;
+  note: string;
+  doneExerciseIds: string[];
+}): Promise<string> {
+  const id = newId();
+  let programId: string | null = null;
+  const items: SessionItem[] = [];
+  if (input.workoutId) {
+    const w = await db.workouts.get(input.workoutId);
+    programId = w?.programId ?? null;
+    const wItems = await itemsOf(input.workoutId);
+    for (const [i, wi] of wItems.entries()) {
+      const unit = await exerciseUnit(wi.exerciseId);
+      items.push({
+        id: newId(),
+        sessionId: id,
+        exerciseId: wi.exerciseId,
+        position: i,
+        supersetNext: wi.supersetNext,
+        unit,
+        done: input.doneExerciseIds.includes(wi.exerciseId),
+        sets: wi.sets.map((p) => ({ type: p.type, load: p.load, reps: null, done: false, target: p.reps })),
+        note: '',
+        updatedAt: Date.now(),
+      });
+    }
+  }
+  await put<Session>('sessions', {
+    id,
+    workoutId: input.workoutId,
+    programId,
+    title: input.title,
+    date: input.date,
+    startedAt: input.startedAt,
+    endedAt: input.endedAt,
+    status: 'done',
+    manual: true,
+    note: input.note,
+    updatedAt: Date.now(),
+  });
+  await putMany('sessionItems', items);
+  return id;
+}
+
+export async function setSessionItemDoneFlag(itemId: string, done: boolean): Promise<void> {
+  await patch('sessionItems', itemId, { done });
+}
+
+// ---------------------------------------------------------------- Exercícios próprios e preferências
+
+export async function saveCustomExercise(
+  ex: Omit<CustomExercise, 'updatedAt' | 'id'> & { id?: string },
+): Promise<string> {
+  const id = ex.id ?? `u-${newId()}`;
+  await put<CustomExercise>('customExercises', { ...ex, id, updatedAt: Date.now() });
+  return id;
+}
+
+export async function deleteCustomExercise(id: string): Promise<void> {
+  await softDelete('customExercises', id);
+}
+
+export async function savePref(exerciseId: string, changes: Partial<ExercisePref>): Promise<void> {
+  const current = await db.exercisePrefs.get(exerciseId);
+  await put<ExercisePref>('exercisePrefs', {
+    ...(current ?? { id: exerciseId, updatedAt: 0 }),
+    ...changes,
+    id: exerciseId,
+    deleted: 0,
+  });
+}
+
+// ---------------------------------------------------------------- Corpo e medidas
+
+export async function saveBodyEntry(entry: Omit<BodyEntry, 'updatedAt' | 'id'> & { id?: string }): Promise<string> {
+  const id = entry.id ?? newId();
+  await put<BodyEntry>('bodyEntries', { ...entry, id, updatedAt: Date.now() });
+  return id;
+}
+
+export async function deleteBodyEntry(id: string): Promise<void> {
+  await softDelete('bodyEntries', id);
+}
