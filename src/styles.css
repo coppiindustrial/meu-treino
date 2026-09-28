@@ -1,35 +1,36 @@
 :root {
-  --bg: #111214;
-  --bg-2: #16181b;
-  --card: #1b1d21;
-  --raised: #24272c;
-  --raised-2: #2e3137;
-  --border: #2a2d33;
-  --border-2: #3a3e45;
-  --border-3: #4a4e56;
-  --text: #f2f1ec;
-  --text-2: #a3a6ad;
-  --muted: #8a8e97;
-  --accent: #c6f36b;
-  --accent-hover: #d9f89a;
-  --on-accent: #111214;
-  --accent-soft: #26301a;
-  --done-row: #1a2016;
+  --bg: #000000;
+  --bg-2: #0b0b0c;
+  --card: #1c1c1e;
+  --raised: #2c2c2e;
+  --raised-2: #3a3a3c;
+  --border: #2c2c2e;
+  --border-2: #3a3a3c;
+  --border-3: #48484a;
+  --text: #ffffff;
+  --text-2: #98989f;
+  --muted: #8e8e93;
+  --accent: #ffffff;
+  --accent-hover: #e5e5ea;
+  --on-accent: #000000;
+  --accent-soft: #2c2c2e;
+  --done-row: #141416;
   --orange: #ffb47e;
   --orange-bg: #33251b;
   --orange-border: #4a3422;
   --superset-bg: #1a1714;
   --record: #ffa15c;
-  --danger: #ff8a80;
-  --danger-border: #5a2a2a;
+  --danger: #ff453a;
+  --danger-border: #4a1f1c;
   --set-a: #f5b83d;
   --set-f: #ff7b72;
   --set-d: #6cb6ff;
-  --display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-  --body: 'Manrope Variable', 'Manrope', system-ui, -apple-system, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  --body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --tabbar-h: 64px;
+  --tabbar-h: 72px;
+  --press: cubic-bezier(0.2, 0.8, 0.2, 1);
   color-scheme: dark;
 }
 
@@ -114,15 +115,16 @@ p {
 .display {
   font-family: var(--display);
   font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: 0.005em;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .h1 {
   font-family: var(--display);
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .h2 {
@@ -281,10 +283,6 @@ p {
   text-align: center;
 }
 
-.btn:active {
-  transform: scale(0.98);
-}
-
 /* Ícone do mesmo tamanho e peso do texto, formando um bloco centralizado. */
 .btn {
   gap: 6px;
@@ -406,7 +404,7 @@ p {
 }
 
 .card.accent {
-  border-color: var(--accent);
+  border-color: var(--border-3);
 }
 
 .tile {
@@ -421,9 +419,10 @@ p {
 
 .tile-value {
   font-family: var(--display);
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .list-row {
@@ -503,7 +502,7 @@ p {
   align-items: center;
   justify-content: center;
   font-family: var(--display);
-  font-size: 26px;
+  font-size: 19px;
   font-weight: 700;
 }
 
@@ -517,7 +516,7 @@ p {
   height: 58px;
   min-width: 58px;
   border-radius: 16px;
-  font-size: 34px;
+  font-size: 26px;
 }
 
 .thumb {
@@ -780,39 +779,66 @@ p {
 
 /* ------------------------------------------------------------ Barra de abas */
 
+/* Menu em cápsula flutuante, com a aba ativa destacada deslizando. */
 .tabbar {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 30;
-  background: var(--bg-2);
-  border-top: 1px solid var(--border);
-  padding: 6px 6px calc(var(--safe-bottom) + 6px);
+  padding: 0 14px calc(var(--safe-bottom) + 8px);
+  pointer-events: none;
 }
 
 .tabbar-inner {
-  max-width: 560px;
+  pointer-events: auto;
+  position: relative;
+  max-width: 440px;
+  height: 64px;
   margin: 0 auto;
+  padding: 5px;
   display: flex;
-  justify-content: space-around;
+  border-radius: 32px;
+  background: rgba(28, 28, 30, 0.78);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.tab-highlight {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: calc(5px + (100% - 10px) / 5 * var(--i, 0));
+  width: calc((100% - 10px) / 5);
+  border-radius: 27px;
+  background: var(--raised-2);
+  transition: left 0.34s cubic-bezier(0.3, 1.25, 0.5, 1);
 }
 
 .tab {
+  position: relative;
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  width: 70px;
-  min-height: 50px;
-  padding-top: 4px;
-  font-size: 11px;
-  font-weight: 700;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 27px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--muted);
+  transition: transform 0.15s var(--press), color 0.2s ease;
 }
 
 .tab.on {
-  color: var(--accent);
+  color: var(--text);
+}
+
+.tab:active {
+  transform: scale(0.9);
 }
 
 .session-banner {
@@ -1205,7 +1231,7 @@ p {
 
 .rest-time {
   font-family: var(--display);
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -1552,4 +1578,105 @@ p {
   border: 0;
   border-radius: 14px;
   background: #000;
+}
+
+/* ------------------------------------------------------------ Efeitos de toque */
+
+.btn,
+.icon-btn,
+.list-row,
+.list-item,
+.card-row-btn,
+.muscle-card,
+.pill,
+.filter-btn,
+.seg > *,
+.check-circle,
+.set-check,
+.set-type,
+.link-pill,
+.photo-cell,
+.media-chip,
+.tile,
+.cal-day,
+.text-btn,
+.back,
+.unit-toggle,
+.session-banner {
+  transition:
+    transform 0.16s var(--press),
+    background-color 0.16s ease,
+    opacity 0.16s ease,
+    filter 0.16s ease;
+}
+
+.btn:active,
+.pill:active,
+.filter-btn:active,
+.media-chip:active,
+.link-pill:active,
+.unit-toggle:active,
+.session-banner:active {
+  transform: scale(0.96);
+  filter: brightness(0.85);
+}
+
+.icon-btn:active,
+.check-circle:active,
+.set-check:active,
+.set-type:active,
+.cal-day:active,
+.photo-cell:active {
+  transform: scale(0.9);
+}
+
+a.list-row:active,
+button.list-row:active,
+a.tile:active,
+button.tile:active,
+.muscle-card:active {
+  background-color: var(--raised);
+  transform: scale(0.98);
+}
+
+.list-item:active,
+.card-row-btn:active {
+  background-color: var(--raised);
+}
+
+.seg > button:active,
+.seg > a:active {
+  transform: scale(0.95);
+}
+
+.text-btn:active,
+.back:active {
+  opacity: 0.5;
+}
+
+/* O check "salta" ao marcar */
+.check-circle.on,
+.set-check.on {
+  animation: pop 0.34s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

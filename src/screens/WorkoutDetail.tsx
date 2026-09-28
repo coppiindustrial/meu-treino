@@ -219,7 +219,7 @@ export function WorkoutDetail() {
                     <span className="small muted">{plannedSummary(it.sets, ex.unit)}</span>
                     {it.note ? <span className="chip method">{it.note}</span> : null}
                   </div>
-                  <Icon name="next" size={20} color="#8A8E97" />
+                  <Icon name="next" size={20} color="var(--muted)" />
                 </Link>
               );
             });
@@ -284,7 +284,7 @@ export function WorkoutDetail() {
                   <button
                     type="button"
                     className="icon-btn"
-                    style={{ width: 40, minWidth: 40, color: i === 0 ? '#4A4E56' : undefined }}
+                    style={{ width: 40, minWidth: 40, color: i === 0 ? 'var(--border-3)' : undefined }}
                     aria-label={`Subir ${ex.name}`}
                     onClick={() => moveWorkoutItem(workout.id, i, i - 1)}
                   >
@@ -293,7 +293,7 @@ export function WorkoutDetail() {
                   <button
                     type="button"
                     className="icon-btn"
-                    style={{ width: 40, minWidth: 40, color: isLast ? '#4A4E56' : undefined }}
+                    style={{ width: 40, minWidth: 40, color: isLast ? 'var(--border-3)' : undefined }}
                     aria-label={`Descer ${ex.name}`}
                     onClick={() => moveWorkoutItem(workout.id, i, i + 1)}
                   >

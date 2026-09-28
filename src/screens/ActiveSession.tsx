@@ -154,7 +154,7 @@ export function ActiveSession() {
           Início
         </Link>
         <span className="timer-pill">
-          <Icon name="clock" size={16} color="#C6F36B" />
+          <Icon name="clock" size={16} color="var(--accent)" />
           {clock(elapsed)}
         </span>
         <button type="button" className="icon-btn ghost" aria-label="Mais opções" onClick={() => setMenuOpen(true)}>
@@ -216,7 +216,7 @@ export function ActiveSession() {
       )}
 
       <div className="notice" style={{ alignItems: 'center' }}>
-        <Icon name="timer" color="#A3A6AD" />
+        <Icon name="timer" color="var(--text-2)" />
         <div className="col grow">
           <span style={{ fontWeight: 700 }}>Descanso de {restSeconds} s</span>
           <span className="tiny muted">Começa sozinho quando você marca uma série</span>
@@ -237,11 +237,11 @@ export function ActiveSession() {
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Opções do treino">
         <div className="list-group">
           <button type="button" className="list-item" onClick={() => { setMenuOpen(false); setReorder(true); }}>
-            <Icon name="list" color="#A3A6AD" />
+            <Icon name="list" color="var(--text-2)" />
             <span className="grow">Mudar ordem ou tirar exercícios</span>
           </button>
           <button type="button" className="list-item" onClick={rename}>
-            <Icon name="pencil" color="#A3A6AD" />
+            <Icon name="pencil" color="var(--text-2)" />
             <span className="grow">Renomear treino</span>
           </button>
           <button type="button" className="list-item danger" onClick={discard}>

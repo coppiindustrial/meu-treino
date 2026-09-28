@@ -204,7 +204,7 @@ export function NewExercise() {
             <span className="ellipsis" style={{ color: primary ? 'var(--text)' : 'var(--muted)' }}>
               {primary ? muscleName(primary) : 'Escolher'}
             </span>
-            <Icon name="next" size={18} color="#A3A6AD" />
+            <Icon name="next" size={18} color="var(--text-2)" />
           </button>
         </div>
         <div className="field">
@@ -213,7 +213,7 @@ export function NewExercise() {
             <span className="ellipsis" style={{ color: secondary.length ? 'var(--text)' : 'var(--muted)' }}>
               {secondary.length ? secondary.map((m) => muscleName(m).toLowerCase()).join(', ') : 'Opcional'}
             </span>
-            <Icon name="next" size={18} color="#A3A6AD" />
+            <Icon name="next" size={18} color="var(--text-2)" />
           </button>
         </div>
       </div>

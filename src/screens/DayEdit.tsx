@@ -229,7 +229,7 @@ export function DayEdit() {
                   type="checkbox"
                   checked={!!done[c.key]}
                   onChange={(e) => setDone((d) => ({ ...d, [c.key]: e.target.checked }))}
-                  style={{ width: 20, height: 20, accentColor: '#C6F36B', margin: 0 }}
+                  style={{ width: 20, height: 20, accentColor: 'var(--accent)', margin: 0 }}
                 />
                 <span className="grow">{c.name}</span>
               </label>

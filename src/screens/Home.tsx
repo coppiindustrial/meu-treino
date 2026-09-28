@@ -239,7 +239,7 @@ export function Home() {
                 : ''}
             </span>
           </div>
-          <Icon name="next" size={20} color="#8A8E97" />
+          <Icon name="next" size={20} color="var(--muted)" />
         </Link>
       )}
     </main>

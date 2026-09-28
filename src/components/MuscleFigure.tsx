@@ -1,10 +1,11 @@
+import { THEME } from '../lib/theme';
 import { MUSCLE_BY_ID } from '../lib/muscles';
 import type { MuscleId } from '../lib/types';
 import { Icon } from './Icon';
 
-const BASE = '#5C616A';
-const HI = '#C6F36B';
-const EDGE = '#111214';
+const BASE = THEME.figureBase;
+const HI = THEME.accent;
+const EDGE = THEME.bg;
 
 function fill(on: Set<string>, part: string) {
   return on.has(part) ? HI : BASE;

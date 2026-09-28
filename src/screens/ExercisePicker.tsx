@@ -91,7 +91,7 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
             </div>
             <span className="small muted">{sub}</span>
           </div>
-          <Icon name="next" size={20} color="#8A8E97" />
+          <Icon name="next" size={20} color="var(--muted)" />
         </Link>
       );
     }
@@ -121,7 +121,7 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
           aria-label={on ? `Tirar ${e.name}` : `Selecionar ${e.name}`}
           onClick={() => toggle(e.id)}
         >
-          {on ? <Icon name="check" size={20} stroke={3} /> : <Icon name="plus" size={20} color="#F2F1EC" />}
+          {on ? <Icon name="check" size={20} stroke={3} /> : <Icon name="plus" size={20} color="var(--text)" />}
         </button>
       </div>
     );

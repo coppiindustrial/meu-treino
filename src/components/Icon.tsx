@@ -165,13 +165,13 @@ export function Icon({ name, size = 22, stroke = 2, className, color }: Props) {
       height={size}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color ?? 'currentColor'}
+      stroke="currentColor"
       strokeWidth={stroke}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
       className={className}
-      style={{ flex: '0 0 auto' }}
+      style={{ flex: '0 0 auto', ...(color ? { color } : {}) }}
     >
       {PATHS[name]}
     </svg>

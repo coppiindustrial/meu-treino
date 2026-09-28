@@ -83,7 +83,7 @@ export function Programs() {
             {count} {count === 1 ? 'exercício' : 'exercícios'} · {last ? `feito em ${dayMonth(last.date)}` : 'ainda não feito'}
           </span>
         </div>
-        <Icon name="next" size={20} color="#8A8E97" />
+        <Icon name="next" size={20} color="var(--muted)" />
       </Link>
     );
   };
@@ -170,7 +170,7 @@ export function Programs() {
           <span style={{ fontWeight: 700 }}>Biblioteca de exercícios</span>
           <span className="tiny muted">Animações, fotos e passo a passo</span>
         </span>
-        <Icon name="next" size={20} color="#8A8E97" />
+        <Icon name="next" size={20} color="var(--muted)" />
       </Link>
     </main>
   );

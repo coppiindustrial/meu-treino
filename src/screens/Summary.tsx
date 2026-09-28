@@ -132,7 +132,7 @@ export function Summary() {
                     <span style={{ fontWeight: 700, color: it.done || done.length ? 'var(--text)' : 'var(--muted)' }}>{ex.name}</span>
                     <span className="tiny muted">{text}</span>
                   </span>
-                  <Icon name="next" size={18} color="#8A8E97" />
+                  <Icon name="next" size={18} color="var(--muted)" />
                 </Link>
               );
             })}

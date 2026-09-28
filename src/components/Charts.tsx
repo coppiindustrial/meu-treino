@@ -1,3 +1,4 @@
+import { THEME } from '../lib/theme';
 import { num } from '../lib/format';
 
 export interface ChartPoint {
@@ -52,19 +53,19 @@ export function LineChart({ points, height = 150 }: { points: ChartPoint[]; heig
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Gráfico com ${points.length} registros, último ${num(last.value)}`}>
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={left} y1={y(t)} x2={W - right} y2={y(t)} stroke="#2A2D33" strokeDasharray="3 4" />
-            <text x={left - 6} y={y(t) + 4} textAnchor="end" fontSize="11" fill="#8A8E97">
+            <line x1={left} y1={y(t)} x2={W - right} y2={y(t)} stroke={THEME.grid} strokeDasharray="3 4" />
+            <text x={left - 6} y={y(t) + 4} textAnchor="end" fontSize="11" fill={THEME.muted}>
               {num(t)}
             </text>
           </g>
         ))}
-        <polygon points={area} fill="#C6F36B" fillOpacity={0.1} />
-        <polyline points={line} fill="none" stroke="#C6F36B" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+        <polygon points={area} fill={THEME.accent} fillOpacity={0.1} />
+        <polyline points={line} fill="none" stroke={THEME.accent} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
         {points.map((p, i) =>
           i === points.length - 1 ? (
-            <circle key={i} cx={x(i)} cy={y(p.value)} r={6} fill="#C6F36B" />
+            <circle key={i} cx={x(i)} cy={y(p.value)} r={6} fill={THEME.accent} />
           ) : (
-            <circle key={i} cx={x(i)} cy={y(p.value)} r={3.5} fill="#111214" stroke="#C6F36B" strokeWidth={2} />
+            <circle key={i} cx={x(i)} cy={y(p.value)} r={3.5} fill={THEME.bg} stroke={THEME.accent} strokeWidth={2} />
           ),
         )}
         <text
@@ -73,12 +74,12 @@ export function LineChart({ points, height = 150 }: { points: ChartPoint[]; heig
           textAnchor="end"
           fontSize="12"
           fontWeight="800"
-          fill="#F2F1EC"
+          fill={THEME.text}
         >
           {num(last.value)}
         </text>
         {[...labelIdx].map((i) => (
-          <text key={`l${i}`} x={x(i)} y={H - 6} textAnchor={i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'} fontSize="11" fill="#8A8E97">
+          <text key={`l${i}`} x={x(i)} y={H - 6} textAnchor={i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'} fontSize="11" fill={THEME.muted}>
             {points[i].label}
           </text>
         ))}
@@ -98,8 +99,8 @@ export function Sparkline({ values, width = 90, height = 40 }: { values: number[
   const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
-      <polyline points={pts} fill="none" stroke="#C6F36B" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={x(values.length - 1)} cy={y(values[values.length - 1])} r={4} fill="#C6F36B" />
+      <polyline points={pts} fill="none" stroke={THEME.accent} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={x(values.length - 1)} cy={y(values[values.length - 1])} r={4} fill={THEME.accent} />
     </svg>
   );
 }

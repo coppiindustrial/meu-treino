@@ -119,30 +119,30 @@ export function Profile() {
             {syncText}
           </span>
         </div>
-        <Icon name="next" size={18} color="#8A8E97" />
+        <Icon name="next" size={18} color="var(--muted)" />
       </Link>
 
       <div className="list-group">
         <button type="button" className="list-item" onClick={() => edit('restSeconds')}>
-          <Icon name="timer" color="#A3A6AD" />
+          <Icon name="timer" color="var(--text-2)" />
           <span className="grow">Descanso padrão</span>
           <span className="value">{profile.restSeconds} s</span>
         </button>
         <Link to="/exercicios" className="list-item">
-          <Icon name="book" color="#A3A6AD" />
+          <Icon name="book" color="var(--text-2)" />
           <span className="grow">Biblioteca de exercícios</span>
-          <Icon name="next" size={18} color="#8A8E97" />
+          <Icon name="next" size={18} color="var(--muted)" />
         </Link>
         <button type="button" className="list-item" onClick={doExport}>
-          <Icon name="download" color="#A3A6AD" />
+          <Icon name="download" color="var(--text-2)" />
           <span className="grow">Exportar backup (arquivo)</span>
         </button>
         <button type="button" className="list-item" onClick={() => fileRef.current?.click()}>
-          <Icon name="upload" color="#A3A6AD" />
+          <Icon name="upload" color="var(--text-2)" />
           <span className="grow">Importar backup</span>
         </button>
         <button type="button" className="list-item" onClick={() => setInstallOpen(true)}>
-          <Icon name="info" color="#A3A6AD" />
+          <Icon name="info" color="var(--text-2)" />
           <span className="grow">Instalar no iPhone</span>
         </button>
       </div>

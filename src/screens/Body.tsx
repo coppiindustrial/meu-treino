@@ -124,7 +124,7 @@ export function Body() {
                       .filter(Boolean)
                       .join(' · ') || 'Sem dados'}
                   </span>
-                  <Icon name="next" size={18} color="#8A8E97" />
+                  <Icon name="next" size={18} color="var(--muted)" />
                 </Link>
               );
             })}

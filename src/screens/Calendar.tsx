@@ -42,7 +42,7 @@ export function SessionRow({ s }: { s: Session }) {
         </span>
       </div>
       {s.manual && <span className="chip dashed">À mão</span>}
-      <Icon name="next" size={20} color="#8A8E97" />
+      <Icon name="next" size={20} color="var(--muted)" />
     </Link>
   );
 }

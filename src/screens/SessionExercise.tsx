@@ -103,7 +103,7 @@ export function SessionExercise() {
           Exercício {index + 1} de {items.length}
         </span>
         <span className="timer-pill" style={{ background: 'none', padding: 0 }}>
-          <Icon name="clock" size={16} color="#C6F36B" />
+          <Icon name="clock" size={16} color="var(--accent)" />
           {clock(session.startedAt ? (now - session.startedAt) / 1000 : 0)}
         </span>
       </div>
@@ -157,7 +157,7 @@ export function SessionExercise() {
           </span>
         </div>
         <Sparkline values={sparkValues} width={80} height={40} />
-        <Icon name="next" size={18} color="#8A8E97" />
+        <Icon name="next" size={18} color="var(--muted)" />
       </Link>
 
       <div className="sets">

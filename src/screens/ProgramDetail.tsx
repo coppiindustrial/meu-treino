@@ -125,7 +125,7 @@ export function ProgramDetail() {
                 {counts[w.id] ?? 0} {(counts[w.id] ?? 0) === 1 ? 'exercício' : 'exercícios'} · descanso {w.restSeconds} s
               </span>
             </div>
-            <Icon name="next" size={20} color="#8A8E97" />
+            <Icon name="next" size={20} color="var(--muted)" />
           </Link>
         ))}
         <button type="button" className="btn big dashed block" onClick={addWorkout}>
@@ -136,17 +136,17 @@ export function ProgramDetail() {
       <section className="list-group">
         {program.status !== 'active' && (
           <button type="button" className="list-item" onClick={activate}>
-            <Icon name="check" color="#C6F36B" />
+            <Icon name="check" color="var(--accent)" />
             <span className="grow">Ativar esta ficha</span>
           </button>
         )}
         <button type="button" className="list-item" onClick={duplicate}>
-          <Icon name="copy" color="#A3A6AD" />
+          <Icon name="copy" color="var(--text-2)" />
           <span className="grow">Duplicar ficha</span>
         </button>
         {program.status === 'active' && (
           <button type="button" className="list-item" onClick={archive}>
-            <Icon name="archive" color="#A3A6AD" />
+            <Icon name="archive" color="var(--text-2)" />
             <span className="grow">Encerrar ficha</span>
           </button>
         )}
