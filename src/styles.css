@@ -285,6 +285,18 @@ p {
   transform: scale(0.98);
 }
 
+/* Ícone do mesmo tamanho e peso do texto, formando um bloco centralizado. */
+.btn {
+  gap: 6px;
+}
+
+.btn > svg,
+.card-row-btn > svg {
+  width: 1.05em;
+  height: 1.05em;
+  stroke-width: 3;
+}
+
 .btn.primary {
   background: var(--accent);
   border-color: var(--accent);
@@ -832,6 +844,7 @@ p {
   flex-direction: column;
   justify-content: flex-end;
   animation: fade 0.15s ease-out;
+  transition: padding-bottom 0.2s ease-out;
 }
 
 .sheet {
@@ -847,6 +860,11 @@ p {
   flex-direction: column;
   gap: 12px;
   animation: slide-up 0.2s ease-out;
+}
+
+.sheet.kb-open {
+  padding-bottom: 16px;
+  border-radius: 22px 22px 0 0;
 }
 
 .sheet-handle {

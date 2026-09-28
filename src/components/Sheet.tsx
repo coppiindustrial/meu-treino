@@ -1,5 +1,6 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useKeyboardInset } from '../lib/hooks';
 import { Icon } from './Icon';
 
 interface Props {
@@ -12,6 +13,9 @@ interface Props {
 }
 
 export function Sheet({ open, onClose, title, subtitle, children, hideClose }: Props) {
+  const { inset, viewportHeight } = useKeyboardInset(open);
+  const sheetRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -26,11 +30,32 @@ export function Sheet({ open, onClose, title, subtitle, children, hideClose }: P
     };
   }, [open, onClose]);
 
+  // Quando um campo recebe foco, espera o teclado subir e mostra o campo.
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!open || !el) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onFocus = (e: FocusEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target || !target.matches('input, textarea, select')) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => target.scrollIntoView({ block: 'nearest' }), 320);
+    };
+    el.addEventListener('focusin', onFocus);
+    return () => {
+      if (timer) clearTimeout(timer);
+      el.removeEventListener('focusin', onFocus);
+    };
+  }, [open]);
+
   if (!open) return null;
+  const keyboardOpen = inset > 0;
   return createPortal(
-    <div className="sheet-backdrop" onClick={onClose}>
+    <div className="sheet-backdrop" style={{ paddingBottom: inset }} onClick={onClose}>
       <div
-        className="sheet"
+        ref={sheetRef}
+        className={`sheet ${keyboardOpen ? 'kb-open' : ''}`}
+        style={keyboardOpen ? { maxHeight: Math.max(200, viewportHeight - 16) } : undefined}
         role="dialog"
         aria-modal="true"
         aria-label={title}

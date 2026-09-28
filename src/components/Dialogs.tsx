@@ -107,6 +107,9 @@ export function DialogProvider({ children }: { children: ReactNode }) {
               value={promptValue}
               placeholder={promptState?.placeholder}
               inputMode={promptState?.inputMode}
+              autoComplete="off"
+              autoCapitalize="sentences"
+              enterKeyHint="done"
               onChange={(e) => setPromptValue(e.target.value)}
             />
           </label>

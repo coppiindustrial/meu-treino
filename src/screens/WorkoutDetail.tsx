@@ -390,7 +390,7 @@ function PlanSheet({ item, unit, title, onClose }: { item: WorkoutItem; unit: Lo
           <div key={i} className="set-row" style={{ gridTemplateColumns: '84px minmax(0,1fr) minmax(0,1fr) 40px' }}>
             <select
               className="select"
-              style={{ minHeight: 40, height: 40, fontSize: 14, padding: '0 28px 0 10px', backgroundPosition: 'right 6px center' }}
+              style={{ minHeight: 40, height: 40, fontSize: 16, padding: '0 26px 0 8px', backgroundPosition: 'right 4px center' }}
               value={s.type}
               aria-label={`Tipo da série ${i + 1}`}
               onChange={(e) => update(i, { type: e.target.value as SetType })}
