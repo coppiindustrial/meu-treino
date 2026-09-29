@@ -480,8 +480,10 @@ p {
   overflow: hidden;
 }
 
-.list-group > * + * {
-  border-top: 1px solid var(--border);
+/* Linha entre as opções: clara o bastante para aparecer em qualquer fundo. */
+/* (seletor mais forte que o "border: 0" de .list-item, que vem depois e apagava a linha) */
+.list-group > :not(:first-child) {
+  border-top: 0.5px solid rgba(255, 255, 255, 0.12);
 }
 
 .list-item {

@@ -20,6 +20,7 @@ export function Profile() {
   const { prompt, toast, confirm } = useDialogs();
   const fileRef = useRef<HTMLInputElement>(null);
   const [installOpen, setInstallOpen] = useState(false);
+  const [bodyOpen, setBodyOpen] = useState(false);
 
   if (!profile) return <main className="screen" />;
 
@@ -165,14 +166,11 @@ export function Profile() {
             <span />
           </span>
         </button>
-        <button
-          type="button"
-          className="list-item"
-          onClick={() => void saveProfile({ body: profile.body === 'female' ? 'male' : 'female' })}
-        >
+        <button type="button" className="list-item" onClick={() => setBodyOpen(true)}>
           <Icon name="user" color="var(--text-2)" />
           <span className="grow">Corpo nos desenhos</span>
           <span className="value">{profile.body === 'female' ? 'Feminino' : 'Masculino'}</span>
+          <Icon name="next" size={18} color="var(--muted)" />
         </button>
         <Link to="/exercicios" className="list-item">
           <Icon name="book" color="var(--text-2)" />
@@ -210,6 +208,39 @@ export function Profile() {
         <br />
         Desenhos do corpo: react-native-body-highlighter (licença MIT).
       </p>
+
+      <Sheet open={bodyOpen} onClose={() => setBodyOpen(false)} title="Corpo nos desenhos" subtitle="Usado nos desenhos de músculos e de como medir">
+        <div className="list-group">
+          {([
+            ['male', 'Masculino'],
+            ['female', 'Feminino'],
+          ] as const).map(([id, name]) => {
+            const on = (profile.body ?? 'male') === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                className="list-item"
+                style={{ minHeight: 56 }}
+                aria-pressed={on}
+                onClick={() => {
+                  void saveProfile({ body: id });
+                  setBodyOpen(false);
+                }}
+              >
+                <span className="grow" style={{ fontSize: 16 }}>
+                  {name}
+                </span>
+                {on && (
+                  <span className="check-dot">
+                    <Icon name="check" size={14} stroke={3} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </Sheet>
 
       <Sheet open={installOpen} onClose={() => setInstallOpen(false)} title="Instalar no iPhone">
         <ol className="steps">
