@@ -1,20 +1,20 @@
 :root {
-  --bg: #000000;
-  --bg-2: #0b0b0c;
-  --card: #1c1c1e;
+  --bg: #121212;
+  --bg-2: #171717;
+  --card: #1e1e1e;
   --raised: #2c2c2e;
   --raised-2: #3a3a3c;
-  --border: #2c2c2e;
+  --border: #2a2a2c;
   --border-2: #3a3a3c;
   --border-3: #48484a;
   --text: #ffffff;
   --text-2: #98989f;
   --muted: #8e8e93;
-  --accent: #ffffff;
-  --accent-hover: #e5e5ea;
-  --on-accent: #000000;
-  --accent-soft: #2c2c2e;
-  --done-row: #141416;
+  --accent: #2f8cff;
+  --accent-hover: #1f7ae8;
+  --on-accent: #ffffff;
+  --accent-soft: #172a42;
+  --done-row: #173d26;
   --orange: #ffb47e;
   --orange-bg: #33251b;
   --orange-border: #4a3422;
@@ -25,8 +25,8 @@
   --set-a: #f5b83d;
   --set-f: #ff7b72;
   --set-d: #6cb6ff;
-  --display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
-  --body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  --display: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --body: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --tabbar-h: 72px;
@@ -56,7 +56,7 @@ body {
 }
 
 a {
-  color: var(--accent);
+  color: var(--text);
   text-decoration: none;
 }
 
@@ -121,9 +121,9 @@ p {
 
 .h1 {
   font-family: var(--display);
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.15;
   letter-spacing: -0.02em;
 }
 
@@ -199,13 +199,13 @@ p {
 
 .label {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-2);
 }
 
 .eyebrow {
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -228,7 +228,7 @@ p {
 
 .topbar-title {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   text-align: center;
   flex: 1 1 auto;
   min-width: 0;
@@ -272,14 +272,14 @@ p {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 48px;
+  min-height: 46px;
   padding: 0 18px;
-  border-radius: 14px;
-  border: 1px solid var(--border-2);
-  background: transparent;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--raised);
   color: var(--text);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   text-align: center;
 }
 
@@ -299,27 +299,29 @@ p {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .btn.light {
   background: var(--text);
   border-color: var(--text);
-  color: var(--on-accent);
-  font-weight: 800;
+  color: var(--bg);
+  font-weight: 700;
 }
 
 .btn.soft {
-  background: var(--card);
-  border-color: var(--border);
+  background: var(--raised);
+  border-color: transparent;
 }
 
 .btn.outline-accent {
+  background: transparent;
   border-color: var(--accent);
   color: var(--accent);
 }
 
 .btn.dashed {
+  background: transparent;
   border: 1.5px dashed var(--border-3);
   color: var(--accent);
 }
@@ -330,16 +332,16 @@ p {
 }
 
 .btn.big {
-  min-height: 56px;
+  min-height: 52px;
   font-size: 16px;
-  border-radius: 16px;
+  border-radius: 12px;
 }
 
 .btn.small {
-  min-height: 40px;
+  min-height: 38px;
   padding: 0 14px;
   font-size: 14px;
-  border-radius: 12px;
+  border-radius: 8px;
 }
 
 .btn.block {
@@ -394,8 +396,8 @@ p {
 
 .card {
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 18px;
+  border: 1px solid transparent;
+  border-radius: 14px;
   padding: 16px;
 }
 
@@ -551,7 +553,7 @@ p {
   gap: 4px;
   align-self: flex-start;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 3px 8px;
   border-radius: 6px;
   white-space: nowrap;
@@ -597,7 +599,7 @@ p {
 
 .badge-next {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--on-accent);
@@ -701,7 +703,7 @@ p {
 .seg > .on {
   background: var(--raised-2);
   color: var(--text);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .pills {
@@ -722,10 +724,10 @@ p {
 }
 
 .pill.on {
-  background: var(--text);
+  background: var(--accent);
   color: var(--on-accent);
-  border-color: var(--text);
-  font-weight: 800;
+  border-color: var(--accent);
+  font-weight: 700;
 }
 
 .filter-btn {
@@ -779,7 +781,7 @@ p {
 
 /* ------------------------------------------------------------ Barra de abas */
 
-/* Menu em cápsula flutuante, com a aba ativa destacada deslizando. */
+/* Menu de vidro flutuante: a bolha translúcida desliza até a aba e estica no caminho. */
 .tabbar {
   position: fixed;
   left: 0;
@@ -794,43 +796,63 @@ p {
   pointer-events: auto;
   position: relative;
   max-width: 440px;
-  height: 64px;
+  height: 66px;
   margin: 0 auto;
   padding: 5px;
   display: flex;
-  border-radius: 32px;
-  background: rgba(28, 28, 30, 0.78);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 0.5px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border-radius: 33px;
+  background: rgba(38, 38, 42, 0.5);
+  -webkit-backdrop-filter: blur(22px) saturate(190%);
+  backdrop-filter: blur(22px) saturate(190%);
+  border: 0.5px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 12px 32px rgba(0, 0, 0, 0.5);
 }
 
 .tab-highlight {
   position: absolute;
   top: 5px;
   bottom: 5px;
-  left: calc(5px + (100% - 10px) / 5 * var(--i, 0));
+  left: 5px;
   width: calc((100% - 10px) / 5);
-  border-radius: 27px;
-  background: var(--raised-2);
-  transition: left 0.34s cubic-bezier(0.3, 1.25, 0.5, 1);
+  transform: translateX(calc(var(--i, 0) * 100%));
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+
+.tab-highlight i {
+  display: block;
+  height: 100%;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tab-highlight.moving i {
+  transform: scale(1.22, 0.82);
 }
 
 .tab {
   position: relative;
+  z-index: 1;
   flex: 1 1 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  border-radius: 27px;
-  font-size: 10px;
+  gap: 3px;
+  border-radius: 28px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--muted);
-  transition: transform 0.15s var(--press), color 0.2s ease;
+  transition:
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 0.25s ease;
 }
 
 .tab.on {
@@ -838,7 +860,8 @@ p {
 }
 
 .tab:active {
-  transform: scale(0.9);
+  transform: scale(0.88);
+  transition-duration: 0.08s;
 }
 
 .session-banner {
@@ -856,7 +879,7 @@ p {
   border-radius: 16px;
   background: var(--accent);
   color: var(--on-accent);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 /* ------------------------------------------------------------ Folhas (bottom sheets) */
@@ -904,7 +927,7 @@ p {
 
 .sheet-title {
   font-size: 17px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .sheet .list-group {
@@ -1112,7 +1135,7 @@ p {
 
 .set-row.head {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
@@ -1124,6 +1147,18 @@ p {
   background: var(--done-row);
 }
 
+/* Como no Hevy: a linha da série ocupa a largura toda da tela. */
+.ex-card .set-row {
+  margin: 0 -20px;
+  padding: 4px 24px;
+  border-radius: 0;
+}
+
+.ss-group .ex-card .set-row {
+  margin-left: 0;
+  padding-left: 4px;
+}
+
 .set-type {
   height: 40px;
   border-radius: 10px;
@@ -1131,7 +1166,7 @@ p {
   padding: 0;
   background: var(--raised);
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .st-a {
@@ -1198,7 +1233,7 @@ p {
   background: transparent;
   color: var(--accent);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -1217,9 +1252,11 @@ p {
   align-items: center;
   gap: 10px;
   padding: 10px 10px 10px 16px;
-  border-radius: 18px;
-  background: var(--raised);
-  border: 1px solid var(--border-2);
+  border-radius: 22px;
+  background: rgba(38, 38, 42, 0.72);
+  -webkit-backdrop-filter: blur(22px) saturate(190%);
+  backdrop-filter: blur(22px) saturate(190%);
+  border: 0.5px solid rgba(255, 255, 255, 0.16);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
 
@@ -1310,7 +1347,7 @@ p {
 .cal-head {
   text-align: center;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--muted);
 }
 
@@ -1339,13 +1376,13 @@ p {
 .cal-day.trained span {
   background: var(--accent);
   color: var(--on-accent);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .cal-day.manual span {
   border: 2px dashed var(--accent);
   color: var(--accent);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .cal-day.today span {
@@ -1394,7 +1431,7 @@ p {
   border: 2px solid var(--accent);
   background: transparent;
   color: var(--accent);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 /* ------------------------------------------------------------ Diversos */
@@ -1414,7 +1451,7 @@ p {
 .empty .title {
   color: var(--text);
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .notice {
@@ -1465,7 +1502,7 @@ p {
   align-items: center;
   justify-content: center;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .photo-grid {
@@ -1496,7 +1533,7 @@ p {
   left: 4px;
   bottom: 4px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 1px 5px;
   border-radius: 6px;
   background: rgba(17, 18, 20, 0.8);
@@ -1523,8 +1560,8 @@ p {
   transform: translateX(-50%);
   z-index: 80;
   background: var(--text);
-  color: var(--on-accent);
-  font-weight: 800;
+  color: var(--bg);
+  font-weight: 700;
   font-size: 14px;
   padding: 10px 16px;
   border-radius: 14px;
@@ -1569,7 +1606,7 @@ p {
   border: 1px solid var(--orange-border);
   background: var(--superset-bg);
   color: var(--orange);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .video-frame {
@@ -1684,8 +1721,8 @@ button.tile:active,
 /* ------------------------------------------------------------ Treino e rotina estilo Hevy */
 
 :root {
-  --success: #30d158;
-  --done-row: #15301d;
+  --success: #30c75a;
+  --done-row: #173d26;
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -1695,7 +1732,7 @@ button.tile:active,
   z-index: 15;
   margin: calc(-1 * var(--safe-top) - 16px) -20px 0;
   padding: calc(var(--safe-top) + 8px) 12px 8px;
-  background: rgba(0, 0, 0, 0.82);
+  background: rgba(18, 18, 18, 0.86);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   border-bottom: 0.5px solid var(--border);
@@ -1753,8 +1790,9 @@ button.tile:active,
 
 .ex-name {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.25;
+  color: var(--accent);
 }
 
 .ex-note {
@@ -1776,9 +1814,9 @@ button.tile:active,
   padding: 0;
   border: 0;
   background: none;
-  color: var(--text-2);
+  color: var(--accent);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .check-circle.sm {
@@ -1792,7 +1830,7 @@ button.tile:active,
 .set-check.on {
   background: var(--success);
   border-color: var(--success);
-  color: #000;
+  color: #fff;
 }
 
 .check-circle:not(.on) .check-draw,
@@ -1811,9 +1849,9 @@ button.tile:active,
 }
 
 .set-check {
-  width: 40px;
-  height: 36px;
-  border-radius: 10px;
+  width: 34px;
+  height: 32px;
+  border-radius: 8px;
   border: 0;
   background: var(--raised);
 }
@@ -1865,16 +1903,16 @@ button.tile:active,
   flex-direction: column;
   gap: 10px;
   padding-left: 12px;
-  border-left: 3px solid #bf5af2;
+  border-left: 3px solid #a06cff;
   border-radius: 0;
 }
 
 .ss-label {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #bf5af2;
+  color: #a06cff;
 }
 
 .rest-grid {
@@ -1918,7 +1956,6 @@ a {
 .cal-day,
 .unit-toggle,
 .session-banner,
-.tab,
 .rest-link {
   transition:
     transform 0.34s var(--spring),
@@ -1946,7 +1983,6 @@ a {
 .cal-day:active,
 .unit-toggle:active,
 .session-banner:active,
-.tab:active,
 .rest-link:active {
   transition:
     transform 0.08s ease-out,
@@ -1986,7 +2022,7 @@ body:has(.session-screen) .rest-bar:not(.done) {
   right: 0;
   bottom: 0;
   height: 3px;
-  background: var(--success);
+  background: var(--accent);
   transform-origin: left center;
   transition: transform 0.25s linear;
 }
@@ -1999,8 +2035,18 @@ body:has(.session-screen) .rest-bar:not(.done) {
 
 /* ------------------------------------------------------------ Transição entre telas */
 
-.tabbar {
+/* O nome vai no próprio vidro (e não no pai): se fosse no pai, o desfoque só enxergaria o que está dentro do menu. */
+.tabbar-inner {
   view-transition-name: tabbar;
+}
+
+/* O menu não pisca na troca de tela: só a versão nova (ao vivo) aparece, com a bolha deslizando. */
+::view-transition-old(tabbar) {
+  display: none;
+}
+
+::view-transition-new(tabbar) {
+  animation: none;
 }
 
 ::view-transition-old(root),
@@ -2071,4 +2117,74 @@ html[data-nav='tab']::view-transition-new(root) {
   from {
     opacity: 0;
   }
+}
+
+/* ------------------------------------------------------------ Visual Hevy: início */
+
+.routine-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+}
+
+.routine-card > .btn {
+  margin-top: 6px;
+}
+
+.routine-title {
+  font-size: 16px;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.routine-list {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pill-tag {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+/* ------------------------------------------------------------ Visual Hevy: rotina */
+
+.routine-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.routine-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  color: var(--text);
+  border-bottom: 0.5px solid var(--border);
+  transition: opacity 0.2s ease;
+}
+
+.routine-row:active {
+  opacity: 0.6;
+  transition-duration: 0.05s;
+}
+
+.ss-group .routine-row:last-child {
+  border-bottom: 0;
+}
+
+/* Com o aviso de treino em andamento na tela, o descanso fica logo acima dele. */
+body:has(.session-banner) .rest-bar {
+  bottom: calc(var(--safe-bottom) + 152px);
 }

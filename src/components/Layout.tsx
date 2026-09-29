@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { withTransition } from '../lib/nav';
 import { Icon, type IconName } from './Icon';
@@ -21,10 +21,22 @@ export function TabBar({ pathname }: { pathname: string }) {
     0,
     TABS.findIndex((t) => isTabActive(t, pathname)),
   );
+  // A bolha estica enquanto desliza para a aba nova.
+  const [moving, setMoving] = useState(false);
+  const lastIndex = useRef(activeIndex);
+  useEffect(() => {
+    if (lastIndex.current === activeIndex) return;
+    lastIndex.current = activeIndex;
+    setMoving(true);
+    const t = setTimeout(() => setMoving(false), 240);
+    return () => clearTimeout(t);
+  }, [activeIndex]);
   return (
     <nav className="tabbar" aria-label="Navegação principal">
       <div className="tabbar-inner">
-        <span className="tab-highlight" aria-hidden="true" style={{ '--i': activeIndex } as CSSProperties} />
+        <span className={`tab-highlight ${moving ? 'moving' : ''}`} aria-hidden="true" style={{ '--i': activeIndex } as CSSProperties}>
+          <i />
+        </span>
         {TABS.map((t) => {
           const on = isTabActive(t, pathname);
           return (

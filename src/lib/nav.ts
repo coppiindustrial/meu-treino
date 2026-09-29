@@ -24,10 +24,14 @@ export function withTransition(dir: NavDir, update: () => void): void {
     update();
   };
   const fallback = setTimeout(run, 400);
-  doc.startViewTransition(async () => {
+  const vt = doc.startViewTransition(async () => {
     clearTimeout(fallback);
     run();
     // Dá tempo para o React desenhar a tela nova (e buscar os dados no celular).
     await new Promise((r) => setTimeout(r, 90));
-  });
+  }) as { ready?: Promise<void>; finished?: Promise<void>; updateCallbackDone?: Promise<void> } | undefined;
+  // Uma animação cancelada (ex.: outro toque no meio) não é erro: a tela já trocou.
+  vt?.ready?.catch(() => undefined);
+  vt?.finished?.catch(() => undefined);
+  vt?.updateCallbackDone?.catch(() => undefined);
 }

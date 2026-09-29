@@ -157,17 +157,18 @@ export function WorkoutDetail() {
       />
 
       {!editing ? (
-        <div className="row">
-          <div className="letter big on">{workout.letter}</div>
-          <div className="col grow">
-            <h1 className="display" style={{ fontSize: 28 }}>
-              {workout.name}
-            </h1>
+        <div className="stack">
+          <div className="col">
+            <h1 className="h1">{workout.name}</h1>
             <span className="small muted">
-              {items.length} {items.length === 1 ? 'exercício' : 'exercícios'}
+              Treino {workout.letter} · {items.length} {items.length === 1 ? 'exercício' : 'exercícios'}
               {program ? ` · ${program.name}` : ''}
             </span>
           </div>
+          <button type="button" className="btn primary block" onClick={start} disabled={items.length === 0}>
+            <Icon name="play" /> Iniciar rotina
+          </button>
+          {items.length > 0 && <span className="label" style={{ marginTop: 8 }}>Exercícios</span>}
         </div>
       ) : (
         <div className="row" style={{ alignItems: 'flex-end' }}>
@@ -185,15 +186,17 @@ export function WorkoutDetail() {
       {items.length === 0 && <EmptyState title="Nenhum exercício ainda" text="Adicione os exercícios deste treino." />}
 
       {!editing ? (
-        <div className="stack">
+        <div className="routine-rows">
           {groups.map((g) => {
             const rows = g.map((it) => {
               const ex = exerciseOrMissing(map, it.exerciseId);
               return (
-                <Link key={it.id} to={`/exercicio/${it.exerciseId}`} className="list-row" style={{ padding: '10px 12px 10px 10px' }}>
-                  <ExerciseThumb exercise={ex} />
+                <Link key={it.id} to={`/exercicio/${it.exerciseId}`} className="routine-row">
+                  <span className="ex-avatar">
+                    <ExerciseThumb exercise={ex} />
+                  </span>
                   <div className="col grow">
-                    <span style={{ fontWeight: 700 }}>{ex.name}</span>
+                    <span style={{ fontWeight: 600 }}>{ex.name}</span>
                     <span className="small muted">
                       {plannedSummary(it.sets, ex.unit)} · descanso {restText(it.restSeconds ?? workout.restSeconds)}
                     </span>
@@ -211,7 +214,7 @@ export function WorkoutDetail() {
               </div>
             );
           })}
-          <Link to={`/treino/${workout.id}/adicionar`} className="btn big dashed block">
+          <Link to={`/treino/${workout.id}/adicionar`} className="btn soft block" style={{ marginTop: 12 }}>
             <Icon name="plus" /> Adicionar exercício
           </Link>
         </div>
@@ -246,15 +249,6 @@ export function WorkoutDetail() {
       )}
       <div ref={bottomRef} />
 
-      {!editing && (
-        <div className="bottom-bar">
-          <div className="bottom-bar-inner">
-            <button type="button" className="btn big primary grow" onClick={start} disabled={items.length === 0}>
-              <Icon name="play" /> Iniciar treino
-            </button>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

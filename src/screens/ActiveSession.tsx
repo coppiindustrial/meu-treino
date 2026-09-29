@@ -192,16 +192,21 @@ export function ActiveSession() {
         <Link to="/" data-nav="back" className="icon-btn ghost" aria-label="Recolher o treino (ele continua)">
           <Icon name="down" size={24} />
         </Link>
-        <span className="topbar-title ellipsis">{session.title}</span>
+        <span className="topbar-title col" style={{ gap: 0, alignItems: 'center', minWidth: 0 }}>
+          <span>Registrar treino</span>
+          <span className="tiny muted ellipsis" style={{ maxWidth: '100%', fontWeight: 500 }}>
+            {session.title}
+          </span>
+        </span>
         <button type="button" className="btn small primary" onClick={finish}>
-          Finalizar
+          Concluir
         </button>
       </div>
 
       <div className="stats-row">
         <div>
           <span>Duração</span>
-          <b>{elapsedText(elapsed)}</b>
+          <b style={{ color: 'var(--accent)' }}>{elapsedText(elapsed)}</b>
         </div>
         <div>
           <span>Volume</span>

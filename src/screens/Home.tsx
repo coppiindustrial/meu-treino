@@ -51,16 +51,15 @@ export function Home() {
         if (idx >= 0) next = workouts[(idx + 1) % workouts.length];
       }
     }
-    const nextItems = next ? await itemsOf(next.id) : [];
-    const lastForNext = next ? sessions.find((s) => s.workoutId === next.id) : undefined;
+    const itemsByWorkout = await Promise.all(workouts.map((w) => itemsOf(w.id)));
     const bodies = (await db.bodyEntries.filter((b) => !b.deleted && b.weight !== null).toArray()).sort((a, b) =>
       a.date < b.date ? 1 : -1,
     );
-    return { program, sessions, active, profile, workouts, next, nextItems, lastForNext, weight: bodies[0]?.weight ?? null };
+    return { program, sessions, active, profile, workouts, next, itemsByWorkout, weight: bodies[0]?.weight ?? null };
   }, []);
 
   if (!data) return <main className="screen" />;
-  const { program, sessions, active, profile, workouts, next, nextItems, lastForNext, weight } = data;
+  const { program, sessions, active, profile, workouts, next, itemsByWorkout, weight } = data;
 
   const today = todayISO();
   const monday = weekStart(today);
@@ -93,7 +92,7 @@ export function Home() {
       <header className="row between">
         <div className="col">
           <span className="small muted">{longDate(today)}</span>
-          <h1 className="h1">{profile.name ? `Bora, ${profile.name.split(' ')[0]}` : 'Bora treinar'}</h1>
+          <h1 className="h1">Treino</h1>
         </div>
         <Link to="/perfil" className="icon-btn round" aria-label="Abrir perfil">
           <Icon name="user" />
@@ -102,12 +101,10 @@ export function Home() {
 
       {active ? (
         <section className="card accent stack-lg">
-          <span className="eyebrow" style={{ color: 'var(--accent)' }}>
-            Treino em andamento
-          </span>
           <div className="row">
             <div className="col grow">
-              <span className="display" style={{ fontSize: 28 }}>
+              <span className="label">Treino em andamento</span>
+              <span className="display" style={{ fontSize: 22 }}>
                 {active.title}
               </span>
               <span className="small muted">
@@ -116,76 +113,71 @@ export function Home() {
             </div>
             <span className="timer-pill">{clock(active.startedAt ? (now - active.startedAt) / 1000 : 0)}</span>
           </div>
-          <Link to="/sessao" className="btn big primary">
+          <Link to="/sessao" className="btn primary block">
             Continuar treino
           </Link>
         </section>
-      ) : !program ? (
+      ) : (
+        <section className="stack">
+          <span className="label">Início rápido</span>
+          <button type="button" className="btn soft block" onClick={() => start(null)}>
+            <Icon name="plus" /> Iniciar treino vazio
+          </button>
+        </section>
+      )}
+
+      {!program ? (
         <section className="card stack-lg">
-          <span className="eyebrow" style={{ color: 'var(--accent)' }}>
-            Comece por aqui
-          </span>
-          <span className="display" style={{ fontSize: 28 }}>
+          <span className="display" style={{ fontSize: 22 }}>
             Monte sua primeira ficha
           </span>
           <p className="small muted" style={{ lineHeight: 1.5 }}>
-            Uma ficha reúne seus treinos (A, B, C…). Depois é só escolher os exercícios de cada um.
+            Uma ficha reúne suas rotinas (A, B, C…). Depois é só escolher os exercícios de cada uma.
           </p>
-          <button type="button" className="btn big primary" onClick={newProgram}>
+          <button type="button" className="btn primary block" onClick={newProgram}>
             <Icon name="plus" /> Criar ficha
           </button>
-          <button type="button" className="text-btn muted" onClick={() => start(null)}>
-            Ou comece um treino livre agora
-          </button>
-        </section>
-      ) : !next ? (
-        <section className="card stack-lg">
-          <span className="eyebrow" style={{ color: 'var(--accent)' }}>
-            {program.name}
-          </span>
-          <span className="display" style={{ fontSize: 28 }}>
-            Adicione os treinos da ficha
-          </span>
-          <Link to={`/ficha/${program.id}`} className="btn big primary">
-            <Icon name="plus" /> Adicionar treino
-          </Link>
         </section>
       ) : (
-        <section className="card stack-lg">
-          <div className="row between">
-            <span className="eyebrow" style={{ color: 'var(--accent)' }}>
-              Próximo treino
-            </span>
-            <span className="tiny muted">{lastForNext ? `Último: ${relativeDay(lastForNext.date)}` : 'Ainda não feito'}</span>
+        <section className="stack">
+          <div className="section-head">
+            <h2 className="h2" style={{ fontSize: 18 }}>
+              Rotinas
+            </h2>
+            <Link to={`/ficha/${program.id}`} className="small" style={{ color: 'var(--accent)', fontWeight: 600 }}>
+              {program.name}
+            </Link>
           </div>
-          <Link to={`/treino/${next.id}`} className="row" style={{ color: 'var(--text)' }}>
-            <div className="letter big on">{next.letter}</div>
-            <div className="col grow">
-              <span className="display" style={{ fontSize: 28, fontWeight: 600 }}>
-                {next.name}
-              </span>
-              <span className="small muted">
-                {nextItems.length} {nextItems.length === 1 ? 'exercício' : 'exercícios'} · {program.name}
-              </span>
-            </div>
-          </Link>
-          {nextItems.length > 0 && (
-            <p className="small muted" style={{ lineHeight: 1.5 }}>
-              {nextItems
-                .slice(0, 6)
-                .map((it) => map.get(it.exerciseId)?.name ?? 'Exercício')
-                .join(', ')}
-              {nextItems.length > 6 ? '…' : ''}
-            </p>
-          )}
-          <button type="button" className="btn big primary" onClick={() => start(next.id)}>
-            <Icon name="play" size={18} /> Iniciar treino
-          </button>
-          {workouts.length > 1 && (
-            <Link to="/treinos" className="text-btn muted" style={{ alignSelf: 'center', display: 'flex', alignItems: 'center' }}>
-              Escolher outro treino
+          {workouts.length === 0 && (
+            <Link to={`/ficha/${program.id}`} className="btn soft block">
+              <Icon name="plus" /> Adicionar rotina
             </Link>
           )}
+          {workouts.map((w, i) => {
+            const items = itemsByWorkout[i];
+            const lastDone = sessions.find((s) => s.workoutId === w.id);
+            return (
+              <div key={w.id} className="card routine-card">
+                <Link to={`/treino/${w.id}`} className="row between" style={{ gap: 8 }}>
+                  <span className="routine-title ellipsis">
+                    {w.letter} · {w.name}
+                  </span>
+                  {next?.id === w.id && !active ? <span className="pill-tag">Próximo</span> : <Icon name="next" size={18} color="var(--muted)" />}
+                </Link>
+                <p className="routine-list">
+                  {items.length === 0
+                    ? 'Nenhum exercício ainda'
+                    : items.map((it) => map.get(it.exerciseId)?.name ?? 'Exercício').join(', ')}
+                </p>
+                <span className="tiny muted">{lastDone ? `Último: ${relativeDay(lastDone.date)}` : 'Ainda não feito'}</span>
+                {!active && items.length > 0 && (
+                  <button type="button" className="btn primary block" onClick={() => start(w.id)}>
+                    Iniciar rotina
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </section>
       )}
 
