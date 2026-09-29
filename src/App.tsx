@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { type NavDir, withTransition } from './lib/nav';
 import { DialogProvider } from './components/Dialogs';
 import { isTabRoute, TabBar } from './components/Layout';
 import { RestTimerProvider } from './components/RestTimer';
@@ -21,15 +22,32 @@ import { Profile } from './screens/Profile';
 import { ProgramDetail } from './screens/ProgramDetail';
 import { Programs } from './screens/Programs';
 import { Progress } from './screens/Progress';
-import { SessionExercise } from './screens/SessionExercise';
 import { Summary } from './screens/Summary';
 import { WorkoutDetail } from './screens/WorkoutDetail';
 
 function Shell() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
+
+  // Todos os links internos trocam de tela com animação (deslizar ou fade nas abas).
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element | null)?.closest?.('a[href^="#/"]') as HTMLAnchorElement | null;
+      if (!a || a.target) return;
+      const to = a.getAttribute('href')!.slice(1);
+      e.preventDefault();
+      e.stopPropagation();
+      if (to === (window.location.hash.slice(1) || '/')) return;
+      const dir = (a.dataset.nav as NavDir | undefined) ?? (a.closest('.tabbar') ? 'tab' : 'forward');
+      withTransition(dir, () => navigate(to));
+    };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  }, [navigate]);
   const tabs = isTabRoute(pathname);
   return (
     <>
@@ -45,7 +63,7 @@ function Shell() {
         <Route path="/exercicio/:exerciseId" element={<ExerciseDetail />} />
         <Route path="/sessao" element={<ActiveSession />} />
         <Route path="/sessao/adicionar" element={<ExercisePicker mode="session" />} />
-        <Route path="/sessao/item/:itemId" element={<SessionExercise />} />
+        <Route path="/sessao/item/:itemId" element={<Navigate to="/sessao" replace />} />
         <Route path="/sessao/:sessionId/resumo" element={<Summary />} />
         <Route path="/calendario" element={<Calendar />} />
         <Route path="/historico" element={<History />} />

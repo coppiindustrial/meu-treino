@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { withTransition } from '../lib/nav';
 import { Icon, type IconName } from './Icon';
 
 const TABS: { to: string; label: string; icon: IconName; also?: string[] }[] = [
@@ -50,8 +51,10 @@ export function BackButton({ to, label = 'Voltar' }: { to?: string; label?: stri
       type="button"
       className="back"
       onClick={() => {
-        if (window.history.state && window.history.state.idx > 0) navigate(-1);
-        else navigate(to ?? '/');
+        withTransition('back', () => {
+          if (window.history.state && window.history.state.idx > 0) navigate(-1);
+          else navigate(to ?? '/');
+        });
       }}
     >
       <Icon name="back" />

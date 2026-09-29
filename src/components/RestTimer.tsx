@@ -143,8 +143,10 @@ function RestBar() {
 
   if (rest.endsAt) {
     const left = (rest.endsAt - now) / 1000;
+    const frac = rest.total > 0 ? Math.min(1, Math.max(0, left / rest.total)) : 0;
     return (
       <div className="rest-bar" role="timer" aria-live="off">
+        <span className="rest-progress" aria-hidden="true" style={{ transform: `scaleX(${frac})` }} />
         <Icon name="timer" size={22} />
         <div className="col grow">
           <span className="tiny muted">Descanso</span>

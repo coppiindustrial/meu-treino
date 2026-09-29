@@ -66,7 +66,7 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
     if (mode === 'workout') {
       await addExercisesToWorkout(workoutId, selected);
       toast(selected.length === 1 ? 'Exercício adicionado' : `${selected.length} exercícios adicionados`);
-      navigate(`/treino/${workoutId}`, { replace: true });
+      navigate(`/treino/${workoutId}?editar=1&novo=1`, { replace: true });
     } else {
       const s = await getActiveSession();
       if (s) await addExercisesToSession(s.id, selected);

@@ -192,7 +192,7 @@ export async function itemsOf(workoutId: string): Promise<WorkoutItem[]> {
 }
 
 export function defaultPlannedSets(): PlannedSet[] {
-  return [0, 1, 2].map(() => ({ type: 'N' as SetType, reps: '10', load: null }));
+  return [0, 1, 2].map(() => ({ type: 'N' as SetType, reps: '8-12', load: null }));
 }
 
 export async function addExercisesToWorkout(workoutId: string, exerciseIds: string[]): Promise<void> {
@@ -208,13 +208,45 @@ export async function addExercisesToWorkout(workoutId: string, exerciseIds: stri
       supersetNext: false,
       sets: defaultPlannedSets(),
       note: '',
+      repMode: 'faixa',
+      restSeconds: null,
       updatedAt: now,
     })),
   );
 }
 
+/**
+ * Muda um campo de uma série planejada e repete o novo valor nas séries seguintes
+ * que ainda tinham o valor antigo (ou estavam vazias). Séries mudadas à mão ficam como estão.
+ */
+export function propagatePlanned(sets: PlannedSet[], index: number, changes: Partial<PlannedSet>): PlannedSet[] {
+  const old = sets[index];
+  const out = sets.slice();
+  out[index] = { ...old, ...changes };
+  for (const f of ['reps', 'load'] as const) {
+    if (!(f in changes) || changes[f] === old[f]) continue;
+    for (let j = index + 1; j < out.length; j++) {
+      const s = out[j];
+      if (s.type === 'A') continue;
+      const empty = s[f] === null || s[f] === '';
+      if (empty || s[f] === old[f]) out[j] = { ...s, [f]: changes[f] } as PlannedSet;
+      else break;
+    }
+  }
+  return out;
+}
+
 export async function updateWorkoutItem(id: string, changes: Partial<WorkoutItem>): Promise<void> {
   await patch('workoutItems', id, changes);
+}
+
+/** Muda as séries planejadas a partir do valor gravado mais recente (evita perder edições feitas em sequência). */
+export async function editPlannedSets(id: string, change: (sets: PlannedSet[]) => PlannedSet[]): Promise<void> {
+  await db.transaction('rw', db.workoutItems, async () => {
+    const item = await db.workoutItems.get(id);
+    if (item) await db.workoutItems.update(id, { sets: change(item.sets), updatedAt: Date.now(), dirty: 1 });
+  });
+  scheduleSync();
 }
 
 /** Reescreve posições e garante que o último item não fique "em superset com o próximo". */
@@ -319,7 +351,7 @@ export function fillSet(s: DoneSet): DoneSet {
   return {
     ...s,
     load: s.load ?? s.prevLoad ?? null,
-    reps: s.reps ?? firstNumber(s.target) ?? s.prevReps ?? null,
+    reps: s.reps ?? s.prevReps ?? firstNumber(s.target) ?? null,
     done: true,
   };
 }
@@ -331,6 +363,7 @@ async function sessionItemFrom(
   planned: PlannedSet[],
   supersetNext: boolean,
   note: string,
+  extra: Pick<SessionItem, 'repMode' | 'restSeconds'> = {},
 ): Promise<SessionItem> {
   const prev = await lastDoneItemFor(exerciseId);
   return {
@@ -343,6 +376,8 @@ async function sessionItemFrom(
     done: false,
     sets: buildSets(planned, prev),
     note,
+    repMode: extra.repMode ?? 'faixa',
+    restSeconds: extra.restSeconds ?? null,
     updatedAt: Date.now(),
   };
 }
@@ -362,7 +397,12 @@ export async function startSession(workoutId: string | null): Promise<string> {
       programId = w.programId;
       const wItems = await itemsOf(workoutId);
       for (const [i, wi] of wItems.entries()) {
-        items.push(await sessionItemFrom(id, wi.exerciseId, i, wi.sets, wi.supersetNext, wi.note ?? ''));
+        items.push(
+          await sessionItemFrom(id, wi.exerciseId, i, wi.sets, wi.supersetNext, wi.note ?? '', {
+            repMode: wi.repMode ?? (wi.sets.some((x) => x.reps.includes('-')) ? 'faixa' : 'fixa'),
+            restSeconds: wi.restSeconds ?? null,
+          }),
+        );
       }
     }
   }
@@ -418,44 +458,77 @@ export async function moveSessionItem(sessionId: string, from: number, to: numbe
   }
 }
 
-export async function setSessionItemDone(itemId: string, done: boolean): Promise<void> {
+export async function updateSessionItem(id: string, changes: Partial<SessionItem>): Promise<void> {
+  await patch('sessionItems', id, changes);
+}
+
+export async function toggleSessionSuperset(itemId: string): Promise<void> {
   const item = await db.sessionItems.get(itemId);
-  if (!item) return;
-  const sets = item.sets.map((s) => (done ? (s.done ? s : fillSet(s)) : { ...s, done: false }));
-  await patch('sessionItems', itemId, { done, sets });
+  if (item) await patch('sessionItems', itemId, { supersetNext: !item.supersetNext });
+}
+
+/** Lê e grava o exercício do treino numa transação: toques rápidos em sequência não se sobrescrevem. */
+function editSessionItem(itemId: string, change: (item: SessionItem) => Partial<SessionItem> | undefined): Promise<void> {
+  return db.transaction('rw', db.sessionItems, async () => {
+    const item = await db.sessionItems.get(itemId);
+    const changes = item && change(item);
+    if (changes) await patch('sessionItems', itemId, changes);
+  });
+}
+
+export async function setSessionItemDone(itemId: string, done: boolean): Promise<void> {
+  await editSessionItem(itemId, (item) => ({
+    done,
+    sets: item.sets.map((s) => (done ? (s.done ? s : fillSet(s)) : { ...s, done: false })),
+  }));
 }
 
 export async function updateSet(itemId: string, index: number, changes: Partial<DoneSet>): Promise<void> {
-  const item = await db.sessionItems.get(itemId);
-  if (!item || !item.sets[index]) return;
+  await editSessionItem(itemId, (item) => updatedSets(item, index, changes));
+}
+
+function updatedSets(item: SessionItem, index: number, changes: Partial<DoneSet>): Partial<SessionItem> | undefined {
+  if (!item.sets[index]) return undefined;
+  const old = item.sets[index];
   const sets = item.sets.slice();
-  sets[index] = { ...sets[index], ...changes };
+  sets[index] = { ...old, ...changes };
   if (changes.done === true) sets[index] = fillSet(sets[index]);
+  // Carga e repetições digitadas "descem" para as séries seguintes ainda não feitas
+  // que estavam iguais (ou vazias) — assim não é preciso repetir o mesmo valor.
+  for (const f of ['load', 'reps'] as const) {
+    if (!(f in changes) || changes[f] === old[f]) continue;
+    for (let j = index + 1; j < sets.length; j++) {
+      const s = sets[j];
+      if (s.done || s.type === 'A') continue;
+      if (s[f] === null || s[f] === old[f]) sets[j] = { ...s, [f]: changes[f] ?? null };
+      else break;
+    }
+  }
   const allDone = sets.length > 0 && sets.every((s) => s.done);
-  await patch('sessionItems', itemId, { sets, done: allDone });
+  return { sets, done: allDone };
 }
 
 export async function addSet(itemId: string): Promise<void> {
-  const item = await db.sessionItems.get(itemId);
-  if (!item) return;
-  const last = item.sets[item.sets.length - 1];
-  const next: DoneSet = {
-    type: last && last.type !== 'A' ? last.type : 'N',
-    load: last?.load ?? null,
-    reps: null,
-    done: false,
-    target: last?.target ?? '10',
-    prevLoad: null,
-    prevReps: null,
-  };
-  await patch('sessionItems', itemId, { sets: [...item.sets, next], done: false });
+  await editSessionItem(itemId, (item) => {
+    const last = item.sets[item.sets.length - 1];
+    const next: DoneSet = {
+      type: last && last.type !== 'A' ? last.type : 'N',
+      load: last?.load ?? null,
+      reps: null,
+      done: false,
+      target: last?.target ?? '10',
+      prevLoad: null,
+      prevReps: null,
+    };
+    return { sets: [...item.sets, next], done: false };
+  });
 }
 
 export async function removeSet(itemId: string, index: number): Promise<void> {
-  const item = await db.sessionItems.get(itemId);
-  if (!item) return;
-  const sets = item.sets.filter((_, i) => i !== index);
-  await patch('sessionItems', itemId, { sets, done: sets.length > 0 && sets.every((s) => s.done) });
+  await editSessionItem(itemId, (item) => {
+    const sets = item.sets.filter((_, i) => i !== index);
+    return { sets, done: sets.length > 0 && sets.every((s) => s.done) };
+  });
 }
 
 export async function setSessionItemUnit(itemId: string, exerciseId: string, unit: LoadUnit): Promise<void> {

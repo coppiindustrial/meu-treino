@@ -103,6 +103,9 @@ export interface PlannedSet {
   load: number | null;
 }
 
+/** Repetições fixas ("10") ou faixa ("8-12"). */
+export type RepMode = 'fixa' | 'faixa';
+
 export interface WorkoutItem extends Synced {
   workoutId: string;
   exerciseId: string;
@@ -111,6 +114,9 @@ export interface WorkoutItem extends Synced {
   supersetNext: boolean;
   sets: PlannedSet[];
   note?: string;
+  repMode?: RepMode;
+  /** Descanso deste exercício (s). Vazio = usa o do treino. */
+  restSeconds?: number | null;
 }
 
 export type SessionStatus = 'active' | 'done';
@@ -151,6 +157,8 @@ export interface SessionItem extends Synced {
   done: boolean;
   sets: DoneSet[];
   note?: string;
+  repMode?: RepMode;
+  restSeconds?: number | null;
 }
 
 export interface BodyEntry extends Synced {

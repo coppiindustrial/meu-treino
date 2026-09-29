@@ -1680,3 +1680,395 @@ button.tile:active,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ------------------------------------------------------------ Treino e rotina estilo Hevy */
+
+:root {
+  --success: #30d158;
+  --done-row: #15301d;
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  margin: calc(-1 * var(--safe-top) - 16px) -20px 0;
+  padding: calc(var(--safe-top) + 8px) 12px 8px;
+  background: rgba(0, 0, 0, 0.82);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-bottom: 0.5px solid var(--border);
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 4px 2px 12px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.stats-row span {
+  display: block;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.stats-row b {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ex-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 14px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.ex-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ex-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+  min-height: 44px;
+}
+
+.ex-avatar .thumb {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 50%;
+}
+
+.ex-name {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.ex-note {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  padding: 4px 0;
+  outline: none;
+}
+
+.rest-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.check-circle.sm {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-width: 2px;
+}
+
+.check-circle.on,
+.set-check.on {
+  background: var(--success);
+  border-color: var(--success);
+  color: #000;
+}
+
+.check-circle:not(.on) .check-draw,
+.set-check:not(.on) .check-draw {
+  opacity: 0;
+}
+
+.check-draw path {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  transition: stroke-dashoffset 0.28s ease 0.04s;
+}
+
+.on > .check-draw path {
+  stroke-dashoffset: 0;
+}
+
+.set-check {
+  width: 40px;
+  height: 36px;
+  border-radius: 10px;
+  border: 0;
+  background: var(--raised);
+}
+
+.set-row {
+  grid-template-columns: 38px minmax(0, 1fr) 62px 56px 40px;
+  gap: 6px;
+  padding: 3px 4px;
+  transition: background-color 0.3s ease;
+}
+
+.set-row.done {
+  background: var(--done-row);
+}
+
+.set-row.done .set-input {
+  background: transparent;
+  border-color: transparent;
+}
+
+.set-row.plan {
+  grid-template-columns: 38px minmax(0, 1fr) minmax(0, 1.4fr);
+}
+
+.set-type {
+  height: 36px;
+  background: transparent;
+}
+
+.set-input {
+  height: 36px;
+  background: var(--raised);
+  border-color: transparent;
+}
+
+.reps-range {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reps-range .set-input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.ss-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 12px;
+  border-left: 3px solid #bf5af2;
+  border-radius: 0;
+}
+
+.ss-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #bf5af2;
+}
+
+.rest-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ------------------------------------------------------------ Toque com mola: rápido ao apertar, macio ao soltar */
+
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+button,
+a {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.btn,
+.icon-btn,
+.list-row,
+.card-row-btn,
+.muscle-card,
+.pill,
+.filter-btn,
+.seg > *,
+.check-circle,
+.set-check,
+.set-type,
+.link-pill,
+.photo-cell,
+.media-chip,
+.tile,
+.cal-day,
+.unit-toggle,
+.session-banner,
+.tab,
+.rest-link {
+  transition:
+    transform 0.34s var(--spring),
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease,
+    filter 0.2s ease;
+}
+
+.btn:active,
+.icon-btn:active,
+.list-row:active,
+.card-row-btn:active,
+.muscle-card:active,
+.pill:active,
+.filter-btn:active,
+.seg > *:active,
+.check-circle:active,
+.set-check:active,
+.set-type:active,
+.link-pill:active,
+.photo-cell:active,
+.media-chip:active,
+.tile:active,
+.cal-day:active,
+.unit-toggle:active,
+.session-banner:active,
+.tab:active,
+.rest-link:active {
+  transition:
+    transform 0.08s ease-out,
+    background-color 0.08s ease-out,
+    filter 0.08s ease-out,
+    opacity 0.08s ease-out;
+}
+
+.rest-link:active {
+  opacity: 0.55;
+}
+
+/* Janelas inferiores entram com mola */
+.sheet {
+  animation: sheet-in 0.42s var(--spring);
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.rest-bar {
+  animation: rest-in 0.45s var(--spring);
+  overflow: hidden;
+}
+
+/* Na tela de treino não há menu embaixo: a barra desce. */
+body:has(.session-screen) .rest-bar:not(.done) {
+  bottom: calc(var(--safe-bottom) + 14px);
+}
+
+.rest-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--success);
+  transform-origin: left center;
+  transition: transform 0.25s linear;
+}
+
+@keyframes rest-in {
+  from {
+    transform: translateY(140%);
+  }
+}
+
+/* ------------------------------------------------------------ Transição entre telas */
+
+.tabbar {
+  view-transition-name: tabbar;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.34s;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+html[data-nav='forward']::view-transition-new(root) {
+  animation-name: vt-in-right;
+}
+
+html[data-nav='forward']::view-transition-old(root) {
+  animation-name: vt-out-left;
+}
+
+html[data-nav='back']::view-transition-old(root) {
+  animation-name: vt-out-right;
+  z-index: 2;
+}
+
+html[data-nav='back']::view-transition-new(root) {
+  animation-name: vt-in-left;
+}
+
+html[data-nav='tab']::view-transition-old(root) {
+  animation: 0.16s ease both vt-fade-out;
+}
+
+html[data-nav='tab']::view-transition-new(root) {
+  animation: 0.2s ease both vt-fade-in;
+}
+
+@keyframes vt-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes vt-out-left {
+  to {
+    transform: translateX(-28%);
+    opacity: 0.5;
+  }
+}
+
+@keyframes vt-in-left {
+  from {
+    transform: translateX(-28%);
+    opacity: 0.5;
+  }
+}
+
+@keyframes vt-out-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}

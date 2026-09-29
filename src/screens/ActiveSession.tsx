@@ -1,38 +1,55 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { EmptyState } from '../components/Layout';
+import { ExerciseThumb } from '../components/Media';
 import { useRest } from '../components/RestTimer';
+import { RestSheet, SetRow, SetTypeSheet } from '../components/SetRow';
 import { Sheet } from '../components/Sheet';
 import { db } from '../lib/db';
-import { loadText } from '../lib/equipment';
+import { UNITS, setLabels } from '../lib/equipment';
 import { exerciseOrMissing, useExercises } from '../lib/exercises';
-import { clock } from '../lib/format';
+import { num, pad2 } from '../lib/format';
 import { useNow, useWakeLock } from '../lib/hooks';
 import {
+  addSet,
   deleteSession,
   finishSession,
   getActiveSession,
   getProfile,
   moveSessionItem,
   removeSessionItem,
+  removeSet,
   sessionItemsOf,
   setSessionItemDone,
-  updateSession,
+  setSessionItemUnit,
+  toggleSessionSuperset,
+  updateSessionItem,
+  updateSet,
 } from '../lib/repo';
-import type { SessionItem } from '../lib/types';
-import { groupSupersets } from './WorkoutDetail';
+import { summarize } from '../lib/stats';
+import type { DoneSet, SessionItem } from '../lib/types';
+import { groupSupersets, restText } from '../lib/workout';
+
+function elapsedText(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor(s / 60) % 60;
+  if (h > 0) return `${h}h ${pad2(m)}min`;
+  return `${m}min ${pad2(s % 60)}s`;
+}
 
 export function ActiveSession() {
   const navigate = useNavigate();
-  const { confirm, prompt } = useDialogs();
+  const { confirm, toast } = useDialogs();
   const rest = useRest();
   const { map } = useExercises();
   const now = useNow(1000);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [reorder, setReorder] = useState(false);
+  const [typeMenu, setTypeMenu] = useState<{ itemId: string; index: number } | null>(null);
+  const [restFor, setRestFor] = useState<string | null>(null);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
 
   const data = useLiveQuery(async () => {
     const session = await getActiveSession();
@@ -47,26 +64,41 @@ export function ActiveSession() {
   const { session, items, workout, profile } = data;
   if (!session) {
     return (
-      <main className="screen no-tabs">
+      <main className="screen no-tabs session-screen">
         <EmptyState title="Nenhum treino em andamento" text="Comece um treino pela tela Início." action={{ label: 'Ir para o Início', to: '/' }} />
       </main>
     );
   }
 
-  const restSeconds = workout?.restSeconds ?? profile.restSeconds;
-  const doneCount = items.filter((i) => i.done).length;
-  const nextIdx = items.findIndex((i) => !i.done);
+  const defaultRest = workout?.restSeconds ?? profile.restSeconds;
+  const restOf = (it: SessionItem) => it.restSeconds ?? defaultRest;
+  const stats = summarize(items);
   const elapsed = session.startedAt ? (now - session.startedAt) / 1000 : 0;
+  const groups = groupSupersets(items);
+
+  const onToggleSet = async (it: SessionItem, index: number, s: DoneSet, load: number | null, reps: number | null) => {
+    const willBeDone = !s.done;
+    await updateSet(it.id, index, { load, reps, done: willBeDone });
+    if (!willBeDone) return;
+    const group = groups.find((g) => g.some((x) => x.id === it.id)) ?? [it];
+    const pos = group.findIndex((x) => x.id === it.id);
+    if (group.length > 1 && pos < group.length - 1) {
+      toast(`Agora: ${exerciseOrMissing(map, group[pos + 1].exerciseId).name}`);
+      return;
+    }
+    const seconds = restOf(it);
+    if (seconds > 0) rest.start(seconds);
+  };
 
   const finish = async () => {
-    const missing = items.length - doneCount;
-    if (missing > 0) {
+    const empty = items.filter((i) => !i.sets.some((s) => s.done) && !i.done).length;
+    if (items.length === 0 || empty > 0) {
       const ok = await confirm({
         title: 'Finalizar o treino?',
         message:
-          doneCount === 0
-            ? 'Nenhum exercício foi marcado como feito.'
-            : `Faltam ${missing} ${missing === 1 ? 'exercício' : 'exercícios'}. Eles ficam registrados como não feitos.`,
+          items.length === 0 || empty === items.length
+            ? 'Nenhuma série foi marcada.'
+            : `${empty} ${empty === 1 ? 'exercício ficou' : 'exercícios ficaram'} sem nenhuma série marcada.`,
         confirmLabel: 'Finalizar treino',
       });
       if (!ok) return;
@@ -77,7 +109,6 @@ export function ActiveSession() {
   };
 
   const discard = async () => {
-    setMenuOpen(false);
     const ok = await confirm({
       title: 'Descartar este treino?',
       message: 'Tudo que foi marcado nele será apagado e ele não entra no calendário.',
@@ -90,166 +121,226 @@ export function ActiveSession() {
     navigate('/', { replace: true });
   };
 
-  const rename = async () => {
-    setMenuOpen(false);
-    const title = await prompt({ title: 'Nome do treino', initial: session.title });
-    if (title !== null && title.trim()) await updateSession(session.id, { title: title.trim() });
-  };
+  const menuItem = items.find((i) => i.id === menuFor);
+  const menuIndex = menuItem ? items.indexOf(menuItem) : -1;
+  const typeItem = typeMenu ? items.find((i) => i.id === typeMenu.itemId) : undefined;
+  const typeSet = typeItem && typeMenu ? typeItem.sets[typeMenu.index] : undefined;
+  const restItem = items.find((i) => i.id === restFor);
 
-  const row = (it: SessionItem, idx: number) => {
+  const card = (it: SessionItem) => {
     const ex = exerciseOrMissing(map, it.exerciseId);
-    const setsDone = it.sets.filter((s) => s.done).length;
-    const loads = it.sets.map((s) => s.load).filter((l): l is number => l !== null);
-    const detail = `${setsDone}/${it.sets.length} séries${loads.length ? ` · ${loadText(Math.max(...loads), it.unit)}` : ''}`;
-    const isNext = idx === nextIdx;
-    const cls = it.done ? 'done' : isNext ? 'next' : '';
+    const labels = setLabels(it.sets.map((s) => s.type));
+    const unitLabel = it.unit === 'placa' ? 'Placa' : it.unit;
     return (
-      <div key={it.id} className={`session-row ${cls}`}>
-        {reorder ? (
-          <div className="row" style={{ gap: 4 }}>
-            <button type="button" className="icon-btn" style={{ width: 40, minWidth: 40 }} aria-label={`Subir ${ex.name}`} onClick={() => moveSessionItem(session.id, idx, idx - 1)}>
-              <Icon name="up" size={18} stroke={2.5} />
-            </button>
-            <button type="button" className="icon-btn" style={{ width: 40, minWidth: 40 }} aria-label={`Descer ${ex.name}`} onClick={() => moveSessionItem(session.id, idx, idx + 1)}>
-              <Icon name="down" size={18} stroke={2.5} />
-            </button>
-          </div>
-        ) : (
+      <section key={it.id} className="ex-card">
+        <div className="ex-head">
+          <Link to={`/exercicio/${it.exerciseId}`} className="ex-title">
+            <span className="ex-avatar">
+              <ExerciseThumb exercise={ex} />
+            </span>
+            <span className="ex-name">{ex.name}</span>
+          </Link>
           <button
             type="button"
-            className={`check-circle ${it.done ? 'on' : isNext ? 'next' : ''}`}
-            aria-label={it.done ? `Desmarcar ${ex.name}` : `Marcar ${ex.name} como feito`}
+            className={`check-circle sm ${it.done ? 'on' : ''}`}
             aria-pressed={it.done}
+            aria-label={it.done ? `Desmarcar ${ex.name}` : `Marcar todas as séries de ${ex.name}`}
             onClick={() => setSessionItemDone(it.id, !it.done)}
           >
-            {it.done && <Icon name="check" size={22} stroke={2.5} />}
+            <Icon name="check" size={18} stroke={3} className="check-draw" />
           </button>
-        )}
-        <Link to={`/sessao/item/${it.id}`} className="col grow" style={{ color: it.done ? 'var(--muted)' : 'var(--text)' }}>
-          <span className="name">{ex.name}</span>
-          <span className="small" style={{ color: it.done ? 'var(--muted)' : 'var(--text-2)' }}>
-            {detail}
-            {it.note ? ` · ${it.note}` : ''}
-          </span>
-        </Link>
-        {reorder ? (
-          <button type="button" className="icon-btn ghost" style={{ width: 36, minWidth: 36, color: 'var(--danger)' }} aria-label={`Tirar ${ex.name} deste treino`} onClick={() => removeSessionItem(it.id)}>
-            <Icon name="trash" size={18} />
+          <button type="button" className="icon-btn ghost" aria-label={`Opções de ${ex.name}`} onClick={() => setMenuFor(it.id)}>
+            <Icon name="more" />
           </button>
-        ) : isNext && !it.done ? (
-          <span className="badge-next">Próximo</span>
-        ) : null}
-      </div>
+        </div>
+        <NoteField item={it} />
+        <button type="button" className="rest-link" onClick={() => setRestFor(it.id)}>
+          <Icon name="timer" size={16} /> Descanso: {restText(restOf(it))}
+        </button>
+        <div className="sets">
+          <div className="set-row head">
+            <span style={{ textAlign: 'center' }}>Série</span>
+            <span>Anterior</span>
+            <span style={{ textAlign: 'center' }}>{unitLabel}</span>
+            <span style={{ textAlign: 'center' }}>Reps</span>
+            <span style={{ display: 'flex', justifyContent: 'center' }}>
+              <Icon name="check" size={14} stroke={3} />
+            </span>
+          </div>
+          {it.sets.map((s, i) => (
+            <SetRow
+              key={i}
+              label={labels[i]}
+              set={s}
+              unit={it.unit}
+              onOpenMenu={() => setTypeMenu({ itemId: it.id, index: i })}
+              onCommit={(changes) => updateSet(it.id, i, changes)}
+              onToggle={(load, reps) => onToggleSet(it, i, s, load, reps)}
+            />
+          ))}
+          <button type="button" className="btn soft small block" onClick={() => addSet(it.id)}>
+            <Icon name="plus" /> Adicionar série
+          </button>
+        </div>
+      </section>
     );
   };
 
-  const groups = groupSupersets(items);
-  let running = 0;
-
   return (
-    <main className="screen no-tabs">
-      <div className="topbar">
-        <Link to="/" className="back" style={{ color: 'var(--text-2)' }}>
-          <Icon name="back" />
-          Início
+    <main className="screen no-tabs tight">
+      <div className="topbar sticky-top">
+        <Link to="/" data-nav="back" className="icon-btn ghost" aria-label="Recolher o treino (ele continua)">
+          <Icon name="down" size={24} />
         </Link>
-        <span className="timer-pill">
-          <Icon name="clock" size={16} color="var(--accent)" />
-          {clock(elapsed)}
-        </span>
-        <button type="button" className="icon-btn ghost" aria-label="Mais opções" onClick={() => setMenuOpen(true)}>
-          <Icon name="more" />
+        <span className="topbar-title ellipsis">{session.title}</span>
+        <button type="button" className="btn small primary" onClick={finish}>
+          Finalizar
         </button>
       </div>
 
-      <div className="col">
-        <span className="small muted">{session.title}</span>
-        <div className="row" style={{ alignItems: 'baseline', gap: 8 }}>
-          <span className="display" style={{ fontSize: 52 }}>
-            {doneCount} de {items.length}
-          </span>
-          <span className="muted">exercícios feitos</span>
+      <div className="stats-row">
+        <div>
+          <span>Duração</span>
+          <b>{elapsedText(elapsed)}</b>
+        </div>
+        <div>
+          <span>Volume</span>
+          <b>{num(stats.volume, 0)} kg</b>
+        </div>
+        <div>
+          <span>Séries</span>
+          <b>{stats.setsDone}</b>
         </div>
       </div>
 
-      {items.length > 0 && (
-        <div className="progress-bars" aria-hidden="true">
-          {items.map((it) => (
-            <span key={it.id} className={it.done ? 'on' : ''} />
-          ))}
-        </div>
+      {items.length === 0 && <EmptyState title="Treino livre" text="Adicione os exercícios conforme for fazendo." />}
+
+      {groups.map((g) =>
+        g.length === 1 ? (
+          card(g[0])
+        ) : (
+          <div key={g[0].id} className="ss-group">
+            <span className="ss-label">Superset</span>
+            {g.map(card)}
+          </div>
+        ),
       )}
 
-      {items.length === 0 && (
-        <EmptyState title="Treino livre" text="Adicione os exercícios conforme for fazendo." />
-      )}
+      <Link to="/sessao/adicionar" className="btn big primary block">
+        <Icon name="plus" /> Adicionar exercício
+      </Link>
+      <button type="button" className="btn block danger" style={{ border: 0 }} onClick={discard}>
+        Descartar treino
+      </button>
 
-      <div className="stack">
-        {groups.map((g) => {
-          const start = running;
-          running += g.length;
-          const rows = g.map((it, k) => row(it, start + k));
-          if (g.length === 1) return rows;
-          return (
-            <div key={g[0].id} className="superset">
-              <div className="superset-head">
-                <Icon name="link" size={16} />
-                <span className="eyebrow" style={{ fontSize: 12 }}>
-                  Superset
-                </span>
-                <span className="tiny muted">um após o outro, descanse no fim</span>
+      <SetTypeSheet
+        open={!!typeMenu}
+        onClose={() => setTypeMenu(null)}
+        current={typeSet?.type}
+        subtitle={typeItem ? exerciseOrMissing(map, typeItem.exerciseId).name : undefined}
+        onPick={async (t) => {
+          if (typeMenu) await updateSet(typeMenu.itemId, typeMenu.index, { type: t });
+          setTypeMenu(null);
+        }}
+        onRemove={async () => {
+          if (typeMenu) await removeSet(typeMenu.itemId, typeMenu.index);
+          setTypeMenu(null);
+        }}
+      />
+
+      <RestSheet
+        open={!!restItem}
+        onClose={() => setRestFor(null)}
+        value={restItem ? restOf(restItem) : defaultRest}
+        onPick={async (s) => {
+          if (restItem) await updateSessionItem(restItem.id, { restSeconds: s });
+          setRestFor(null);
+        }}
+      />
+
+      <Sheet open={!!menuItem} onClose={() => setMenuFor(null)} title={menuItem ? exerciseOrMissing(map, menuItem.exerciseId).name : undefined}>
+        {menuItem && (
+          <>
+            <div className="field">
+              <span className="label">Anotar a carga em</span>
+              <div className="seg">
+                {UNITS.map((u) => (
+                  <button
+                    type="button"
+                    key={u.id}
+                    className={menuItem.unit === u.id ? 'on' : ''}
+                    aria-pressed={menuItem.unit === u.id}
+                    onClick={() => setSessionItemUnit(menuItem.id, menuItem.exerciseId, u.id)}
+                  >
+                    {u.name}
+                  </button>
+                ))}
               </div>
-              {rows}
             </div>
-          );
-        })}
-      </div>
-
-      {reorder ? (
-        <button type="button" className="btn block soft" onClick={() => setReorder(false)}>
-          Pronto
-        </button>
-      ) : (
-        <Link to="/sessao/adicionar" className="btn dashed block">
-          <Icon name="plus" /> Adicionar exercício
-        </Link>
-      )}
-
-      <div className="notice" style={{ alignItems: 'center' }}>
-        <Icon name="timer" color="var(--text-2)" />
-        <div className="col grow">
-          <span style={{ fontWeight: 700 }}>Descanso de {restSeconds} s</span>
-          <span className="tiny muted">Começa sozinho quando você marca uma série</span>
-        </div>
-        <button type="button" className="btn small" onClick={() => rest.start(restSeconds)}>
-          Iniciar
-        </button>
-      </div>
-
-      <div className="bottom-bar">
-        <div className="bottom-bar-inner">
-          <button type="button" className="btn big light grow" onClick={finish}>
-            <Icon name="flag" /> Finalizar treino
-          </button>
-        </div>
-      </div>
-
-      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Opções do treino">
-        <div className="list-group">
-          <button type="button" className="list-item" onClick={() => { setMenuOpen(false); setReorder(true); }}>
-            <Icon name="list" color="var(--text-2)" />
-            <span className="grow">Mudar ordem ou tirar exercícios</span>
-          </button>
-          <button type="button" className="list-item" onClick={rename}>
-            <Icon name="pencil" color="var(--text-2)" />
-            <span className="grow">Renomear treino</span>
-          </button>
-          <button type="button" className="list-item danger" onClick={discard}>
-            <Icon name="trash" />
-            <span className="grow">Descartar treino</span>
-          </button>
-        </div>
+            <div className="list-group">
+              <Link to={`/exercicio/${menuItem.exerciseId}`} className="list-item" onClick={() => setMenuFor(null)}>
+                <Icon name="chart" color="var(--text-2)" />
+                <span className="grow">Ver exercício e progresso</span>
+              </Link>
+              {menuIndex > 0 && (
+                <button type="button" className="list-item" onClick={() => moveSessionItem(session.id, menuIndex, menuIndex - 1)}>
+                  <Icon name="up" color="var(--text-2)" />
+                  <span className="grow">Mover para cima</span>
+                </button>
+              )}
+              {menuIndex < items.length - 1 && (
+                <button type="button" className="list-item" onClick={() => moveSessionItem(session.id, menuIndex, menuIndex + 1)}>
+                  <Icon name="down" color="var(--text-2)" />
+                  <span className="grow">Mover para baixo</span>
+                </button>
+              )}
+              {menuIndex < items.length - 1 && (
+                <button
+                  type="button"
+                  className="list-item"
+                  onClick={async () => {
+                    await toggleSessionSuperset(menuItem.id);
+                    setMenuFor(null);
+                  }}
+                >
+                  <Icon name="link" color="var(--text-2)" />
+                  <span className="grow">{menuItem.supersetNext ? 'Separar do superset' : 'Fazer superset com o próximo'}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                className="list-item danger"
+                onClick={async () => {
+                  const ok = await confirm({ title: 'Tirar este exercício do treino?', confirmLabel: 'Tirar', danger: true });
+                  if (!ok) return;
+                  await removeSessionItem(menuItem.id);
+                  setMenuFor(null);
+                }}
+              >
+                <Icon name="trash" />
+                <span className="grow">Tirar do treino</span>
+              </button>
+            </div>
+          </>
+        )}
       </Sheet>
     </main>
+  );
+}
+
+function NoteField({ item }: { item: SessionItem }) {
+  const [note, setNote] = useState(item.note ?? '');
+  useEffect(() => setNote(item.note ?? ''), [item.note]);
+  return (
+    <input
+      className="ex-note"
+      value={note}
+      placeholder="Adicionar anotação…"
+      aria-label="Anotação do exercício"
+      onChange={(e) => setNote(e.target.value)}
+      onBlur={() => {
+        if (note !== (item.note ?? '')) void updateSessionItem(item.id, { note: note.trim() });
+      }}
+    />
   );
 }

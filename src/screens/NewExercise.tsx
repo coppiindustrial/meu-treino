@@ -94,7 +94,7 @@ export function NewExercise() {
     if (!existing && addNow && addToWorkout) {
       await addExercisesToWorkout(addToWorkout, [id]);
       toast('Exercício criado e adicionado');
-      navigate(`/treino/${addToWorkout}`, { replace: true });
+      navigate(`/treino/${addToWorkout}?editar=1&novo=1`, { replace: true });
       return;
     }
     if (!existing && addNow && addToSession) {
