@@ -12,6 +12,7 @@ import type {
   PlannedSet,
   Profile,
   Program,
+  RepMode,
   Session,
   SessionItem,
   SetType,
@@ -136,6 +137,36 @@ export async function duplicateProgram(id: string): Promise<string> {
     );
   }
   return newProgramId;
+}
+
+export interface ImportDay {
+  name: string;
+  items: { exerciseId: string; sets: PlannedSet[]; repMode: RepMode; note: string }[];
+}
+
+/** Cria uma ficha inteira de uma vez (usado ao colar um treino pronto). */
+export async function importProgram(name: string, days: ImportDay[]): Promise<string> {
+  const programId = await createProgram(name);
+  for (const day of days) {
+    const workoutId = await createWorkout(programId, day.name.trim() || 'Novo treino');
+    const now = Date.now();
+    await putMany<WorkoutItem>(
+      'workoutItems',
+      day.items.map((it, i) => ({
+        id: newId(),
+        workoutId,
+        exerciseId: it.exerciseId,
+        position: i,
+        supersetNext: false,
+        sets: it.sets,
+        note: it.note,
+        repMode: it.repMode,
+        restSeconds: null,
+        updatedAt: now,
+      })),
+    );
+  }
+  return programId;
 }
 
 // ---------------------------------------------------------------- Treinos

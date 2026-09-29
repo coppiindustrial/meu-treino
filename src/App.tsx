@@ -15,6 +15,7 @@ import { DayEdit } from './screens/DayEdit';
 import { ExerciseDetail } from './screens/ExerciseDetail';
 import { ExercisePicker } from './screens/ExercisePicker';
 import { History } from './screens/History';
+import { ImportProgram } from './screens/ImportProgram';
 import { Home } from './screens/Home';
 import { MeasureForm } from './screens/MeasureForm';
 import { NewExercise } from './screens/NewExercise';
@@ -54,6 +55,7 @@ function Shell() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/treinos" element={<Programs />} />
+        <Route path="/treinos/colar" element={<ImportProgram />} />
         <Route path="/ficha/:programId" element={<ProgramDetail />} />
         <Route path="/treino/:workoutId" element={<WorkoutDetail />} />
         <Route path="/treino/:workoutId/adicionar" element={<ExercisePicker mode="workout" />} />

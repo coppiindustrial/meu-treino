@@ -1,8 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { EmptyState } from '../components/Layout';
+import { Sheet } from '../components/Sheet';
 import { db } from '../lib/db';
 import { dayMonth, fullDate, toISODate } from '../lib/format';
 import { activateProgram, createProgram, createWorkout } from '../lib/repo';
@@ -12,6 +14,7 @@ import type { Program, Workout } from '../lib/types';
 export function Programs() {
   const navigate = useNavigate();
   const { prompt, confirm, toast } = useDialogs();
+  const [newOpen, setNewOpen] = useState(false);
 
   const data = useLiveQuery(async () => {
     const programs = (await db.programs.filter((p) => !p.deleted).toArray()).sort((a, b) => b.createdAt - a.createdAt);
@@ -38,7 +41,10 @@ export function Programs() {
     nextId = ws.length ? ws[(idx + 1) % ws.length].id : undefined;
   }
 
-  const newProgram = async () => {
+  const newProgram = () => setNewOpen(true);
+
+  const newEmptyProgram = async () => {
+    setNewOpen(false);
     const name = await prompt({ title: 'Nova ficha', label: 'Nome da ficha', placeholder: 'Hipertrofia · outubro' });
     if (name === null) return;
     const id = await createProgram(name);
@@ -172,6 +178,37 @@ export function Programs() {
         </span>
         <Icon name="next" size={20} color="var(--muted)" />
       </Link>
+
+      <Sheet open={newOpen} onClose={() => setNewOpen(false)} title="Nova ficha">
+        <div className="list-group">
+          <button type="button" className="list-item" style={{ minHeight: 64 }} onClick={newEmptyProgram}>
+            <span className="notice-icon">
+              <Icon name="plus" />
+            </span>
+            <span className="col grow">
+              <span style={{ fontSize: 16, fontWeight: 600 }}>Criar do zero</span>
+              <span className="tiny muted">Monte as rotinas escolhendo os exercícios</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            className="list-item"
+            style={{ minHeight: 64 }}
+            onClick={() => {
+              setNewOpen(false);
+              navigate('/treinos/colar');
+            }}
+          >
+            <span className="notice-icon">
+              <Icon name="copy" />
+            </span>
+            <span className="col grow">
+              <span style={{ fontSize: 16, fontWeight: 600 }}>Colar treino pronto</span>
+              <span className="tiny muted">Cole o texto e o app monta a ficha sozinho</span>
+            </span>
+          </button>
+        </div>
+      </Sheet>
     </main>
   );
 }
