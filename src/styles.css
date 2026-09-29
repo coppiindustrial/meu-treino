@@ -812,10 +812,9 @@ p {
   pointer-events: auto;
   position: relative;
   max-width: 440px;
-  height: 66px;
   margin: 0 auto;
-  padding: 5px;
   display: flex;
+  flex-direction: column;
   border-radius: 33px;
   background: rgba(38, 38, 42, 0.5);
   -webkit-backdrop-filter: blur(22px) saturate(190%);
@@ -2199,8 +2198,8 @@ html[data-nav='tab']::view-transition-new(root) {
 }
 
 /* Com o aviso de treino em andamento na tela, o descanso fica logo acima dele. */
-body:has(.session-banner) .rest-bar {
-  bottom: calc(var(--safe-bottom) + 152px);
+body:has(.session-strip) .rest-bar {
+  bottom: calc(var(--safe-bottom) + 142px);
 }
 
 /* ------------------------------------------------------------ Colar treino */
@@ -2938,4 +2937,80 @@ html[data-nav="tab"] .screen:not(.no-tabs) {
 
 :where(.btn, .tab, .set-check, .check-circle, .set-type, .seg > a, .cal-day, .list-item, .action-item, .folder-head, .unit-toggle, .import-chip, .ex-chip):has(> .hap-film) {
   position: relative;
+}
+
+/* Desenho do músculo com zoom: quadrado arredondado. */
+.figure-wrap {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Linha de abas dentro do vidro (a bolha anda aqui dentro). */
+.tabs-row {
+  position: relative;
+  height: 66px;
+  padding: 5px;
+  display: flex;
+}
+
+/* Treino em andamento: parte de cima do menu de vidro. */
+.session-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 7px 7px 6px;
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
+  animation: strip-in 0.45s var(--spring);
+}
+
+@keyframes strip-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.session-strip-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px 6px 10px;
+  border-radius: 20px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.session-strip-main:active {
+  background: rgba(255, 255, 255, 0.08);
+  transition-duration: 0.05s;
+}
+
+.session-strip-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.live-dot {
+  width: 9px;
+  height: 9px;
+  min-width: 9px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: live 1.8s infinite;
+}
+
+@keyframes live {
+  0% {
+    box-shadow: 0 0 0 0 rgba(48, 199, 90, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(48, 199, 90, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(48, 199, 90, 0);
+  }
 }

@@ -5,5 +5,6 @@ export const THEME = {
   muted: '#8E8E93',
   grid: '#2C2C2E',
   accent: '#2F8CFF',
-  figureBase: '#48484A',
+  figureBase: '#56565C',
+  figureSkin: '#3C3C41',
 };

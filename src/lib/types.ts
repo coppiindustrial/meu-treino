@@ -175,4 +175,6 @@ export interface Profile extends Synced {
   goal: string;
   weeklyGoal: number;
   restSeconds: number;
+  /** Corpo usado nos desenhos de músculos e medidas. */
+  body?: 'male' | 'female';
 }

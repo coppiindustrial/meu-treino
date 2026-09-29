@@ -1,42 +1,37 @@
+import { BODY } from '../data/bodyMap';
+import { useBodyGender, type BodyGender } from '../lib/body';
 import { Sheet } from './Sheet';
 
-/** Boneco simples (formas básicas) para mostrar onde passar a fita métrica. */
-function Body() {
-  return (
-    <g fill="#4a4a50">
-      <circle cx="60" cy="18" r="12" />
-      <rect x="54" y="28" width="12" height="10" rx="3" />
-      <path d="M38 40 Q60 34 82 40 L87 50 Q85 72 78 92 Q82 102 80 114 L40 114 Q38 102 42 92 Q35 72 33 50 Z" />
-      <rect x="21" y="45" width="12" height="38" rx="6" />
-      <rect x="87" y="45" width="12" height="38" rx="6" />
-      <rect x="19" y="83" width="11" height="34" rx="5.5" />
-      <rect x="90" y="83" width="11" height="34" rx="5.5" />
-      <circle cx="24.5" cy="121" r="5" />
-      <circle cx="95.5" cy="121" r="5" />
-      <rect x="41" y="112" width="18" height="46" rx="8" />
-      <rect x="61" y="112" width="18" height="46" rx="8" />
-      <rect x="43" y="156" width="14" height="38" rx="6" />
-      <rect x="63" y="156" width="14" height="38" rx="6" />
-      <ellipse cx="50" cy="196" rx="8" ry="3" />
-      <ellipse cx="70" cy="196" rx="8" ry="3" />
-    </g>
-  );
-}
-
-/** Onde fica a fita de cada medida: centro (x, y) e raios da elipse. */
-const RINGS: Record<string, [number, number, number, number]> = {
-  peito: [60, 56, 25, 4],
-  cintura: [60, 80, 19, 3.5],
-  abdomen: [60, 92, 20, 3.5],
-  quadril: [60, 108, 22, 4],
-  bracoD: [27, 64, 8, 2.6],
-  bracoE: [93, 64, 8, 2.6],
-  antebraco: [24.5, 92, 7, 2.4],
-  coxaD: [50, 126, 11, 3],
-  coxaE: [70, 126, 11, 3],
-  panturrilha: [50, 168, 9, 2.6],
-  ombros: [60, 47, 30, 4.5],
-  pescoco: [60, 33, 8, 2.6],
+/** Onde fica a fita de cada medida no desenho do corpo: centro (x, y) e raios da elipse. */
+const RINGS: Record<BodyGender, Record<string, [number, number, number, number]>> = {
+  male: {
+    peito: [364, 392, 128, 18],
+    cintura: [364, 545, 100, 15],
+    abdomen: [364, 600, 104, 15],
+    quadril: [364, 690, 128, 18],
+    bracoD: [217, 445, 40, 8],
+    bracoE: [511, 445, 40, 8],
+    antebraco: [172, 560, 42, 8],
+    coxaD: [295, 745, 60, 12],
+    coxaE: [433, 745, 60, 12],
+    panturrilha: [288, 1085, 44, 10],
+    ombros: [364, 345, 178, 22],
+    pescoco: [364, 292, 38, 8],
+  },
+  female: {
+    peito: [320, 390, 118, 17],
+    cintura: [320, 505, 86, 13],
+    abdomen: [320, 560, 92, 14],
+    quadril: [320, 650, 128, 18],
+    bracoD: [181, 430, 34, 7],
+    bracoE: [459, 430, 34, 7],
+    antebraco: [122, 540, 42, 8],
+    coxaD: [252, 730, 58, 12],
+    coxaE: [389, 730, 58, 12],
+    panturrilha: [266, 1125, 42, 10],
+    ombros: [320, 328, 160, 20],
+    pescoco: [320, 300, 36, 8],
+  },
 };
 
 export const MEASURE_HOWTO: Record<string, string> = {
@@ -55,20 +50,35 @@ export const MEASURE_HOWTO: Record<string, string> = {
 };
 
 export function hasMeasureFigure(key: string): boolean {
-  return key in RINGS;
+  return key in RINGS.male;
 }
 
+/** Contorno do corpo (só o traço) com a fita métrica azul no lugar da medida. */
 export function MeasureFigure({ measure }: { measure: string }) {
-  const ring = RINGS[measure];
+  const gender = useBodyGender();
+  const ring = RINGS[gender][measure];
   if (!ring) return null;
   const [cx, cy, rx, ry] = ring;
+  const body = BODY[gender].front;
+  const head = [...(body.parts.head?.c ?? []), ...(body.parts.hair?.c ?? [])];
   return (
-    <svg viewBox="0 0 120 202" aria-hidden="true">
-      <Body />
+    <svg viewBox={body.vb} aria-hidden="true">
+      <path d={body.outline} fill="none" stroke="#a1a1a6" strokeWidth={1.2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      {head.map((d, i) => (
+        <path key={i} d={d} fill="none" stroke="#a1a1a6" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+      ))}
       {/* Parte de trás da fita (tracejada) e parte da frente (cheia). */}
-      <path d={`M${cx - rx},${cy} A${rx},${ry} 0 0 1 ${cx + rx},${cy}`} fill="none" stroke="#2f8cff" strokeWidth={2} strokeDasharray="3 2.5" opacity={0.55} />
-      <path d={`M${cx - rx},${cy} A${rx},${ry} 0 0 0 ${cx + rx},${cy}`} fill="none" stroke="#2f8cff" strokeWidth={3} strokeLinecap="round" />
-      <circle cx={cx + rx} cy={cy} r={2.6} fill="#ffffff" />
+      <path
+        d={`M${cx - rx},${cy} A${rx},${ry} 0 0 1 ${cx + rx},${cy}`}
+        fill="none"
+        stroke="#2f8cff"
+        strokeWidth={1.6}
+        strokeDasharray="3 2.5"
+        vectorEffect="non-scaling-stroke"
+        opacity={0.6}
+      />
+      <path d={`M${cx - rx},${cy} A${rx},${ry} 0 0 0 ${cx + rx},${cy}`} fill="none" stroke="#2f8cff" strokeWidth={3} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <circle cx={cx + rx} cy={cy} r={14} fill="#ffffff" />
     </svg>
   );
 }

@@ -4,7 +4,6 @@ import { type NavDir, withTransition } from './lib/nav';
 import { DialogProvider } from './components/Dialogs';
 import { isTabRoute, TabBar } from './components/Layout';
 import { RestTimerProvider } from './components/RestTimer';
-import { SessionBanner } from './components/SessionBanner';
 import { requestPersistentStorage } from './lib/db';
 import { initSync } from './lib/sync';
 import { ActiveSession } from './screens/ActiveSession';
@@ -79,7 +78,6 @@ function Shell() {
         <Route path="/perfil/nuvem" element={<Cloud />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      {tabs && <SessionBanner />}
       {tabs && <TabBar pathname={pathname} />}
     </>
   );

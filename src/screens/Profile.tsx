@@ -165,6 +165,15 @@ export function Profile() {
             <span />
           </span>
         </button>
+        <button
+          type="button"
+          className="list-item"
+          onClick={() => void saveProfile({ body: profile.body === 'female' ? 'male' : 'female' })}
+        >
+          <Icon name="user" color="var(--text-2)" />
+          <span className="grow">Corpo nos desenhos</span>
+          <span className="value">{profile.body === 'female' ? 'Feminino' : 'Masculino'}</span>
+        </button>
         <Link to="/exercicios" className="list-item">
           <Icon name="book" color="var(--text-2)" />
           <span className="grow">Biblioteca de exercícios</span>
@@ -198,6 +207,8 @@ export function Profile() {
         Meu Treino · versão {__APP_VERSION__}
         <br />
         Animações: ExerciseDB. Fotos: free-exercise-db (domínio público).
+        <br />
+        Desenhos do corpo: react-native-body-highlighter (licença MIT).
       </p>
 
       <Sheet open={installOpen} onClose={() => setInstallOpen(false)} title="Instalar no iPhone">

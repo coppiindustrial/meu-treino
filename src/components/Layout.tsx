@@ -1,5 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useNow } from '../lib/hooks';
+import { deleteSession, getActiveSession } from '../lib/repo';
+import { useDialogs } from './Dialogs';
+import { useRest } from './RestTimer';
 import { withTransition } from '../lib/nav';
 import { Icon, type IconName } from './Icon';
 
@@ -76,7 +81,9 @@ export function TabBar({ pathname }: { pathname: string }) {
 
   return (
     <nav className="tabbar" aria-label="Navegação principal">
-      <div className="tabbar-inner" ref={innerRef}>
+      <div className="tabbar-inner">
+        <SessionStrip />
+        <div className="tabs-row" ref={innerRef}>
         <span className={`tab-highlight ${lens ? 'lens' : ''}`} aria-hidden="true" style={bubbleStyle}>
           <i />
         </span>
@@ -98,8 +105,54 @@ export function TabBar({ pathname }: { pathname: string }) {
             </NavLink>
           );
         })}
+        </div>
       </div>
     </nav>
+  );
+}
+
+function elapsedText(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = String(s % 60).padStart(2, '0');
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+}
+
+/** Treino em andamento na parte de cima do menu de vidro (como o mini player do Música). */
+function SessionStrip() {
+  const session = useLiveQuery(() => getActiveSession(), []);
+  const now = useNow(1000);
+  const { confirm, toast } = useDialogs();
+  const rest = useRest();
+  if (!session) return null;
+  const elapsed = session.startedAt ? (now - session.startedAt) / 1000 : 0;
+  const discard = async () => {
+    const ok = await confirm({
+      title: 'Descartar este treino?',
+      message: 'Tudo que foi marcado nele será apagado e ele não entra no calendário.',
+      confirmLabel: 'Descartar treino',
+      danger: true,
+    });
+    if (!ok) return;
+    await deleteSession(session.id);
+    rest.stop();
+    toast('Treino descartado');
+  };
+  return (
+    <div className="session-strip">
+      <Link to="/sessao" className="session-strip-main" aria-label={`Abrir o treino em andamento: ${session.title}`}>
+        <span className="live-dot" aria-hidden="true" />
+        <span className="ellipsis grow">{session.title}</span>
+        <span className="session-strip-time">{elapsedText(elapsed)}</span>
+      </Link>
+      <button type="button" className="glass circle sm danger-text" aria-label="Descartar treino" onClick={discard}>
+        <Icon name="x" size={16} stroke={2.4} />
+      </button>
+      <Link to="/sessao" className="glass circle sm" aria-label="Abrir o treino">
+        <Icon name="up" size={18} stroke={2.4} />
+      </Link>
+    </div>
   );
 }
 
