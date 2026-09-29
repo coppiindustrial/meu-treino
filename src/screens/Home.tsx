@@ -7,7 +7,6 @@ import { db } from '../lib/db';
 import { useExercises } from '../lib/exercises';
 import {
   addDays,
-  clock,
   duration,
   num,
   relativeDay,
@@ -15,7 +14,6 @@ import {
   todayISO,
   weekStart,
 } from '../lib/format';
-import { useNow } from '../lib/hooks';
 import {
   createProgram,
   getActiveProgram,
@@ -34,7 +32,6 @@ export function Home() {
   const navigate = useNavigate();
   const { prompt } = useDialogs();
   const { map } = useExercises();
-  const now = useNow(1000);
   const [folderOpen, setFolderOpen] = useState(() => {
     try {
       return localStorage.getItem(FOLDER_KEY) !== 'closed';
@@ -114,25 +111,8 @@ export function Home() {
         </Link>
       </header>
 
-      {active ? (
-        <section className="card accent stack-lg">
-          <div className="row">
-            <div className="col grow">
-              <span className="label">Treino em andamento</span>
-              <span className="display" style={{ fontSize: 22 }}>
-                {active.title}
-              </span>
-              <span className="small muted">
-                Começou às {new Date(active.startedAt ?? now).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-            <span className="timer-pill">{clock(active.startedAt ? (now - active.startedAt) / 1000 : 0)}</span>
-          </div>
-          <Link to="/sessao" className="btn primary block">
-            Continuar treino
-          </Link>
-        </section>
-      ) : (
+      {/* Com treino em andamento, ele aparece no menu de baixo (sem repetir aqui). */}
+      {!active && (
         <section className="stack">
           <span className="label">Início rápido</span>
           <button type="button" className="btn soft block" onClick={() => start(null)}>
