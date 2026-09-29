@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ActionMenu } from '../components/ActionMenu';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { BackButton, EmptyState, TopBar } from '../components/Layout';
@@ -12,6 +13,11 @@ import { setLabels } from '../lib/equipment';
 import { exerciseOrMissing, useExercises, type ExerciseView } from '../lib/exercises';
 import {
   deleteWorkout,
+  duplicateWorkout,
+  restoreWorkout,
+  sameWorkout,
+  snapshotWorkout,
+  type WorkoutSnapshot,
   getActiveSession,
   itemsOf,
   moveWorkoutItem,
@@ -27,6 +33,25 @@ import type { PlannedSet, RepMode, Workout, WorkoutItem } from '../lib/types';
 import { groupSupersets, plannedSummary, restText } from '../lib/workout';
 
 export { groupSupersets, plannedSummary };
+
+// Como a rotina estava ao começar a editar (para o "Cancelar" desfazer). Sobrevive à ida ao seletor de exercícios.
+const snapKey = (id: string) => `mt.edit.${id}`;
+function readSnap(id: string): WorkoutSnapshot | null {
+  try {
+    const raw = sessionStorage.getItem(snapKey(id));
+    return raw ? (JSON.parse(raw) as WorkoutSnapshot) : null;
+  } catch {
+    return null;
+  }
+}
+function writeSnap(id: string, snap: WorkoutSnapshot | null): void {
+  try {
+    if (snap) sessionStorage.setItem(snapKey(id), JSON.stringify(snap));
+    else sessionStorage.removeItem(snapKey(id));
+  } catch {
+    // sem armazenamento: o Cancelar só sai da edição
+  }
+}
 
 function repModeOf(item: WorkoutItem): RepMode {
   return item.repMode ?? (item.sets.some((s) => s.reps.includes('-')) ? 'faixa' : 'fixa');
@@ -48,7 +73,8 @@ export function WorkoutDetail() {
   const [params, setParams] = useSearchParams();
   const editing = params.get('editar') === '1';
   const navigate = useNavigate();
-  const { confirm } = useDialogs();
+  const { confirm, toast } = useDialogs();
+  const [menuOpen, setMenuOpen] = useState(false);
   const { map } = useExercises();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -67,6 +93,12 @@ export function WorkoutDetail() {
       setLetter(data.workout.letter);
     }
   }, [data?.workout?.id, editing]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Ao entrar na edição, guarda como a rotina estava.
+  useEffect(() => {
+    if (!editing || !workoutId || readSnap(workoutId)) return;
+    void snapshotWorkout(workoutId).then((snap) => snap && writeSnap(workoutId, snap));
+  }, [editing, workoutId]);
 
   // Depois de adicionar exercícios, rola até o fim para mostrar os novos.
   const justAdded = params.get('novo') === '1';
@@ -106,7 +138,38 @@ export function WorkoutDetail() {
   const finishEditing = async () => {
     (document.activeElement as HTMLElement | null)?.blur();
     await saveMeta();
+    writeSnap(workout.id, null);
     setEditing(false);
+  };
+
+  const cancelEditing = async () => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    const before = readSnap(workout.id);
+    const now = await snapshotWorkout(workout.id);
+    if (before && now && !sameWorkout(before, now)) {
+      const ok = await confirm({
+        title: 'Descartar as alterações?',
+        message: 'A rotina volta a ficar como estava antes de você começar a editar.',
+        confirmLabel: 'Descartar',
+        danger: true,
+      });
+      if (!ok) return;
+      await restoreWorkout(before);
+    }
+    writeSnap(workout.id, null);
+    setEditing(false);
+  };
+
+  const duplicate = async () => {
+    const ok = await confirm({
+      title: 'Duplicar rotina?',
+      message: `Uma cópia de "${workout.name}" será criada nesta ficha.`,
+      confirmLabel: 'Duplicar',
+    });
+    if (!ok) return;
+    const id = await duplicateWorkout(workout.id);
+    toast('Rotina duplicada');
+    navigate(`/treino/${id}`);
   };
 
   const start = async () => {
@@ -126,9 +189,9 @@ export function WorkoutDetail() {
 
   const removeWorkout = async () => {
     const ok = await confirm({
-      title: `Excluir o treino ${workout.letter}?`,
+      title: `Excluir a rotina ${workout.letter}?`,
       message: 'Os exercícios montados nele serão apagados. O histórico do que você já fez continua guardado.',
-      confirmLabel: 'Excluir treino',
+      confirmLabel: 'Excluir rotina',
       danger: true,
     });
     if (!ok) return;
@@ -141,16 +204,24 @@ export function WorkoutDetail() {
   return (
     <main className="screen no-tabs">
       <TopBar
-        left={<BackButton to={program ? `/ficha/${program.id}` : '/treinos'} label={program ? 'Ficha' : 'Treinos'} />}
-        title={editing ? 'Editar rotina' : undefined}
-        right={
+        left={
           editing ? (
-            <button type="button" className="btn small primary" onClick={finishEditing}>
-              Pronto
+            <button type="button" className="glass pill accent-text" onClick={cancelEditing}>
+              Cancelar
             </button>
           ) : (
-            <button type="button" className="text-btn" onClick={() => setEditing(true)}>
-              Editar
+            <BackButton to={program ? `/ficha/${program.id}` : '/treinos'} />
+          )
+        }
+        title={editing ? 'Editar rotina' : 'Rotina'}
+        right={
+          editing ? (
+            <button type="button" className="pill-primary" onClick={finishEditing}>
+              Atualizar
+            </button>
+          ) : (
+            <button type="button" className="glass circle" aria-label="Opções da rotina" onClick={() => setMenuOpen(true)}>
+              <Icon name="more" size={22} />
             </button>
           )
         }
@@ -242,12 +313,19 @@ export function WorkoutDetail() {
           <Link to={`/treino/${workout.id}/adicionar`} className="btn big dashed block">
             <Icon name="plus" /> Adicionar exercício
           </Link>
-          <button type="button" className="btn block danger" style={{ border: 0 }} onClick={removeWorkout}>
-            <Icon name="trash" /> Excluir este treino
-          </button>
         </div>
       )}
       <div ref={bottomRef} />
+
+      <ActionMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        actions={[
+          { icon: 'copy', label: 'Duplicar rotina', onClick: duplicate },
+          { icon: 'pencil', label: 'Editar rotina', onClick: () => setEditing(true) },
+          { icon: 'x', label: 'Excluir rotina', danger: true, onClick: removeWorkout },
+        ]}
+      />
 
     </main>
   );

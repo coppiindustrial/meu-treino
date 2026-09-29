@@ -1,5 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ActionMenu } from '../components/ActionMenu';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { BackButton, EmptyState, TopBar } from '../components/Layout';
@@ -19,6 +21,7 @@ export function ProgramDetail() {
   const { programId = '' } = useParams();
   const navigate = useNavigate();
   const { prompt, confirm, toast } = useDialogs();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const data = useLiveQuery(async () => {
     const program = await db.programs.get(programId);
@@ -82,6 +85,12 @@ export function ProgramDetail() {
   };
 
   const duplicate = async () => {
+    const ok = await confirm({
+      title: 'Duplicar esta ficha?',
+      message: `Uma cópia de "${program.name}" será criada com todas as rotinas, pronta para usar.`,
+      confirmLabel: 'Duplicar',
+    });
+    if (!ok) return;
     const id = await duplicateProgram(program.id);
     toast('Cópia criada');
     navigate(`/ficha/${id}`);
@@ -101,7 +110,20 @@ export function ProgramDetail() {
 
   return (
     <main className="screen no-tabs">
-      <TopBar left={<BackButton to="/treinos" label="Treinos" />} right={<button type="button" className="text-btn" onClick={rename}>Renomear</button>} />
+      <TopBar
+        left={<BackButton to="/treinos" />}
+        title="Ficha"
+        right={
+          <>
+            <button type="button" className="glass circle" aria-label="Adicionar treino" onClick={addWorkout}>
+              <Icon name="plus" size={22} stroke={2.4} />
+            </button>
+            <button type="button" className="glass circle" aria-label="Opções da ficha" onClick={() => setMenuOpen(true)}>
+              <Icon name="more" size={22} />
+            </button>
+          </>
+        }
+      />
       <div className="col">
         <span className={`chip ${program.status === 'active' ? 'accent' : 'outline'}`}>{statusText}</span>
         <h1 className="h1" style={{ marginTop: 6 }}>
@@ -128,33 +150,19 @@ export function ProgramDetail() {
             <Icon name="next" size={20} color="var(--muted)" />
           </Link>
         ))}
-        <button type="button" className="btn big dashed block" onClick={addWorkout}>
-          <Icon name="plus" /> Adicionar treino
-        </button>
       </section>
 
-      <section className="list-group">
-        {program.status !== 'active' && (
-          <button type="button" className="list-item" onClick={activate}>
-            <Icon name="check" color="var(--accent)" />
-            <span className="grow">Ativar esta ficha</span>
-          </button>
-        )}
-        <button type="button" className="list-item" onClick={duplicate}>
-          <Icon name="copy" color="var(--text-2)" />
-          <span className="grow">Duplicar ficha</span>
-        </button>
-        {program.status === 'active' && (
-          <button type="button" className="list-item" onClick={archive}>
-            <Icon name="archive" color="var(--text-2)" />
-            <span className="grow">Encerrar ficha</span>
-          </button>
-        )}
-        <button type="button" className="list-item danger" onClick={remove}>
-          <Icon name="trash" />
-          <span className="grow">Excluir ficha</span>
-        </button>
-      </section>
+      <ActionMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        actions={[
+          { icon: 'check', label: 'Ativar esta ficha', hidden: program.status === 'active', onClick: activate },
+          { icon: 'pencil', label: 'Renomear ficha', onClick: rename },
+          { icon: 'copy', label: 'Duplicar ficha', onClick: duplicate },
+          { icon: 'archive', label: 'Encerrar ficha', hidden: program.status !== 'active', onClick: archive },
+          { icon: 'x', label: 'Excluir ficha', danger: true, onClick: remove },
+        ]}
+      />
     </main>
   );
 }

@@ -1,10 +1,10 @@
 :root {
-  --bg: #121212;
-  --bg-2: #171717;
-  --card: #1e1e1e;
-  --raised: #2c2c2e;
-  --raised-2: #3a3a3c;
-  --border: #2a2a2c;
+  --bg: #000000;
+  --bg-2: #0a0a0b;
+  --card: #161618;
+  --raised: #262628;
+  --raised-2: #333336;
+  --border: #262629;
   --border-2: #3a3a3c;
   --border-3: #48484a;
   --text: #ffffff;
@@ -218,20 +218,36 @@ p {
 
 /* ------------------------------------------------------------ Barra superior */
 
+/* Cabeçalho das telas internas: botões de vidro nas pontas e título pequeno no centro. */
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  min-height: 44px;
+  min-height: 48px;
+  gap: 8px;
+}
+
+.topbar > :first-child {
+  justify-self: start;
+  display: flex;
+  gap: 8px;
+}
+
+.topbar > :last-child {
+  justify-self: end;
+  display: flex;
   gap: 8px;
 }
 
 .topbar-title {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 600;
   text-align: center;
-  flex: 1 1 auto;
   min-width: 0;
+  max-width: 56vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .back {
@@ -814,10 +830,6 @@ p {
   position: absolute;
   top: 5px;
   bottom: 5px;
-  left: 5px;
-  width: calc((100% - 10px) / 5);
-  transform: translateX(calc(var(--i, 0) * 100%));
-  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
   pointer-events: none;
 }
 
@@ -832,8 +844,10 @@ p {
   transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.tab-highlight.moving i {
-  transform: scale(1.22, 0.82);
+/* Segurar a aba atual: a bolha cresce como uma lente. */
+.tab-highlight.lens i {
+  transform: scale(1.1, 1.06);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .tab {
@@ -1732,7 +1746,7 @@ button.tile:active,
   z-index: 15;
   margin: calc(-1 * var(--safe-top) - 16px) -20px 0;
   padding: calc(var(--safe-top) + 8px) 12px 8px;
-  background: rgba(18, 18, 18, 0.86);
+  background: rgba(0, 0, 0, 0.8);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   border-bottom: 0.5px solid var(--border);
@@ -2355,4 +2369,434 @@ body:has(.session-banner) .rest-bar {
   display: flex;
   flex-direction: column;
   margin: 6px 0 12px;
+}
+
+/* ------------------------------------------------------------ Botões de vidro: crescem, brilham e voltam */
+
+.glass,
+.pill-primary {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: none;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  transition:
+    transform 0.55s var(--spring),
+    background-color 0.35s ease,
+    box-shadow 0.35s ease,
+    filter 0.3s ease;
+}
+
+.glass {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 0.5px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.glass::after,
+.pill-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at var(--x, 50%) var(--y, 30%), rgba(255, 255, 255, 0.45), transparent 60%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+
+.glass.circle {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 50%;
+  padding: 0;
+}
+
+.glass.circle.sm {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+}
+
+.glass.pill,
+.pill-primary {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+}
+
+.glass.accent-text {
+  color: var(--accent);
+}
+
+.glass.danger-text {
+  color: var(--danger);
+}
+
+.pill-primary {
+  color: #fff;
+  background: var(--accent);
+  border: 0.5px solid rgba(255, 255, 255, 0.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 4px 16px rgba(47, 140, 255, 0.25);
+}
+
+.glass.pressed,
+.glass:active,
+.pill-primary.pressed,
+.pill-primary:active {
+  transform: scale(1.12);
+  transition-duration: 0.16s;
+  transition-timing-function: ease-out;
+}
+
+.glass.pressed,
+.glass:active {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 10px 28px rgba(0, 0, 0, 0.45),
+    0 0 22px rgba(255, 255, 255, 0.1);
+}
+
+.pill-primary.pressed,
+.pill-primary:active {
+  filter: brightness(1.15);
+}
+
+.glass.pressed::after,
+.pill-primary.pressed::after {
+  opacity: 0.6;
+  transition-duration: 0.12s;
+}
+
+.glass:disabled,
+.pill-primary:disabled {
+  opacity: 0.45;
+}
+
+.glass > svg,
+.pill-primary > svg {
+  flex: none;
+}
+
+/* Cabeçalho das abas: título menor, mais para cima, botões de vidro à direita. */
+.tab-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.tab-head .actions {
+  display: flex;
+  gap: 8px;
+}
+
+.screen:not(.no-tabs) {
+  padding-top: calc(var(--safe-top) + 8px);
+}
+
+/* Troca de aba: a tela nova aparece na hora, com um esmaecido curto. */
+html[data-nav="tab"] .screen:not(.no-tabs) {
+  animation: tab-in 0.2s ease;
+}
+
+@keyframes tab-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ------------------------------------------------------------ Menu de opções (estilo iPhone) */
+
+.action-menu {
+  background: var(--raised);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.action-menu + .action-menu {
+  margin-top: 10px;
+}
+
+.action-item {
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 18px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 500;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.action-item + .action-item {
+  border-top: 0.5px solid var(--border-2);
+}
+
+.action-item:active {
+  background: rgba(255, 255, 255, 0.08);
+  transition-duration: 0.05s;
+}
+
+.action-item.danger {
+  color: var(--danger);
+}
+
+.action-item > svg {
+  flex: none;
+}
+
+/* ------------------------------------------------------------ Início: rotinas agrupadas na ficha */
+
+.folder {
+  background: var(--card);
+  border-radius: 18px;
+  padding: 2px 10px 10px;
+}
+
+.folder-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+
+.folder-head .chev {
+  color: var(--muted);
+  transition: transform 0.4s var(--spring);
+}
+
+.folder.closed .folder-head .chev {
+  transform: rotate(-90deg);
+}
+
+.folder-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.3s ease;
+}
+
+.folder.closed .folder-body {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+.folder-body > div {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.folder .routine-card {
+  background: var(--raised);
+}
+
+/* ------------------------------------------------------------ Calendário: número limpo, ponto azul e bolha de vidro */
+
+.cal-day span {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  color: var(--text);
+  font-weight: 500;
+  transition:
+    background-color 0.25s ease,
+    box-shadow 0.25s ease,
+    color 0.25s ease;
+}
+
+.cal-day span::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin-left: -2.5px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.cal-day.trained span,
+.cal-day.manual span {
+  background: none;
+  border: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.cal-day.trained span::after {
+  background: var(--accent);
+}
+
+.cal-day.manual span::after {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.cal-day.today span {
+  box-shadow: none;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.cal-day.selected span {
+  outline: 0;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 0 0 0.5px rgba(255, 255, 255, 0.2);
+  animation: day-pop 0.55s var(--spring);
+}
+
+@keyframes day-pop {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.cal-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* ------------------------------------------------------------ Seletor com bolha deslizando (Cargas | Corpo) */
+
+.seg.sliding {
+  position: relative;
+}
+
+.seg.sliding > a,
+.seg.sliding > span {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+.seg-bubble {
+  position: absolute !important;
+  z-index: 0 !important;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 6px);
+  border-radius: 10px;
+  background: var(--raised-2) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform 0.5s var(--spring);
+  pointer-events: none;
+}
+
+.fade-in {
+  animation: tab-in 0.22s ease;
+}
+
+/* ------------------------------------------------------------ Número da série em caixa (dá para tocar e trocar o tipo) */
+
+.set-type {
+  justify-self: center;
+  width: 38px;
+  height: 34px;
+  border-radius: 9px;
+  border: 1px solid var(--border-3);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.set-row.done .set-type {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* ------------------------------------------------------------ Como medir */
+
+.measure-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.measure-fig {
+  width: 46px;
+  height: 58px;
+  min-width: 46px;
+  border-radius: 10px;
+  border: 0;
+  padding: 0;
+  background: var(--raised);
+  display: grid;
+  place-items: center;
+}
+
+.measure-fig svg {
+  width: 40px;
+  height: 54px;
+}
+
+.measure-guide {
+  display: grid;
+  place-items: center;
+  background: var(--raised);
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.measure-guide svg {
+  width: 150px;
+  height: 230px;
+}
+
+.howto {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+}
+
+/* ------------------------------------------------------------ Miniatura 3D parada */
+
+.thumb canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #fff;
 }

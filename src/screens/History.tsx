@@ -2,12 +2,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from '../components/Icon';
-import { EmptyState } from '../components/Layout';
+import { BackButton, EmptyState, TopBar } from '../components/Layout';
 import { db } from '../lib/db';
 import { addDays, dayMonth, duration, sessionMinutes, todayISO, weekdayShort, weekStart } from '../lib/format';
 import { doneSessions } from '../lib/stats';
 import type { Session } from '../lib/types';
-import { CalendarTabs } from './Calendar';
 
 export function History() {
   const [programFilter, setProgramFilter] = useState('todas');
@@ -20,7 +19,7 @@ export function History() {
     return { sessions, programs, exerciseCount };
   }, []);
 
-  if (!data) return <main className="screen tight" />;
+  if (!data) return <main className="screen no-tabs tight" />;
   const { sessions, programs, exerciseCount } = data;
   const filtered = programFilter === 'todas' ? sessions : sessions.filter((s) => s.programId === programFilter);
 
@@ -43,9 +42,8 @@ export function History() {
   }
 
   return (
-    <main className="screen tight">
-      <h1 className="h1">Calendário</h1>
-      <CalendarTabs active="hist" />
+    <main className="screen no-tabs tight">
+      <TopBar left={<BackButton to="/perfil" />} title="Histórico" />
 
       {programs.length > 1 && (
         <select className="select" aria-label="Filtrar por ficha" value={programFilter} onChange={(e) => setProgramFilter(e.target.value)}>

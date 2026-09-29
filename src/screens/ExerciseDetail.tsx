@@ -67,7 +67,7 @@ export function ExerciseDetail() {
         left={<BackButton />}
         right={
           ex.custom ? (
-            <Link to={`/exercicios/${ex.id}/editar`} className="text-btn" style={{ display: 'flex', alignItems: 'center' }}>
+            <Link to={`/exercicios/${ex.id}/editar`} className="glass pill">
               Editar
             </Link>
           ) : undefined
@@ -75,7 +75,7 @@ export function ExerciseDetail() {
       />
       <ExerciseMedia exercise={ex} height={230} />
       <div className="stack" style={{ gap: 8 }}>
-        <h1 className="display" style={{ fontSize: 30 }}>
+        <h1 className="display" style={{ fontSize: 24 }}>
           {ex.name}
         </h1>
         <div className="pills">

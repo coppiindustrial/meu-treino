@@ -1,4 +1,4 @@
-export type NavDir = 'forward' | 'back' | 'tab';
+export type NavDir = 'forward' | 'back' | 'tab' | 'none';
 
 type DocWithVT = Document & {
   startViewTransition?: (cb: () => Promise<void> | void) => unknown;
@@ -10,6 +10,12 @@ type DocWithVT = Document & {
  */
 export function withTransition(dir: NavDir, update: () => void): void {
   const doc = document as DocWithVT;
+  // Abas e seletores trocam na hora (a bolha já anda no toque); só as telas internas deslizam.
+  if (dir === 'tab' || dir === 'none') {
+    document.documentElement.dataset.nav = dir;
+    update();
+    return;
+  }
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   if (!doc.startViewTransition || reduce) {
     update();

@@ -44,7 +44,7 @@ function Shell() {
       e.stopPropagation();
       if (to === (window.location.hash.slice(1) || '/')) return;
       const dir = (a.dataset.nav as NavDir | undefined) ?? (a.closest('.tabbar') ? 'tab' : 'forward');
-      withTransition(dir, () => navigate(to));
+      withTransition(dir, () => navigate(to, { replace: a.dataset.replace !== undefined }));
     };
     document.addEventListener('click', onClick, true);
     return () => document.removeEventListener('click', onClick, true);

@@ -126,13 +126,13 @@ export function NewExercise() {
     <main className="screen no-tabs">
       <TopBar
         left={
-          <button type="button" className="text-btn muted" onClick={() => navigate(-1)}>
+          <button type="button" className="glass pill accent-text" onClick={() => navigate(-1)}>
             Cancelar
           </button>
         }
         title={existing ? 'Editar exercício' : 'Novo exercício'}
         right={
-          <button type="button" className="text-btn" style={{ fontWeight: 800 }} onClick={save} disabled={busy}>
+          <button type="button" className="pill-primary" onClick={save} disabled={busy}>
             Salvar
           </button>
         }

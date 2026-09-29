@@ -86,7 +86,8 @@ export function Programs() {
             {isNext && <span className="chip accent">Próximo</span>}
           </div>
           <span className="tiny muted">
-            {count} {count === 1 ? 'exercício' : 'exercícios'} · {last ? `feito em ${dayMonth(last.date)}` : 'ainda não feito'}
+            {count} {count === 1 ? 'exercício' : 'exercícios'}
+            {last ? ` · feito em ${dayMonth(last.date)}` : ''}
           </span>
         </div>
         <Icon name="next" size={20} color="var(--muted)" />
@@ -96,10 +97,10 @@ export function Programs() {
 
   return (
     <main className="screen">
-      <header className="row between">
+      <header className="tab-head">
         <h1 className="h1">Treinos</h1>
-        <button type="button" className="btn small" onClick={newProgram}>
-          <Icon name="plus" size={18} /> Nova ficha
+        <button type="button" className="glass circle" aria-label="Nova ficha" onClick={newProgram}>
+          <Icon name="plus" size={22} stroke={2.4} />
         </button>
       </header>
 
@@ -122,7 +123,7 @@ export function Programs() {
               <span className="chip accent eyebrow" style={{ fontSize: 11 }}>
                 Ficha ativa
               </span>
-              <span className="display" style={{ fontSize: 26 }}>
+              <span className="display" style={{ fontSize: 20 }}>
                 {active.name}
               </span>
               <span className="tiny muted">

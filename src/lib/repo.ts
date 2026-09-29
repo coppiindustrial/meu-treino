@@ -198,6 +198,57 @@ export async function createWorkout(programId: string, name = 'Novo treino'): Pr
   return id;
 }
 
+export async function duplicateWorkout(id: string): Promise<string> {
+  const source = await db.workouts.get(id);
+  if (!source) throw new Error('Treino não encontrado');
+  const list = await workoutsOf(source.programId);
+  const newWorkoutId = newId();
+  await put<Workout>('workouts', {
+    ...source,
+    id: newWorkoutId,
+    letter: nextLetter(list),
+    name: `${source.name} (cópia)`,
+    position: list.length,
+    deleted: 0,
+  });
+  const items = await itemsOf(id);
+  await putMany<WorkoutItem>(
+    'workoutItems',
+    items.map((it) => ({ ...it, id: newId(), workoutId: newWorkoutId, deleted: 0 })),
+  );
+  return newWorkoutId;
+}
+
+/** Foto da rotina antes de editar, para o botão "Cancelar" desfazer tudo. */
+export interface WorkoutSnapshot {
+  workout: Workout;
+  items: WorkoutItem[];
+}
+
+export async function snapshotWorkout(id: string): Promise<WorkoutSnapshot | null> {
+  const workout = await db.workouts.get(id);
+  if (!workout) return null;
+  return { workout, items: await itemsOf(id) };
+}
+
+export function sameWorkout(a: WorkoutSnapshot, b: WorkoutSnapshot): boolean {
+  const pick = (s: WorkoutSnapshot) =>
+    JSON.stringify({
+      name: s.workout.name,
+      letter: s.workout.letter,
+      restSeconds: s.workout.restSeconds,
+      items: s.items.map((i) => [i.id, i.exerciseId, i.position, i.supersetNext, i.sets, i.note ?? '', i.repMode ?? '', i.restSeconds ?? null]),
+    });
+  return pick(a) === pick(b);
+}
+
+export async function restoreWorkout(snap: WorkoutSnapshot): Promise<void> {
+  const keep = new Set(snap.items.map((i) => i.id));
+  for (const it of await itemsOf(snap.workout.id)) if (!keep.has(it.id)) await softDelete('workoutItems', it.id);
+  await put<Workout>('workouts', { ...snap.workout, deleted: 0 });
+  await putMany<WorkoutItem>('workoutItems', snap.items.map((i) => ({ ...i, deleted: 0 })));
+}
+
 export async function updateWorkout(
   id: string,
   changes: Partial<Pick<Workout, 'name' | 'letter' | 'restSeconds'>>,

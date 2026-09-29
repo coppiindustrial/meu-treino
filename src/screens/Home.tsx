@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
@@ -8,7 +9,6 @@ import {
   addDays,
   clock,
   duration,
-  longDate,
   num,
   relativeDay,
   sessionMinutes,
@@ -27,6 +27,7 @@ import {
 } from '../lib/repo';
 import { doneSessions } from '../lib/stats';
 
+const FOLDER_KEY = 'mt.homeFolder';
 const WEEK_LETTERS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
 
 export function Home() {
@@ -34,6 +35,13 @@ export function Home() {
   const { prompt } = useDialogs();
   const { map } = useExercises();
   const now = useNow(1000);
+  const [folderOpen, setFolderOpen] = useState(() => {
+    try {
+      return localStorage.getItem(FOLDER_KEY) !== 'closed';
+    } catch {
+      return true;
+    }
+  });
 
   const data = useLiveQuery(async () => {
     const [program, sessions, active, profile] = await Promise.all([
@@ -82,6 +90,16 @@ export function Home() {
     navigate(`/ficha/${id}`);
   };
 
+  const toggleFolder = () => {
+    const nextOpen = !folderOpen;
+    setFolderOpen(nextOpen);
+    try {
+      localStorage.setItem(FOLDER_KEY, nextOpen ? 'open' : 'closed');
+    } catch {
+      // sem armazenamento
+    }
+  };
+
   const start = async (workoutId: string | null) => {
     await startSession(workoutId);
     navigate('/sessao');
@@ -89,13 +107,10 @@ export function Home() {
 
   return (
     <main className="screen">
-      <header className="row between">
-        <div className="col">
-          <span className="small muted">{longDate(today)}</span>
-          <h1 className="h1">Treino</h1>
-        </div>
-        <Link to="/perfil" className="icon-btn round" aria-label="Abrir perfil">
-          <Icon name="user" />
+      <header className="tab-head">
+        <h1 className="h1">Treino</h1>
+        <Link to="/perfil" className="glass circle" aria-label="Abrir perfil">
+          <Icon name="user" size={21} />
         </Link>
       </header>
 
@@ -140,44 +155,53 @@ export function Home() {
         </section>
       ) : (
         <section className="stack">
-          <div className="section-head">
-            <h2 className="h2" style={{ fontSize: 18 }}>
-              Rotinas
-            </h2>
-            <Link to={`/ficha/${program.id}`} className="small" style={{ color: 'var(--accent)', fontWeight: 600 }}>
-              {program.name}
-            </Link>
-          </div>
-          {workouts.length === 0 && (
-            <Link to={`/ficha/${program.id}`} className="btn soft block">
-              <Icon name="plus" /> Adicionar rotina
-            </Link>
-          )}
-          {workouts.map((w, i) => {
-            const items = itemsByWorkout[i];
-            const lastDone = sessions.find((s) => s.workoutId === w.id);
-            return (
-              <div key={w.id} className="card routine-card">
-                <Link to={`/treino/${w.id}`} className="row between" style={{ gap: 8 }}>
-                  <span className="routine-title ellipsis">
-                    {w.letter} · {w.name}
-                  </span>
-                  {next?.id === w.id && !active ? <span className="pill-tag">Próximo</span> : <Icon name="next" size={18} color="var(--muted)" />}
-                </Link>
-                <p className="routine-list">
-                  {items.length === 0
-                    ? 'Nenhum exercício ainda'
-                    : items.map((it) => map.get(it.exerciseId)?.name ?? 'Exercício').join(', ')}
-                </p>
-                <span className="tiny muted">{lastDone ? `Último: ${relativeDay(lastDone.date)}` : 'Ainda não feito'}</span>
-                {!active && items.length > 0 && (
-                  <button type="button" className="btn primary block" onClick={() => start(w.id)}>
-                    Iniciar rotina
-                  </button>
+          <span className="label">Rotinas</span>
+          <div className={`folder ${folderOpen ? '' : 'closed'}`}>
+            <button type="button" className="folder-head" aria-expanded={folderOpen} onClick={() => toggleFolder()}>
+              <Icon name="folder" size={20} color="var(--muted)" />
+              <span className="col grow" style={{ gap: 0 }}>
+                <span style={{ fontSize: 16, fontWeight: 600 }}>{program.name}</span>
+                <span className="tiny muted">
+                  Ficha ativa · {workouts.length} {workouts.length === 1 ? 'rotina' : 'rotinas'}
+                </span>
+              </span>
+              <span className="chev">
+                <Icon name="down" size={20} />
+              </span>
+            </button>
+            <div className="folder-body">
+              <div>
+                {workouts.length === 0 && (
+                  <Link to={`/ficha/${program.id}`} className="btn soft block">
+                    <Icon name="plus" /> Adicionar rotina
+                  </Link>
                 )}
+                {workouts.map((w, i) => {
+                  const items = itemsByWorkout[i];
+                  return (
+                    <div key={w.id} className="card routine-card">
+                      <Link to={`/treino/${w.id}`} className="row between" style={{ gap: 8 }}>
+                        <span className="routine-title ellipsis">
+                          {w.letter} · {w.name}
+                        </span>
+                        {next?.id === w.id && !active ? <span className="pill-tag">Próximo</span> : <Icon name="next" size={18} color="var(--muted)" />}
+                      </Link>
+                      <p className="routine-list">
+                        {items.length === 0
+                          ? 'Nenhum exercício ainda'
+                          : items.map((it) => map.get(it.exerciseId)?.name ?? 'Exercício').join(', ')}
+                      </p>
+                      {!active && items.length > 0 && (
+                        <button type="button" className="btn primary block" onClick={() => start(w.id)}>
+                          Iniciar rotina
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          </div>
         </section>
       )}
 

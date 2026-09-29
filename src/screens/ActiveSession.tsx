@@ -189,8 +189,8 @@ export function ActiveSession() {
   return (
     <main className="screen no-tabs tight">
       <div className="topbar sticky-top">
-        <Link to="/" data-nav="back" className="icon-btn ghost" aria-label="Recolher o treino (ele continua)">
-          <Icon name="down" size={24} />
+        <Link to="/" data-nav="back" className="glass circle" aria-label="Recolher o treino (ele continua)">
+          <Icon name="down" size={22} />
         </Link>
         <span className="topbar-title col" style={{ gap: 0, alignItems: 'center', minWidth: 0 }}>
           <span>Registrar treino</span>
@@ -198,7 +198,7 @@ export function ActiveSession() {
             {session.title}
           </span>
         </span>
-        <button type="button" className="btn small primary" onClick={finish}>
+        <button type="button" className="pill-primary" onClick={finish}>
           Concluir
         </button>
       </div>

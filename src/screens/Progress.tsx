@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LineChart } from '../components/Charts';
 import { Icon } from '../components/Icon';
@@ -19,12 +19,45 @@ const PERIODS = [
   { id: 'Tudo', days: 0 },
 ];
 
-export function ProgressTabs({ active }: { active: 'cargas' | 'corpo' }) {
+// Onde a bolha do seletor estava: ao trocar de Cargas para Corpo ela desliza a partir dali.
+let lastTab: 'cargas' | 'corpo' = 'cargas';
+
+/** Título "Progresso" e o seletor Cargas | Corpo, que troca sem parecer mudança de página. */
+export function ProgressHead({ active }: { active: 'cargas' | 'corpo' }) {
+  const [shown, setShown] = useState(lastTab);
+  useEffect(() => {
+    lastTab = active;
+    const raf = requestAnimationFrame(() => setShown(active));
+    return () => cancelAnimationFrame(raf);
+  }, [active]);
   return (
-    <div className="seg">
-      {active === 'cargas' ? <span className="on">Cargas</span> : <Link to="/progresso">Cargas</Link>}
-      {active === 'corpo' ? <span className="on">Corpo</span> : <Link to="/progresso/corpo">Corpo</Link>}
-    </div>
+    <>
+      <header className="tab-head">
+        <h1 className="h1">Progresso</h1>
+        {active === 'corpo' && (
+          <Link to="/progresso/medidas/nova" className="glass circle" aria-label="Registrar medidas">
+            <Icon name="plus" size={22} stroke={2.4} />
+          </Link>
+        )}
+      </header>
+      <div className="seg sliding">
+        <span className="seg-bubble" aria-hidden="true" style={{ transform: shown === 'corpo' ? 'translateX(calc(100% + 4px))' : 'none' }} />
+        {active === 'cargas' ? (
+          <span className="on">Cargas</span>
+        ) : (
+          <Link to="/progresso" data-nav="none" data-replace="">
+            Cargas
+          </Link>
+        )}
+        {active === 'corpo' ? (
+          <span className="on">Corpo</span>
+        ) : (
+          <Link to="/progresso/corpo" data-nav="none" data-replace="">
+            Corpo
+          </Link>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -62,9 +95,8 @@ export function Progress() {
   const recent = [...(history ?? [])].reverse().slice(0, 4);
 
   return (
-    <main className="screen tight">
-      <h1 className="h1">Progresso</h1>
-      <ProgressTabs active="cargas" />
+    <main className="screen tight fade-in">
+      <ProgressHead active="cargas" />
 
       {used.length === 0 || !ex ? (
         <EmptyState title="Ainda sem registros" text="Finalize seu primeiro treino para ver a evolução das cargas aqui." />

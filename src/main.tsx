@@ -4,9 +4,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { App } from './App';
+import { installTouchFeedback } from './lib/touch';
 
-// No iPhone, o Safari só mostra o efeito de "pressionado" (:active) se houver um ouvinte de toque.
-document.addEventListener('touchstart', () => undefined, { passive: true });
+// Efeito de pressionar e vibração leve nos botões.
+installTouchFeedback();
 
 // Procura versão nova ao abrir, ao voltar para o app e a cada hora.
 registerSW({

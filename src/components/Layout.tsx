@@ -1,46 +1,98 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { withTransition } from '../lib/nav';
 import { Icon, type IconName } from './Icon';
 
-const TABS: { to: string; label: string; icon: IconName; also?: string[] }[] = [
+const TABS: { to: string; label: string; icon: IconName }[] = [
   { to: '/', label: 'Início', icon: 'home' },
   { to: '/treinos', label: 'Treinos', icon: 'dumbbell' },
-  { to: '/calendario', label: 'Calendário', icon: 'calendar', also: ['/historico'] },
+  { to: '/calendario', label: 'Calendário', icon: 'calendar' },
   { to: '/progresso', label: 'Progresso', icon: 'chart' },
   { to: '/perfil', label: 'Perfil', icon: 'user' },
 ];
 
 function isTabActive(t: (typeof TABS)[number], pathname: string): boolean {
   if (t.to === '/') return pathname === '/';
-  return pathname.startsWith(t.to) || (t.also ?? []).some((a) => pathname.startsWith(a));
+  return pathname.startsWith(t.to);
 }
+
+// Bolha "elástica": a borda da frente sai primeiro e a de trás alcança depois.
+const LEAD = 'cubic-bezier(.25,1.35,.5,1)';
+const TRAIL = 'cubic-bezier(.3,1.2,.5,1)';
 
 export function TabBar({ pathname }: { pathname: string }) {
   const activeIndex = Math.max(
     0,
     TABS.findIndex((t) => isTabActive(t, pathname)),
   );
-  // A bolha estica enquanto desliza para a aba nova.
-  const [moving, setMoving] = useState(false);
-  const lastIndex = useRef(activeIndex);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  // A bolha anda no toque (antes da tela nova carregar); a rota confirma depois.
+  const [pos, setPos] = useState({ index: activeIndex, from: activeIndex });
+  const [lens, setLens] = useState(false);
+  const activeRef = useRef(activeIndex);
+  activeRef.current = activeIndex;
+
+  useLayoutEffect(() => {
+    const el = innerRef.current;
+    if (!el) return;
+    const measure = () => setWidth(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   useEffect(() => {
-    if (lastIndex.current === activeIndex) return;
-    lastIndex.current = activeIndex;
-    setMoving(true);
-    const t = setTimeout(() => setMoving(false), 240);
-    return () => clearTimeout(t);
+    setPos((p) => (p.index === activeIndex ? p : { index: activeIndex, from: p.index }));
   }, [activeIndex]);
+
+  // Se o toque não virou troca de aba (arrastou o dedo para fora), a bolha volta.
+  useEffect(() => {
+    if (pos.index === activeRef.current) return;
+    const t = setTimeout(() => {
+      if (activeRef.current !== pos.index) setPos((p) => ({ index: activeRef.current, from: p.index }));
+    }, 700);
+    return () => clearTimeout(t);
+  }, [pos.index]);
+
+  const moveTo = (k: number) => setPos((p) => (p.index === k ? p : { index: k, from: p.index }));
+
+  const slot = (width - 10) / 5;
+  const left = 5 + pos.index * slot;
+  const right = width - (5 + (pos.index + 1) * slot);
+  const toRight = pos.index > pos.from;
+  const bubbleStyle: CSSProperties = {
+    left,
+    right,
+    opacity: width ? 1 : 0,
+    transition:
+      pos.index === pos.from || !width
+        ? 'none'
+        : toRight
+          ? `right .3s ${LEAD}, left .5s ${TRAIL} .07s`
+          : `left .3s ${LEAD}, right .5s ${TRAIL} .07s`,
+  };
+
   return (
     <nav className="tabbar" aria-label="Navegação principal">
-      <div className="tabbar-inner">
-        <span className={`tab-highlight ${moving ? 'moving' : ''}`} aria-hidden="true" style={{ '--i': activeIndex } as CSSProperties}>
+      <div className="tabbar-inner" ref={innerRef}>
+        <span className={`tab-highlight ${lens ? 'lens' : ''}`} aria-hidden="true" style={bubbleStyle}>
           <i />
         </span>
-        {TABS.map((t) => {
+        {TABS.map((t, k) => {
           const on = isTabActive(t, pathname);
           return (
-            <NavLink key={t.to} to={t.to} className={`tab ${on ? 'on' : ''}`} aria-current={on ? 'page' : undefined}>
+            <NavLink
+              key={t.to}
+              to={t.to}
+              className={`tab ${pos.index === k ? 'on' : ''}`}
+              aria-current={on ? 'page' : undefined}
+              onPointerDown={() => (k === pos.index ? setLens(true) : moveTo(k))}
+              onPointerUp={() => setLens(false)}
+              onPointerLeave={() => setLens(false)}
+              onPointerCancel={() => setLens(false)}
+            >
               <Icon name={t.icon} size={22} stroke={1.9} />
               <span>{t.label}</span>
             </NavLink>
@@ -52,16 +104,17 @@ export function TabBar({ pathname }: { pathname: string }) {
 }
 
 export function isTabRoute(pathname: string): boolean {
-  return ['/', '/treinos', '/calendario', '/historico', '/progresso', '/progresso/corpo', '/perfil'].includes(pathname);
+  return ['/', '/treinos', '/calendario', '/progresso', '/progresso/corpo', '/perfil'].includes(pathname);
 }
 
-/** Botão de voltar: volta no histórico ou vai para um endereço padrão. */
-export function BackButton({ to, label = 'Voltar' }: { to?: string; label?: string }) {
+/** Botão redondo de vidro para voltar: volta no histórico ou vai para um endereço padrão. */
+export function BackButton({ to }: { to?: string; label?: string }) {
   const navigate = useNavigate();
   return (
     <button
       type="button"
-      className="back"
+      className="glass circle"
+      aria-label="Voltar"
       onClick={() => {
         withTransition('back', () => {
           if (window.history.state && window.history.state.idx > 0) navigate(-1);
@@ -69,8 +122,7 @@ export function BackButton({ to, label = 'Voltar' }: { to?: string; label?: stri
         });
       }}
     >
-      <Icon name="back" />
-      {label}
+      <Icon name="arrowLeft" size={22} />
     </button>
   );
 }
@@ -78,10 +130,20 @@ export function BackButton({ to, label = 'Voltar' }: { to?: string; label?: stri
 export function TopBar({ left, title, right }: { left?: ReactNode; title?: ReactNode; right?: ReactNode }) {
   return (
     <div className="topbar">
-      <div style={{ minWidth: 72, display: 'flex' }}>{left}</div>
-      {title ? <div className="topbar-title">{title}</div> : <div className="grow" />}
-      <div style={{ minWidth: 72, display: 'flex', justifyContent: 'flex-end' }}>{right}</div>
+      <div>{left}</div>
+      {title ? <div className="topbar-title">{title}</div> : <div />}
+      <div>{right}</div>
     </div>
+  );
+}
+
+/** Cabeçalho das abas: título à esquerda e botões de vidro à direita. */
+export function TabHead({ title, children }: { title: ReactNode; children?: ReactNode }) {
+  return (
+    <header className="tab-head">
+      <h1 className="h1">{title}</h1>
+      {children && <div className="actions">{children}</div>}
+    </header>
   );
 }
 

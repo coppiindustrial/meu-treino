@@ -27,6 +27,10 @@ const PATHS: Record<string, ReactNode> = {
     </>
   ),
   back: <path d="M15 6l-6 6 6 6" />,
+  arrowLeft: <path d="M19 12H5M11 6l-6 6 6 6" />,
+  folder: <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
+  vibrate: <path d="M8.5 4h7v16h-7zM5 8v8M19 8v8M2 10v4M22 10v4" />,
+  ruler: <path d="M3 15.5 15.5 3 21 8.5 8.5 21zM7 12l2 2M10 9l2 2M13 6l2 2" />,
   next: <path d="M9 6l6 6-6 6" />,
   down: <path d="M6 9l6 6 6-6" />,
   up: <path d="M6 15l6-6 6 6" />,

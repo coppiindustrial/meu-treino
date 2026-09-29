@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { TopBar } from '../components/Layout';
+import { MeasureFigure, MeasureGuideSheet } from '../components/MeasureGuide';
 import { db } from '../lib/db';
 import { num, parseNum, todayISO } from '../lib/format';
 import { compressImage } from '../lib/images';
@@ -28,6 +29,7 @@ export function MeasureForm() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [photo, setPhoto] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [guide, setGuide] = useState<string | null>(null);
 
   useEffect(() => {
     if (!data || loaded) return;
@@ -77,14 +79,34 @@ export function MeasureForm() {
     navigate('/progresso/corpo', { replace: true });
   };
 
-  const row = (label: string, id: string, value: string, onChange: (v: string) => void, prev: number | null | undefined, unit: string) => (
-    <div key={id} className="list-item" style={{ minHeight: 58 }}>
-      <label htmlFor={id} className="col grow" style={{ gap: 1 }}>
-        <span style={{ fontWeight: 700 }}>{label}</span>
+  const row = (
+    label: string,
+    id: string,
+    value: string,
+    onChange: (v: string) => void,
+    prev: number | null | undefined,
+    unit: string,
+    figure?: string,
+  ) => (
+    <div key={id} className="list-item" style={{ minHeight: figure ? 74 : 58 }}>
+      {figure && (
+        <button type="button" className="measure-fig" aria-label={`Como medir: ${label}`} onClick={() => setGuide(figure)}>
+          <MeasureFigure measure={figure} />
+        </button>
+      )}
+      <div className="col grow" style={{ gap: 1 }}>
+        <label htmlFor={id} style={{ fontWeight: 600 }}>
+          {label}
+        </label>
         <span className="tiny muted" style={{ fontWeight: 500 }}>
           {prev !== null && prev !== undefined ? `Antes: ${num(prev)} ${unit}` : 'Sem registro anterior'}
         </span>
-      </label>
+        {figure && (
+          <button type="button" className="howto" onClick={() => setGuide(figure)}>
+            Como medir
+          </button>
+        )}
+      </div>
       <input
         id={id}
         className="set-input"
@@ -104,13 +126,13 @@ export function MeasureForm() {
     <main className="screen no-tabs">
       <TopBar
         left={
-          <button type="button" className="text-btn muted" onClick={() => navigate(-1)}>
+          <button type="button" className="glass pill accent-text" onClick={() => navigate(-1)}>
             Cancelar
           </button>
         }
         title={data.entry ? 'Editar medidas' : 'Registrar medidas'}
         right={
-          <button type="button" className="text-btn" style={{ fontWeight: 800 }} onClick={save}>
+          <button type="button" className="pill-primary" onClick={save}>
             Salvar
           </button>
         }
@@ -137,6 +159,7 @@ export function MeasureForm() {
             (v) => setValues((cur) => ({ ...cur, [m.key]: v })),
             previous((e) => e.measures?.[m.key]),
             'cm',
+            m.key,
           ),
         )}
       </div>
@@ -177,14 +200,12 @@ export function MeasureForm() {
         Preencha só o que quiser medir. Os campos vazios ficam de fora.
       </p>
 
-      <button type="button" className="btn big primary block" onClick={save}>
-        Salvar medidas
-      </button>
       {data.entry && (
         <button type="button" className="btn block danger" onClick={remove}>
           <Icon name="trash" size={18} /> Apagar registro
         </button>
       )}
+      <MeasureGuideSheet measure={guide} name={MEASURES.find((m) => m.key === guide)?.name ?? ''} onClose={() => setGuide(null)} />
     </main>
   );
 }

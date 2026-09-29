@@ -8,27 +8,6 @@ import type { Session } from '../lib/types';
 
 const HEAD = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
-export function CalendarTabs({ active }: { active: 'cal' | 'hist' }) {
-  return (
-    <div className="seg">
-      {active === 'cal' ? (
-        <span className="on" aria-current="page">
-          Calendário
-        </span>
-      ) : (
-        <Link to="/calendario">Calendário</Link>
-      )}
-      {active === 'hist' ? (
-        <span className="on" aria-current="page">
-          Histórico
-        </span>
-      ) : (
-        <Link to="/historico">Histórico</Link>
-      )}
-    </div>
-  );
-}
-
 export function SessionRow({ s }: { s: Session }) {
   const minutes = sessionMinutes(s.startedAt, s.endedAt);
   return (
@@ -84,37 +63,41 @@ export function Calendar() {
 
   return (
     <main className="screen tight">
-      <h1 className="h1">Calendário</h1>
-      <CalendarTabs active="cal" />
+      <header className="tab-head">
+        <h1 className="h1">Calendário</h1>
+        <Link to={`/dia/novo?data=${selected}`} className="glass circle" aria-label={`Adicionar treino em ${relativeDay(selected)}`}>
+          <Icon name="plus" size={22} stroke={2.4} />
+        </Link>
+      </header>
 
       <div className="row between">
-        <button type="button" className="icon-btn" aria-label="Mês anterior" onClick={() => shift(-1)}>
-          <Icon name="back" />
+        <button type="button" className="glass circle sm" aria-label="Mês anterior" onClick={() => shift(-1)}>
+          <Icon name="back" size={18} />
         </button>
-        <span style={{ fontSize: 17, fontWeight: 800 }}>
+        <span style={{ fontSize: 17, fontWeight: 600 }}>
           {monthName(month.m).charAt(0).toUpperCase() + monthName(month.m).slice(1)} {month.y}
         </span>
-        <button type="button" className="icon-btn" aria-label="Próximo mês" onClick={() => shift(1)}>
-          <Icon name="next" />
+        <button type="button" className="glass circle sm" aria-label="Próximo mês" onClick={() => shift(1)}>
+          <Icon name="next" size={18} />
         </button>
       </div>
 
       <div className="grid-3">
         <div className="tile">
           <span className="tiny muted">Treinos</span>
-          <span className="tile-value" style={{ fontSize: 26 }}>
+          <span className="tile-value" style={{ fontSize: 20 }}>
             {monthSessions.length}
           </span>
         </div>
         <div className="tile">
           <span className="tiny muted">Tempo total</span>
-          <span className="tile-value" style={{ fontSize: 26 }}>
+          <span className="tile-value" style={{ fontSize: 20 }}>
             {totalMinutes > 0 ? duration(totalMinutes) : '—'}
           </span>
         </div>
         <div className="tile">
           <span className="tiny muted">Por semana</span>
-          <span className="tile-value" style={{ fontSize: 26 }}>
+          <span className="tile-value" style={{ fontSize: 20 }}>
             {num(perWeek)}
           </span>
         </div>
@@ -160,22 +143,21 @@ export function Calendar() {
 
       <div className="row" style={{ gap: 18 }}>
         <span className="row tiny muted" style={{ gap: 6 }}>
-          <span style={{ width: 12, height: 12, borderRadius: '50%', background: 'var(--accent)' }} />
+          <span className="cal-legend-dot" style={{ background: 'var(--accent)' }} />
           Pelo cronômetro
         </span>
         <span className="row tiny muted" style={{ gap: 6 }}>
-          <span style={{ width: 12, height: 12, borderRadius: '50%', border: '2px dashed var(--accent)' }} />
+          <span className="cal-legend-dot" style={{ boxShadow: 'inset 0 0 0 1.5px var(--accent)' }} />
           Adicionado à mão
         </span>
       </div>
 
       <section className="stack">
+        <span className="label" style={{ textTransform: 'capitalize' }}>{relativeDay(selected)}</span>
         {selectedSessions.map((s) => (
           <SessionRow key={s.id} s={s} />
         ))}
-        <Link to={`/dia/novo?data=${selected}`} className="btn dashed block" style={{ color: 'var(--text)' }}>
-          <Icon name="plus" /> {selectedSessions.length ? 'Adicionar outro treino neste dia' : `Adicionar treino em ${relativeDay(selected)}`}
-        </Link>
+        {selectedSessions.length === 0 && <p className="small muted">Nenhum treino neste dia. Toque no + lá em cima para adicionar.</p>}
       </section>
     </main>
   );

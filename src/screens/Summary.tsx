@@ -50,7 +50,7 @@ export function Summary() {
         <TopBar
           left={<BackButton to="/historico" />}
           right={
-            <Link to={`/dia/${session.id}`} className="text-btn" style={{ display: 'flex', alignItems: 'center' }}>
+            <Link to={`/dia/${session.id}`} className="glass pill">
               Editar
             </Link>
           }
@@ -62,7 +62,7 @@ export function Summary() {
             <Icon name="check" size={38} stroke={2.5} />
           </div>
         )}
-        <h1 className="display" style={{ fontSize: justFinished ? 42 : 34, marginTop: justFinished ? 8 : 0 }}>
+        <h1 className="display" style={{ fontSize: justFinished ? 30 : 26, marginTop: justFinished ? 8 : 0 }}>
           {justFinished ? 'Treino concluído' : session.title}
         </h1>
         {justFinished && <span style={{ fontWeight: 700 }}>{session.title}</span>}

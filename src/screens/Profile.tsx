@@ -7,10 +7,15 @@ import { Sheet } from '../components/Sheet';
 import { exportBackup, importBackup } from '../lib/backup';
 import { num, parseNum } from '../lib/format';
 import { getProfile, saveProfile } from '../lib/repo';
+import { doneSessions } from '../lib/stats';
+import { haptic, hapticsEnabled, setHapticsEnabled } from '../lib/touch';
+import { SessionRow } from './Calendar';
 import { useSyncState } from '../lib/sync';
 
 export function Profile() {
   const profile = useLiveQuery(() => getProfile(), []);
+  const recent = useLiveQuery(async () => (await doneSessions()).slice(0, 3), []);
+  const [vibrate, setVibrate] = useState(hapticsEnabled);
   const sync = useSyncState();
   const { prompt, toast, confirm } = useDialogs();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -78,7 +83,9 @@ export function Profile() {
 
   return (
     <main className="screen">
-      <h1 className="h1">Perfil</h1>
+      <header className="tab-head">
+        <h1 className="h1">Perfil</h1>
+      </header>
 
       <div className="row">
         <div className="icon-btn round" style={{ width: 64, height: 64, minWidth: 64, color: 'var(--text-2)' }} aria-hidden="true">
@@ -109,6 +116,19 @@ export function Profile() {
         </button>
       </div>
 
+      <section className="stack">
+        <div className="section-head">
+          <h2 className="h2" style={{ fontSize: 17 }}>
+            Histórico de treinos
+          </h2>
+          <Link to="/historico" className="small" style={{ color: 'var(--accent)', fontWeight: 600 }}>
+            Ver tudo
+          </Link>
+        </div>
+        {recent && recent.length === 0 && <p className="small muted">Os treinos que você finalizar aparecem aqui.</p>}
+        {recent?.map((s) => <SessionRow key={s.id} s={s} />)}
+      </section>
+
       <Link to="/perfil/nuvem" className="notice" style={{ color: 'var(--text)' }}>
         <span className="notice-icon">
           <Icon name={sync.status === 'idle' ? 'cloudCheck' : 'cloud'} />
@@ -127,6 +147,24 @@ export function Profile() {
           <Icon name="timer" color="var(--text-2)" />
           <span className="grow">Descanso padrão</span>
           <span className="value">{profile.restSeconds} s</span>
+        </button>
+        <button
+          type="button"
+          className="list-item"
+          role="switch"
+          aria-checked={vibrate}
+          onClick={() => {
+            const on = !vibrate;
+            setHapticsEnabled(on);
+            setVibrate(on);
+            if (on) haptic();
+          }}
+        >
+          <Icon name="vibrate" color="var(--text-2)" />
+          <span className="grow">Vibrar ao tocar</span>
+          <span className="switch" aria-hidden="true" aria-checked={vibrate}>
+            <span />
+          </span>
         </button>
         <Link to="/exercicios" className="list-item">
           <Icon name="book" color="var(--text-2)" />

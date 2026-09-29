@@ -1,17 +1,78 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ExerciseView } from '../lib/exercises';
 import { thumbOf } from '../lib/exercises';
 import { youtubeId } from '../lib/images';
 import { Icon } from './Icon';
 import { Sheet } from './Sheet';
 
+/**
+ * Primeiro quadro da animação 3D, parado. Desenha num canvas (funciona com imagem de outro site)
+ * e só baixa quando a miniatura aparece na tela.
+ */
+function GifFrame({ src, onFail }: { src: string; onFail: () => void }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    let cancelled = false;
+    const draw = () => {
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => {
+        if (cancelled) return;
+        const box = canvas.clientWidth || 56;
+        const scale = Math.min(3, window.devicePixelRatio || 1);
+        const size = Math.round(box * scale);
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, size, size);
+        // Enquadra o centro da imagem (corta as sobras se não for quadrada).
+        const side = Math.min(img.naturalWidth, img.naturalHeight);
+        const sx = (img.naturalWidth - side) / 2;
+        const sy = (img.naturalHeight - side) / 2;
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+      };
+      img.onerror = () => {
+        if (!cancelled) onFail();
+      };
+      img.src = src;
+    };
+    if (!('IntersectionObserver' in window)) {
+      draw();
+      return () => {
+        cancelled = true;
+      };
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        io.disconnect();
+        draw();
+      },
+      { rootMargin: '200px' },
+    );
+    io.observe(canvas);
+    return () => {
+      cancelled = true;
+      io.disconnect();
+    };
+  }, [src]); // eslint-disable-line react-hooks/exhaustive-deps
+  return <canvas ref={ref} aria-hidden="true" />;
+}
+
 export function ExerciseThumb({ exercise, size = 'md' }: { exercise: ExerciseView; size?: 'md' | 'lg' }) {
-  const src = thumbOf(exercise);
+  const [gifFailed, setGifFailed] = useState(false);
   const [failed, setFailed] = useState(false);
+  const photo = thumbOf(exercise);
   return (
     <div className={`thumb ${size === 'lg' ? 'lg' : ''}`}>
-      {src && !failed ? (
-        <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} />
+      {exercise.gif && !gifFailed ? (
+        <GifFrame src={exercise.gif} onFail={() => setGifFailed(true)} />
+      ) : photo && !failed ? (
+        <img src={photo} alt="" loading="lazy" onError={() => setFailed(true)} />
       ) : (
         <Icon name="image" size={22} />
       )}

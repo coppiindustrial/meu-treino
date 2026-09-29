@@ -8,7 +8,7 @@ import { db } from '../lib/db';
 import { dayMonth, fullDate, num } from '../lib/format';
 import { MEASURES } from '../lib/measures';
 import type { BodyEntry } from '../lib/types';
-import { ProgressTabs } from './Progress';
+import { ProgressHead } from './Progress';
 
 function signed(n: number): string {
   if (Math.abs(n) < 0.05) return 'igual';
@@ -40,9 +40,8 @@ export function Body() {
   const photos = entries.filter((e) => e.photo).slice(0, 7);
 
   return (
-    <main className="screen tight">
-      <h1 className="h1">Progresso</h1>
-      <ProgressTabs active="corpo" />
+    <main className="screen tight fade-in">
+      <ProgressHead active="corpo" />
 
       <div className="card flat row between">
         <div className="col" style={{ gap: 2 }}>
@@ -68,7 +67,7 @@ export function Body() {
         </div>
         {measureRows.length === 0 ? (
           <div className="empty" style={{ padding: 18 }}>
-            <span className="small">Nenhuma medida ainda. Toque em “Registrar medidas”.</span>
+            <span className="small">Nenhuma medida ainda. Toque no + lá em cima para registrar.</span>
           </div>
         ) : (
           <div className="grid-2" style={{ gap: 8 }}>
@@ -104,9 +103,6 @@ export function Body() {
         </div>
       </section>
 
-      <Link to="/progresso/medidas/nova" className="btn big primary block">
-        <Icon name="plus" /> Registrar medidas
-      </Link>
 
       {entries.length > 0 && (
         <section className="stack">

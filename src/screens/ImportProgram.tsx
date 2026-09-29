@@ -176,8 +176,8 @@ export function ImportProgram() {
     <main className="screen no-tabs">
       <TopBar
         left={
-          <button type="button" className="back" onClick={() => setDays(null)}>
-            <Icon name="back" /> Texto
+          <button type="button" className="glass circle" aria-label="Voltar ao texto" onClick={() => setDays(null)}>
+            <Icon name="arrowLeft" size={22} />
           </button>
         }
         title="Conferir"

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
-import { TopBar } from '../components/Layout';
+import { BackButton, TopBar } from '../components/Layout';
 import { db } from '../lib/db';
 import { exerciseOrMissing, useExercises } from '../lib/exercises';
 import { combineDateTime, duration, timeHM, todayISO } from '../lib/format';
@@ -86,7 +86,7 @@ export function DayEdit() {
   if (!isNew && !data.session) {
     return (
       <main className="screen no-tabs">
-        <TopBar left={<button type="button" className="text-btn muted" onClick={() => navigate(-1)}>Voltar</button>} />
+        <TopBar left={<BackButton />} />
         <p className="muted">Esse treino não existe mais.</p>
       </main>
     );
@@ -155,13 +155,13 @@ export function DayEdit() {
     <main className="screen no-tabs">
       <TopBar
         left={
-          <button type="button" className="text-btn muted" onClick={() => navigate(-1)}>
+          <button type="button" className="glass pill accent-text" onClick={() => navigate(-1)}>
             Cancelar
           </button>
         }
         title={isNew ? 'Adicionar dia' : 'Editar dia'}
         right={
-          <button type="button" className="text-btn" style={{ fontWeight: 800 }} onClick={save}>
+          <button type="button" className="pill-primary" onClick={save}>
             Salvar
           </button>
         }

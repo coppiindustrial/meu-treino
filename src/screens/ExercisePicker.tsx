@@ -137,12 +137,12 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
           />
         }
         right={
-          <Link to={createLink} className="text-btn" style={{ display: 'flex', alignItems: 'center' }}>
-            Criar
+          <Link to={createLink} className="glass circle" aria-label="Criar exercício">
+            <Icon name="plus" size={22} stroke={2.4} />
           </Link>
         }
       />
-      <h1 className="h1" style={{ fontSize: 32 }}>
+      <h1 className="h1">
         {adding ? 'Adicionar exercício' : 'Exercícios'}
       </h1>
 
