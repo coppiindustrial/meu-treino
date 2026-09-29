@@ -2925,3 +2925,17 @@ html[data-nav="tab"] .screen:not(.no-tabs) {
   background: none;
   text-align: left;
 }
+
+/* Película invisível da vibração (iPhone): cobre o botão e repassa o toque. */
+.hap-film {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+:where(.btn, .tab, .set-check, .check-circle, .set-type, .seg > a, .cal-day, .list-item, .action-item, .folder-head, .unit-toggle, .import-chip, .ex-chip):has(> .hap-film) {
+  position: relative;
+}
