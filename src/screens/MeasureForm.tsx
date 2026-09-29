@@ -138,10 +138,14 @@ export function MeasureForm() {
         }
       />
 
-      <label className="field">
-        <span className="label">Data</span>
-        <input className="input" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
-      </label>
+      <div className="list-group">
+        <label className="list-item" style={{ minHeight: 56 }}>
+          <span className="grow" style={{ fontWeight: 600 }}>
+            Data
+          </span>
+          <input className="date-pill" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
+        </label>
+      </div>
 
       <span className="label">Corpo</span>
       <div className="list-group">

@@ -2800,3 +2800,128 @@ html[data-nav="tab"] .screen:not(.no-tabs) {
   display: block;
   background: #fff;
 }
+
+/* ------------------------------------------------------------ Data e hora (o iPhone deixa esses campos mais largos que a tela) */
+
+.input[type="date"],
+.input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  line-height: 46px;
+  text-align: left;
+}
+
+.input::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}
+
+.date-pill {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  min-width: 0;
+  max-width: 60%;
+  height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--raised);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 38px;
+}
+
+.date-pill::-webkit-date-and-time-value {
+  text-align: right;
+  margin: 0;
+}
+
+/* ------------------------------------------------------------ Progresso: escolher o exercício */
+
+.chooser-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+}
+
+.chips-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 0 -20px;
+  padding: 2px 20px;
+  scrollbar-width: none;
+}
+
+.chips-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.ex-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+  height: 40px;
+  padding: 0 14px 0 5px;
+  border-radius: 20px;
+  border: 1px solid var(--border-2);
+  background: var(--card);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    transform 0.34s var(--spring),
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.ex-chip > span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ex-chip:active {
+  transform: scale(0.94);
+  transition-duration: 0.08s;
+}
+
+.ex-chip.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.ex-avatar.mini .thumb {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: 50%;
+}
+
+.chooser-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+}
+
+.chooser-label {
+  display: block;
+  margin: 14px 0 2px;
+}
+
+.chooser-row {
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+}

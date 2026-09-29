@@ -18,36 +18,119 @@ export function setHapticsEnabled(on: boolean): void {
   }
 }
 
-/**
- * Vibração curtinha. No Android usa navigator.vibrate; no iPhone (iOS 18+) o Safari não
- * deixa vibrar direto, mas o interruptor nativo (<input switch>) dá um toque ao ser acionado.
- * Precisa ser chamada dentro de um toque do usuário.
- */
-export function haptic(): void {
-  if (!hapticsEnabled()) return;
+const PRESSABLE = '.glass, .pill-primary';
+const VIBRATE_ON = [
+  '.glass',
+  '.pill-primary',
+  '.btn',
+  '.tab',
+  '.set-check',
+  '.check-circle',
+  '.set-type',
+  '.seg > a',
+  '.cal-day',
+  '.list-item',
+  '.action-item',
+  '.folder-head',
+  '.unit-toggle',
+  '.import-chip',
+  '.ex-chip',
+].join(', ');
+
+const canVibrate = () => typeof navigator.vibrate === 'function';
+const isTouchIOS = () => !canVibrate() && 'ontouchstart' in window;
+
+/** Vibração curtinha no Android. No iPhone ela vem do toque no interruptor escondido (veja abaixo). */
+function vibrateAndroid(): void {
+  if (!hapticsEnabled() || !canVibrate()) return;
   try {
-    if (typeof navigator.vibrate === 'function') {
-      navigator.vibrate(8);
-      return;
-    }
-    const label = document.createElement('label');
-    label.setAttribute('aria-hidden', 'true');
-    label.style.display = 'none';
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.setAttribute('switch', '');
-    label.appendChild(input);
-    document.head.appendChild(label);
-    label.click();
-    document.head.removeChild(label);
+    navigator.vibrate(8);
   } catch {
     // aparelho sem vibração
   }
 }
 
-const PRESSABLE = '.glass, .pill-primary';
-const VIBRATE_ON =
-  '.glass, .pill-primary, .btn, .tab, .set-check, .check-circle, .set-type, .seg > *, .cal-day, .list-item, .unit-toggle, .import-chip, .switch';
+/**
+ * iPhone: desde o iOS 26.5 o Safari só vibra quando o próprio dedo aciona um interruptor
+ * (<input type="checkbox" switch>). Então, ao soltar o dedo de um botão, uma película invisível
+ * ligada a esse interruptor aparece embaixo dele. O clique cai nela (o iPhone vibra) e é
+ * repassado ao botão, que funciona normalmente. Se o iPhone não usar a película, o botão
+ * recebe o clique direto (só não vibra).
+ */
+function installIOSHaptics(): void {
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.setAttribute('switch', '');
+  input.id = 'mt-haptic-switch';
+  input.tabIndex = -1;
+  input.setAttribute('aria-hidden', 'true');
+  input.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+
+  const film = document.createElement('label');
+  film.htmlFor = input.id;
+  film.setAttribute('aria-hidden', 'true');
+  film.style.cssText =
+    'position:fixed;width:56px;height:56px;margin:-28px 0 0 -28px;z-index:2147483647;opacity:0;display:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;';
+  document.body.append(input, film);
+
+  let host: HTMLElement | null = null;
+  let startX = 0;
+  let startY = 0;
+  let hideTimer: ReturnType<typeof setTimeout> | undefined;
+  const hide = () => {
+    film.style.display = 'none';
+    host = null;
+  };
+
+  // Guarda o botão tocado. Campos de texto, data e hora ficam de fora (o toque neles segue normal).
+  document.addEventListener(
+    'touchstart',
+    (e) => {
+      host = null;
+      if (!hapticsEnabled() || e.touches.length !== 1) return;
+      const target = e.target as Element | null;
+      if (!target?.closest || target.closest('input, select, textarea, [contenteditable]')) return;
+      const el = target.closest(VIBRATE_ON) as HTMLElement | null;
+      if (!el || el.tagName === 'LABEL' || (el as HTMLButtonElement).disabled) return;
+      host = el;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    },
+    { capture: true, passive: true },
+  );
+  // Arrastou (rolando a tela): não é um toque.
+  document.addEventListener(
+    'touchmove',
+    (e) => {
+      const t = e.touches[0];
+      if (host && t && Math.hypot(t.clientX - startX, t.clientY - startY) > 10) host = null;
+    },
+    { capture: true, passive: true },
+  );
+  // Ao soltar o dedo, a película aparece embaixo dele: o clique que vem em seguida cai nela.
+  document.addEventListener(
+    'touchend',
+    (e) => {
+      const t = e.changedTouches[0];
+      if (!host || !t) return;
+      film.style.left = `${t.clientX}px`;
+      film.style.top = `${t.clientY}px`;
+      film.style.display = 'block';
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(hide, 450);
+    },
+    { capture: true, passive: true },
+  );
+  document.addEventListener('touchcancel', hide, { capture: true, passive: true });
+
+  film.addEventListener('click', (e) => {
+    // Não cancela o clique: é ele que liga o interruptor e faz o iPhone vibrar.
+    e.stopPropagation();
+    const target = host;
+    hide();
+    if (target && target.isConnected) target.click();
+  });
+}
 
 /** Liga o efeito de pressionar (visível até em toque rápido) e a vibração nos botões. */
 export function installTouchFeedback(): void {
@@ -76,12 +159,17 @@ export function installTouchFeedback(): void {
     { passive: true },
   );
 
-  document.addEventListener(
-    'click',
-    (e) => {
-      const el = (e.target as Element | null)?.closest?.(VIBRATE_ON) as HTMLElement | null;
-      if (el && !(el as HTMLButtonElement).disabled) haptic();
-    },
-    true,
-  );
+  if (isTouchIOS()) {
+    installIOSHaptics();
+  } else {
+    document.addEventListener(
+      'click',
+      (e) => {
+        if (!e.isTrusted) return;
+        const el = (e.target as Element | null)?.closest?.(VIBRATE_ON) as HTMLElement | null;
+        if (el && !(el as HTMLButtonElement).disabled) vibrateAndroid();
+      },
+      true,
+    );
+  }
 }

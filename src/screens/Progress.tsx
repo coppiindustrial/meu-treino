@@ -6,7 +6,10 @@ import { Icon } from '../components/Icon';
 import { EmptyState } from '../components/Layout';
 import { db } from '../lib/db';
 import { loadText } from '../lib/equipment';
-import { exerciseOrMissing, useExercises } from '../lib/exercises';
+import { ExerciseThumb } from '../components/Media';
+import { Sheet } from '../components/Sheet';
+import { exerciseOrMissing, normalize, useExercises, type ExerciseView } from '../lib/exercises';
+import { muscleName } from '../lib/muscles';
 import { addDays, dayMonth, fromISODate, monthName, num, todayISO } from '../lib/format';
 import { exerciseHistory } from '../lib/stats';
 import { setsSummary } from './ExerciseDetail';
@@ -102,13 +105,7 @@ export function Progress() {
         <EmptyState title="Ainda sem registros" text="Finalize seu primeiro treino para ver a evolução das cargas aqui." />
       ) : (
         <>
-          <select className="select" aria-label="Exercício" value={selected ?? ''} onChange={(e) => setChosen(e.target.value)}>
-            {used.map((id) => (
-              <option key={id} value={id}>
-                {exerciseOrMissing(map, id).name}
-              </option>
-            ))}
-          </select>
+          <ExerciseChooser ex={ex} used={used.map((id) => exerciseOrMissing(map, id))} onPick={setChosen} />
 
           <div className="row between" style={{ alignItems: 'flex-end' }}>
             <div className="col" style={{ gap: 2 }}>
@@ -175,5 +172,98 @@ export function Progress() {
         </>
       )}
     </main>
+  );
+}
+
+/** Cartão do exercício escolhido, atalhos dos recentes e janela com busca para trocar. */
+function ExerciseChooser({ ex, used, onPick }: { ex: ExerciseView; used: ExerciseView[]; onPick: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const recent = used.slice(0, 5);
+  const q = normalize(query.trim());
+  const found = q ? used.filter((e) => normalize(e.name).includes(q)) : [];
+  const rest = used.slice(5);
+  const groups = new Map<string, ExerciseView[]>();
+  for (const e of rest) {
+    const key = muscleName(e.primary);
+    groups.set(key, [...(groups.get(key) ?? []), e]);
+  }
+  const pick = (id: string) => {
+    onPick(id);
+    setOpen(false);
+    setQuery('');
+  };
+  const row = (e: ExerciseView) => (
+    <button key={e.id} type="button" className="routine-row chooser-row" onClick={() => pick(e.id)}>
+      <span className="ex-avatar">
+        <ExerciseThumb exercise={e} />
+      </span>
+      <span className="col grow" style={{ gap: 1 }}>
+        <span style={{ fontWeight: 600 }}>{e.name}</span>
+        <span className="tiny muted">{muscleName(e.primary)}</span>
+      </span>
+      {e.id === ex.id && <Icon name="check" size={18} stroke={3} color="var(--accent)" />}
+    </button>
+  );
+
+  return (
+    <>
+      <div className="card chooser-card">
+        <span className="ex-avatar">
+          <ExerciseThumb exercise={ex} />
+        </span>
+        <span className="col grow" style={{ gap: 1, minWidth: 0 }}>
+          <span className="ellipsis" style={{ fontWeight: 600, fontSize: 16 }}>
+            {ex.name}
+          </span>
+          <span className="tiny muted">{muscleName(ex.primary)}</span>
+        </span>
+        <button type="button" className="glass pill" onClick={() => setOpen(true)}>
+          Trocar
+        </button>
+      </div>
+
+      {recent.length > 1 && (
+        <div className="chips-scroll" role="list" aria-label="Exercícios recentes">
+          {recent.map((e) => (
+            <button key={e.id} type="button" role="listitem" className={`ex-chip ${e.id === ex.id ? 'on' : ''}`} onClick={() => onPick(e.id)}>
+              <span className="ex-avatar mini">
+                <ExerciseThumb exercise={e} />
+              </span>
+              <span>{e.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <Sheet open={open} onClose={() => setOpen(false)} title="Escolher exercício" subtitle="Só aparecem os que você já fez">
+        <label className="search">
+          <Icon name="search" size={20} />
+          <input type="search" value={query} placeholder="Buscar exercício" aria-label="Buscar exercício" onChange={(e) => setQuery(e.target.value)} />
+        </label>
+        <div className="chooser-list">
+          {q ? (
+            found.length ? (
+              found.map(row)
+            ) : (
+              <p className="small muted" style={{ padding: '12px 4px' }}>
+                Nenhum exercício feito com esse nome.
+              </p>
+            )
+          ) : (
+            <>
+              <span className="label chooser-label">Recentes</span>
+              {recent.map(row)}
+              {[...groups.entries()].map(([name, list]) => (
+                <div key={name}>
+                  <span className="label chooser-label">{name}</span>
+                  {list.map(row)}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </Sheet>
+    </>
   );
 }

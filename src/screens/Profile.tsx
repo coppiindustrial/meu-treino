@@ -8,7 +8,7 @@ import { exportBackup, importBackup } from '../lib/backup';
 import { num, parseNum } from '../lib/format';
 import { getProfile, saveProfile } from '../lib/repo';
 import { doneSessions } from '../lib/stats';
-import { haptic, hapticsEnabled, setHapticsEnabled } from '../lib/touch';
+import { hapticsEnabled, setHapticsEnabled } from '../lib/touch';
 import { SessionRow } from './Calendar';
 import { useSyncState } from '../lib/sync';
 
@@ -157,7 +157,6 @@ export function Profile() {
             const on = !vibrate;
             setHapticsEnabled(on);
             setVibrate(on);
-            if (on) haptic();
           }}
         >
           <Icon name="vibrate" color="var(--text-2)" />
