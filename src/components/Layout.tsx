@@ -9,10 +9,12 @@ import { withTransition } from '../lib/nav';
 import { Icon, type IconName } from './Icon';
 import { LiquidTabs } from './liquidTabs';
 import { tick } from '../lib/touch';
+import { AppLogo } from './AppLogo';
 
-const TABS: { to: string; label: string; icon: IconName }[] = [
+// A aba Treinos usa o logo do app no lugar de um ícone de linha.
+const TABS: { to: string; label: string; icon: IconName | 'logo' }[] = [
   { to: '/', label: 'Início', icon: 'home' },
-  { to: '/treinos', label: 'Treinos', icon: 'dumbbell' },
+  { to: '/treinos', label: 'Treinos', icon: 'logo' },
   { to: '/calendario', label: 'Calendário', icon: 'calendar' },
   { to: '/progresso', label: 'Progresso', icon: 'chart' },
   { to: '/perfil', label: 'Perfil', icon: 'user' },
@@ -124,7 +126,7 @@ export function TabBar({ pathname }: { pathname: string }) {
               aria-current={isTabActive(t, pathname) ? 'page' : undefined}
               draggable={false}
             >
-              <Icon name={t.icon} size={22} stroke={1.9} />
+              {t.icon === 'logo' ? <AppLogo /> : <Icon name={t.icon} size={22} stroke={1.9} />}
               <span>{t.label}</span>
             </NavLink>
           ))}
