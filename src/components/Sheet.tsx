@@ -12,22 +12,37 @@ interface Props {
   hideClose?: boolean;
 }
 
+// Trava a rolagem da página enquanto houver alguma janela aberta. Com janela em cima de
+// janela (ex.: confirmação por cima de um menu), só destrava quando a última fecha.
+let openSheets = 0;
+
+function lockScroll(): void {
+  openSheets += 1;
+  document.body.style.overflow = 'hidden';
+}
+
+function unlockScroll(): void {
+  openSheets = Math.max(0, openSheets - 1);
+  if (openSheets === 0) document.body.style.overflow = '';
+}
+
 export function Sheet({ open, onClose, title, subtitle, children, hideClose }: Props) {
   const { inset, viewportHeight } = useKeyboardInset(open);
   const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
+    lockScroll();
+    return unlockScroll;
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener('keydown', onKey);
-    };
+    return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
   // Quando um campo recebe foco, espera o teclado subir e mostra o campo.
