@@ -53,6 +53,11 @@ function vibrateAndroid(): void {
   }
 }
 
+/** "Tique" ao pegar um item com toque longo. Só no Android: o iPhone não deixa vibrar fora de um toque comum. */
+export function tick(): void {
+  vibrateAndroid();
+}
+
 const SWITCH_ID = 'mt-haptic-switch';
 
 /**

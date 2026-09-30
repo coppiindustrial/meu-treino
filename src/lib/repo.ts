@@ -96,6 +96,14 @@ export async function createProgram(name: string): Promise<string> {
   return id;
 }
 
+/** Nova ordem das rotinas em "Outras rotinas" (segurar e arrastar). */
+export async function reorderPrograms(ids: string[]): Promise<void> {
+  for (const [i, id] of ids.entries()) {
+    const p = await db.programs.get(id);
+    if (p && p.position !== i) await patch('programs', id, { position: i });
+  }
+}
+
 export async function renameProgram(id: string, name: string): Promise<void> {
   await patch('programs', id, { name: name.trim() || 'Minha rotina' });
 }

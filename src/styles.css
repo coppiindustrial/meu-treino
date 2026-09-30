@@ -3682,3 +3682,51 @@ html[data-nav="tab"] .screen:not(.no-tabs) {
     transition: none;
   }
 }
+
+/* ------------------------------------------------------------ Segurar e arrastar para reordenar (Outras rotinas) */
+
+.lp-sort {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lp-item {
+  position: relative;
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform 0.22s var(--press);
+}
+
+.lp-item > * {
+  transition:
+    transform 0.18s var(--press),
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+/* Item "pego": sobe um pouco, cresce e ganha sombra, acompanhando o dedo. */
+.lp-item.lifted {
+  z-index: 5;
+  transition: none;
+}
+
+.lp-item.lifted > * {
+  transform: scale(1.03);
+  background: var(--raised);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+}
+
+.lp-sort.sorting .tap-head {
+  background: none;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-item,
+  .lp-item > * {
+    transition: none;
+  }
+}

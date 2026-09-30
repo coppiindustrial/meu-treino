@@ -101,6 +101,8 @@ export interface Program extends Synced {
   createdAt: number;
   startedAt?: number | null;
   endedAt?: number | null;
+  /** Ordem em "Outras rotinas" (segurar e arrastar). Sem valor: aparece no topo, as mais novas primeiro. */
+  position?: number;
 }
 
 export interface Workout extends Synced {

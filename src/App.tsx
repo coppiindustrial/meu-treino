@@ -40,7 +40,7 @@ function Shell() {
       const a = (e.target as Element | null)?.closest?.('a[href^="#/"]') as HTMLAnchorElement | null;
       if (!a || a.target) return;
       // Soltar o dedo depois de deslizar uma linha (ou tocar nela aberta) não abre o link dela.
-      if (a.closest('.swipe-wrap.dragging, .swipe-wrap.open')) return;
+      if (a.closest('.swipe-wrap.dragging, .swipe-wrap.open, [data-drag-lock]')) return;
       const to = a.getAttribute('href')!.slice(1);
       e.preventDefault();
       e.stopPropagation();

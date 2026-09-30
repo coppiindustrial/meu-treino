@@ -4,10 +4,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { EmptyState } from '../components/Layout';
+import { LongPressSort } from '../components/LongPressSort';
 import { Sheet } from '../components/Sheet';
 import { db } from '../lib/db';
 import { dayMonth, fullDate, toISODate } from '../lib/format';
-import { activateProgram, createProgram, createWorkout } from '../lib/repo';
+import { activateProgram, createProgram, createWorkout, reorderPrograms } from '../lib/repo';
 import { doneSessions } from '../lib/stats';
 import type { Program, Workout } from '../lib/types';
 
@@ -27,7 +28,9 @@ export function Programs() {
   if (!data) return <main className="screen" />;
   const { programs, workouts, items, sessions } = data;
   const active = programs.find((p) => p.status === 'active');
-  const others = programs.filter((p) => p.status !== 'active');
+  const others = programs
+    .filter((p) => p.status !== 'active')
+    .sort((a, b) => (a.position ?? -1) - (b.position ?? -1) || b.createdAt - a.createdAt);
   const itemCount = (wId: string) => items.filter((i) => i.workoutId === wId).length;
   const workoutsOf = (pId: string) => workouts.filter((w) => w.programId === pId).sort((a, b) => a.position - b.position);
   const sessionCount = (pId: string) => sessions.filter((s) => s.programId === pId).length;
@@ -149,26 +152,29 @@ export function Programs() {
         <section className="stack">
           <div className="section-head">
             <h2 className="h2">Outras rotinas</h2>
-            <span className="small muted">Prontas ou antigas</span>
+            <span className="small muted">{others.length > 1 ? 'Segure para mudar a ordem' : 'Prontas ou antigas'}</span>
           </div>
-          {others.map((p) => {
-            const ws = workoutsOf(p.id);
-            const status =
-              p.status === 'ready'
-                ? `Pronta para usar · ${ws.length} ${ws.length === 1 ? 'treino' : 'treinos'}`
-                : `Encerrada${p.endedAt ? ` em ${fullDate(toISODate(new Date(p.endedAt)))}` : ''} · ${sessionCount(p.id)} no histórico`;
-            return (
-              <div key={p.id} className="list-row" style={{ padding: 6 }}>
-                <Link to={`/ficha/${p.id}`} className="tap-head col grow" aria-label={`Abrir a rotina ${p.name}`}>
-                  <span style={{ fontWeight: 700 }}>{p.name}</span>
-                  <span className="tiny muted">{status}</span>
-                </Link>
-                <button type="button" className="btn small outline-accent" onClick={() => activate(p)}>
-                  Ativar
-                </button>
-              </div>
-            );
-          })}
+          <LongPressSort ids={others.map((p) => p.id)} onReorder={(ids) => void reorderPrograms(ids)}>
+            {(id) => {
+              const p = others.find((x) => x.id === id)!;
+              const ws = workoutsOf(p.id);
+              const status =
+                p.status === 'ready'
+                  ? `Pronta para usar · ${ws.length} ${ws.length === 1 ? 'treino' : 'treinos'}`
+                  : `Encerrada${p.endedAt ? ` em ${fullDate(toISODate(new Date(p.endedAt)))}` : ''} · ${sessionCount(p.id)} no histórico`;
+              return (
+                <div className="list-row" style={{ padding: 6 }}>
+                  <Link to={`/ficha/${p.id}`} className="tap-head col grow" aria-label={`Abrir a rotina ${p.name}`}>
+                    <span style={{ fontWeight: 700 }}>{p.name}</span>
+                    <span className="tiny muted">{status}</span>
+                  </Link>
+                  <button type="button" className="btn small outline-accent" onClick={() => activate(p)}>
+                    Ativar
+                  </button>
+                </div>
+              );
+            }}
+          </LongPressSort>
         </section>
       )}
 
