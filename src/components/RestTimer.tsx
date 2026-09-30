@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { mmss } from '../lib/format';
+import { cancelRestPush, moveRestPush, scheduleRestPush } from '../lib/push';
 import { beep, unlockAudio } from '../lib/sound';
 import { Icon } from './Icon';
 
@@ -9,7 +10,8 @@ interface RestState {
 }
 
 interface RestApi extends RestState {
-  start: (seconds: number) => void;
+  /** `next` é o texto do aviso no iPhone (ex.: "Próxima série: Supino reto"). */
+  start: (seconds: number, next?: string) => void;
   add: (seconds: number) => void;
   stop: () => void;
 }
@@ -38,6 +40,8 @@ function readState(): RestState {
 
 export function RestTimerProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<RestState>(readState);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const persist = (s: RestState) => {
     setState(s);
@@ -48,25 +52,25 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const start = useCallback((seconds: number) => {
+  const start = useCallback((seconds: number, next?: string) => {
     unlockAudio();
-    persist({ endsAt: Date.now() + seconds * 1000, total: seconds });
+    const endsAt = Date.now() + seconds * 1000;
+    persist({ endsAt, total: seconds });
+    scheduleRestPush(endsAt, next ?? 'Hora da próxima série.');
   }, []);
 
   const add = useCallback((seconds: number) => {
-    setState((s) => {
-      if (!s.endsAt) return s;
-      const next = { endsAt: s.endsAt + seconds * 1000, total: Math.max(1, s.total + seconds) };
-      try {
-        localStorage.setItem(LS_KEY, JSON.stringify(next));
-      } catch {
-        // sem armazenamento
-      }
-      return next;
-    });
+    const s = stateRef.current;
+    if (!s.endsAt) return;
+    const next = { endsAt: s.endsAt + seconds * 1000, total: Math.max(1, s.total + seconds) };
+    persist(next);
+    moveRestPush(next.endsAt);
   }, []);
 
-  const stop = useCallback(() => persist({ endsAt: null, total: 0 }), []);
+  const stop = useCallback(() => {
+    persist({ endsAt: null, total: 0 });
+    cancelRestPush();
+  }, []);
 
   return (
     <Ctx.Provider value={{ ...state, start, add, stop }}>

@@ -36,6 +36,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Avisos de fim do descanso (notificações): public/push-sw.js.
+        importScripts: ['push-sw.js'],
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         runtimeCaching: [
           {

@@ -93,7 +93,14 @@ export function ActiveSession() {
       return;
     }
     const seconds = restOf(it);
-    if (seconds > 0) rest.start(seconds);
+    if (seconds > 0) rest.start(seconds, nextText(it, index));
+  };
+
+  /** Texto do aviso de fim do descanso: a próxima série deste exercício ou o próximo exercício. */
+  const nextText = (it: SessionItem, index: number): string => {
+    if (it.sets.some((x, j) => j !== index && !x.done)) return `Próxima série: ${exerciseOrMissing(map, it.exerciseId).name}`;
+    const next = items.find((x) => x.id !== it.id && !x.done && x.sets.some((y) => !y.done));
+    return next ? `Próximo exercício: ${exerciseOrMissing(map, next.exerciseId).name}` : 'Hora de continuar o treino.';
   };
 
   const finish = async () => {

@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
+import { RestPushSetting } from '../components/RestPushSetting';
 import { Sheet } from '../components/Sheet';
 import { exportBackup, importBackup } from '../lib/backup';
 import { num, parseNum } from '../lib/format';
@@ -166,6 +167,7 @@ export function Profile() {
             <span />
           </span>
         </button>
+        <RestPushSetting />
         <button type="button" className="list-item" onClick={() => setBodyOpen(true)}>
           <Icon name="user" color="var(--text-2)" />
           <span className="grow">Corpo nos desenhos</span>
