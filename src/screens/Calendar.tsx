@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Duration } from '../components/Duration';
 import { Icon } from '../components/Icon';
 import { duration, monthName, num, pad2, relativeDay, sessionMinutes, timeHM, todayISO } from '../lib/format';
 import { doneSessions } from '../lib/stats';
@@ -92,7 +93,7 @@ export function Calendar() {
         <div className="tile">
           <span className="tiny muted">Tempo total</span>
           <span className="tile-value" style={{ fontSize: 20 }}>
-            {totalMinutes > 0 ? duration(totalMinutes) : '—'}
+            {totalMinutes > 0 ? <Duration minutes={totalMinutes} /> : '—'}
           </span>
         </div>
         <div className="tile">

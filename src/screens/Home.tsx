@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
+import { Duration } from '../components/Duration';
 import { Icon } from '../components/Icon';
 import { db } from '../lib/db';
 import { useExercises } from '../lib/exercises';
@@ -207,7 +208,7 @@ export function Home() {
         </div>
         <div className="tile">
           <span className="tiny muted">Tempo médio</span>
-          <span className="tile-value">{avg !== null ? duration(avg) : '—'}</span>
+          <span className="tile-value">{avg !== null ? <Duration minutes={avg} /> : '—'}</span>
         </div>
         <Link to="/progresso/corpo" className="tile" style={{ color: 'var(--text)' }}>
           <span className="tiny muted">Peso atual</span>

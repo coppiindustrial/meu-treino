@@ -22,6 +22,7 @@ import { Profile } from './screens/Profile';
 import { ProgramDetail } from './screens/ProgramDetail';
 import { ReorderWorkout } from './screens/ReorderWorkout';
 import { Programs } from './screens/Programs';
+import { Settings } from './screens/Settings';
 import { Progress } from './screens/Progress';
 import { Summary } from './screens/Summary';
 import { WorkoutDetail } from './screens/WorkoutDetail';
@@ -81,6 +82,7 @@ function Shell() {
         <Route path="/progresso/medidas/:entryId" element={<MeasureForm />} />
         <Route path="/perfil" element={<Profile />} />
         <Route path="/perfil/nuvem" element={<Cloud />} />
+        <Route path="/perfil/configuracoes" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {tabs && <TabBar pathname={pathname} />}

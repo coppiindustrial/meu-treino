@@ -6,7 +6,7 @@ import { Icon } from './Icon';
 const HINT: Partial<Record<PushStatus, string>> = {
   install: 'Abra o app pelo ícone da tela de início para ativar.',
   unsupported: 'Este aparelho não recebe avisos do app.',
-  cloud: 'Entre no backup na nuvem (acima) para ativar.',
+  cloud: 'Conecte o Backup na nuvem (em Dados, abaixo) para ativar.',
   denied: 'Bloqueado. Libere em Ajustes › Notificações › Meu Treino.',
 };
 

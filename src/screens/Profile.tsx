@@ -1,37 +1,25 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
-import { RestPushSetting } from '../components/RestPushSetting';
-import { Sheet } from '../components/Sheet';
-import { exportBackup, importBackup } from '../lib/backup';
-import { num, parseNum } from '../lib/format';
+import { dayMonth, num, parseNum } from '../lib/format';
 import { getProfile, saveProfile } from '../lib/repo';
 import { doneSessions } from '../lib/stats';
-import { hapticsEnabled, setHapticsEnabled } from '../lib/touch';
-import { SessionRow } from './Calendar';
-import { useSyncState } from '../lib/sync';
 
+/** Perfil: o que é seu (nome, medidas, meta, histórico e biblioteca). Os ajustes do app ficam em Configurações. */
 export function Profile() {
   const profile = useLiveQuery(() => getProfile(), []);
-  const recent = useLiveQuery(async () => (await doneSessions()).slice(0, 3), []);
-  const [vibrate, setVibrate] = useState(hapticsEnabled);
-  const sync = useSyncState();
-  const { prompt, toast, confirm } = useDialogs();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [installOpen, setInstallOpen] = useState(false);
-  const [bodyOpen, setBodyOpen] = useState(false);
+  const sessions = useLiveQuery(() => doneSessions(), []);
+  const { prompt } = useDialogs();
 
   if (!profile) return <main className="screen" />;
 
-  const edit = async (field: 'name' | 'goal' | 'heightCm' | 'weeklyGoal' | 'restSeconds') => {
+  const edit = async (field: 'name' | 'goal' | 'heightCm' | 'weeklyGoal') => {
     const config = {
       name: { title: 'Seu nome', value: profile.name, mode: 'text' as const },
       goal: { title: 'Objetivo', value: profile.goal, mode: 'text' as const },
       heightCm: { title: 'Altura (cm)', value: profile.heightCm ? String(profile.heightCm) : '', mode: 'numeric' as const },
       weeklyGoal: { title: 'Meta de treinos por semana', value: String(profile.weeklyGoal), mode: 'numeric' as const },
-      restSeconds: { title: 'Descanso padrão (segundos)', value: String(profile.restSeconds), mode: 'numeric' as const },
     }[field];
     const v = await prompt({ title: config.title, initial: config.value, inputMode: config.mode });
     if (v === null) return;
@@ -43,50 +31,17 @@ export function Profile() {
     }
   };
 
-  const doExport = async () => {
-    try {
-      await exportBackup();
-    } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') return;
-      toast('Não foi possível gerar o backup');
-    }
-  };
-
-  const doImport = async (file: File | undefined) => {
-    if (!file) return;
-    const ok = await confirm({
-      title: 'Importar este backup?',
-      message: 'Os dados do arquivo serão juntados aos atuais. Quando o mesmo item existir nos dois, fica a versão mais recente.',
-      confirmLabel: 'Importar',
-    });
-    if (!ok) return;
-    try {
-      const count = await importBackup(file);
-      toast(`${count} itens importados`);
-    } catch (e) {
-      toast(e instanceof Error ? e.message : 'Arquivo inválido');
-    }
-  };
-
-  const syncText =
-    sync.status === 'off'
-      ? 'Não conectado. Seus dados estão só neste aparelho.'
-      : sync.status === 'signedout'
-        ? 'Nuvem configurada. Entre na sua conta para sincronizar.'
-        : sync.status === 'syncing'
-          ? 'Sincronizando…'
-          : sync.status === 'error'
-            ? `Erro ao sincronizar: ${sync.error ?? 'tente de novo'}`
-            : sync.lastSync
-              ? `Última vez ${new Date(sync.lastSync).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.`
-              : 'Conectado.';
-  const syncTitle =
-    sync.status === 'idle' ? 'Tudo sincronizado' : sync.status === 'syncing' ? 'Sincronizando' : sync.status === 'error' ? 'Problema na sincronização' : 'Backup na nuvem';
+  const count = sessions?.length ?? 0;
+  // doneSessions vem do mais novo para o mais antigo: o último é o primeiro treino.
+  const since = sessions && sessions.length > 0 ? sessions[sessions.length - 1].date : null;
 
   return (
     <main className="screen">
       <header className="tab-head">
         <h1 className="h1">Perfil</h1>
+        <Link to="/perfil/configuracoes" className="glass circle" aria-label="Configurações">
+          <Icon name="gear" size={21} />
+        </Link>
       </header>
 
       <div className="row">
@@ -95,9 +50,12 @@ export function Profile() {
         </div>
         <div className="col">
           <span style={{ fontSize: 20, fontWeight: 800 }}>{profile.name || 'Seu nome'}</span>
-          <button type="button" className="text-btn" style={{ minHeight: 32, padding: 0, textAlign: 'left' }} onClick={() => edit('name')}>
+          <button type="button" className="text-btn" style={{ minHeight: 28, padding: 0, textAlign: 'left' }} onClick={() => edit('name')}>
             Editar nome
           </button>
+          <span className="tiny muted">
+            {count === 0 ? 'Nenhum treino ainda' : `${count} ${count === 1 ? 'treino' : 'treinos'}${since ? ` desde ${dayMonth(since)}` : ''}`}
+          </span>
         </div>
       </div>
 
@@ -118,152 +76,19 @@ export function Profile() {
         </button>
       </div>
 
-      <section className="stack">
-        <div className="section-head">
-          <h2 className="h2" style={{ fontSize: 17 }}>
-            Histórico de treinos
-          </h2>
-          <Link to="/historico" className="small" style={{ color: 'var(--accent)', fontWeight: 600 }}>
-            Ver tudo
-          </Link>
-        </div>
-        {recent && recent.length === 0 && <p className="small muted">Os treinos que você finalizar aparecem aqui.</p>}
-        {recent?.map((s) => <SessionRow key={s.id} s={s} />)}
-      </section>
-
-      <Link to="/perfil/nuvem" className="notice" style={{ color: 'var(--text)' }}>
-        <span className="notice-icon">
-          <Icon name={sync.status === 'idle' ? 'cloudCheck' : 'cloud'} />
-        </span>
-        <div className="col grow">
-          <span style={{ fontWeight: 800 }}>{syncTitle}</span>
-          <span className="small muted" style={{ lineHeight: 1.45 }}>
-            {syncText}
-          </span>
-        </div>
-        <Icon name="next" size={18} color="var(--muted)" />
-      </Link>
-
       <div className="list-group">
-        <button type="button" className="list-item" onClick={() => edit('restSeconds')}>
-          <Icon name="timer" color="var(--text-2)" />
-          <span className="grow">Descanso padrão</span>
-          <span className="value">{profile.restSeconds} s</span>
-        </button>
-        <button
-          type="button"
-          className="list-item"
-          role="switch"
-          aria-checked={vibrate}
-          onClick={() => {
-            const on = !vibrate;
-            setHapticsEnabled(on);
-            setVibrate(on);
-          }}
-        >
-          <Icon name="vibrate" color="var(--text-2)" />
-          <span className="grow">Vibrar ao tocar</span>
-          <span className="switch" aria-hidden="true" aria-checked={vibrate}>
-            <span />
-          </span>
-        </button>
-        <RestPushSetting />
-        <button type="button" className="list-item" onClick={() => setBodyOpen(true)}>
-          <Icon name="user" color="var(--text-2)" />
-          <span className="grow">Corpo nos desenhos</span>
-          <span className="value">{profile.body === 'female' ? 'Feminino' : 'Masculino'}</span>
+        <Link to="/historico" className="list-item">
+          <Icon name="clock" color="var(--text-2)" />
+          <span className="grow">Histórico de treinos</span>
+          {count > 0 && <span className="value">{count}</span>}
           <Icon name="next" size={18} color="var(--muted)" />
-        </button>
+        </Link>
         <Link to="/exercicios" className="list-item">
           <Icon name="book" color="var(--text-2)" />
           <span className="grow">Biblioteca de exercícios</span>
           <Icon name="next" size={18} color="var(--muted)" />
         </Link>
-        <button type="button" className="list-item" onClick={doExport}>
-          <Icon name="download" color="var(--text-2)" />
-          <span className="grow">Exportar backup (arquivo)</span>
-        </button>
-        <button type="button" className="list-item" onClick={() => fileRef.current?.click()}>
-          <Icon name="upload" color="var(--text-2)" />
-          <span className="grow">Importar backup</span>
-        </button>
-        <button type="button" className="list-item" onClick={() => setInstallOpen(true)}>
-          <Icon name="info" color="var(--text-2)" />
-          <span className="grow">Instalar no iPhone</span>
-        </button>
       </div>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="application/json,.json"
-        hidden
-        onChange={(e) => {
-          void doImport(e.target.files?.[0]);
-          e.target.value = '';
-        }}
-      />
-
-      <p className="tiny muted" style={{ textAlign: 'center', lineHeight: 1.5 }}>
-        Meu Treino · versão {__APP_VERSION__}
-        <br />
-        Animações: ExerciseDB. Fotos: free-exercise-db (domínio público).
-        <br />
-        Desenhos do corpo: react-native-body-highlighter (licença MIT).
-      </p>
-
-      <Sheet open={bodyOpen} onClose={() => setBodyOpen(false)} title="Corpo nos desenhos" subtitle="Usado nos desenhos de músculos e de como medir">
-        <div className="list-group">
-          {([
-            ['male', 'Masculino'],
-            ['female', 'Feminino'],
-          ] as const).map(([id, name]) => {
-            const on = (profile.body ?? 'male') === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                className="list-item"
-                style={{ minHeight: 56 }}
-                aria-pressed={on}
-                onClick={() => {
-                  void saveProfile({ body: id });
-                  setBodyOpen(false);
-                }}
-              >
-                <span className="grow" style={{ fontSize: 16 }}>
-                  {name}
-                </span>
-                {on && (
-                  <span className="check-dot">
-                    <Icon name="check" size={14} stroke={3} />
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </Sheet>
-
-      <Sheet open={installOpen} onClose={() => setInstallOpen(false)} title="Instalar no iPhone">
-        <ol className="steps">
-          <li>
-            <span className="n">1</span>
-            <span>Abra este app no Safari (não funciona pelo Chrome no iPhone).</span>
-          </li>
-          <li>
-            <span className="n">2</span>
-            <span>Toque no botão Compartilhar (o quadrado com a seta para cima).</span>
-          </li>
-          <li>
-            <span className="n">3</span>
-            <span>Escolha “Adicionar à Tela de Início” e toque em Adicionar.</span>
-          </li>
-          <li>
-            <span className="n">4</span>
-            <span>Abra sempre pelo ícone novo: ele funciona em tela cheia e sem internet.</span>
-          </li>
-        </ol>
-      </Sheet>
     </main>
   );
 }

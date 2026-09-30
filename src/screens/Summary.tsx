@@ -1,12 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Duration } from '../components/Duration';
 import { Icon } from '../components/Icon';
 import { BackButton, EmptyState, TopBar } from '../components/Layout';
 import { db } from '../lib/db';
 import { loadText } from '../lib/equipment';
 import { exerciseOrMissing, useExercises } from '../lib/exercises';
-import { duration, longDate, num, sessionMinutes, timeHM } from '../lib/format';
+import { longDate, num, sessionMinutes, timeHM } from '../lib/format';
 import { sessionItemsOf, updateSession } from '../lib/repo';
 import { cardioTotals, formatDuration, isCardio } from '../lib/cardio';
 import { bestSet, sessionRecords, summarize } from '../lib/stats';
@@ -77,7 +78,7 @@ export function Summary() {
       <div className="grid-2">
         <div className="tile">
           <span className="tiny muted">Duração</span>
-          <span className="tile-value">{minutes !== null ? duration(minutes) : '—'}</span>
+          <span className="tile-value">{minutes !== null ? <Duration minutes={minutes} /> : '—'}</span>
         </div>
         <div className="tile">
           <span className="tiny muted">Exercícios</span>
