@@ -6,9 +6,11 @@ import { Icon } from '../components/Icon';
 import { EmptyState } from '../components/Layout';
 import { LongPressSort } from '../components/LongPressSort';
 import { Sheet } from '../components/Sheet';
+import { SwipeRow } from '../components/SwipeRow';
+import { useDeleteWorkout } from '../components/useDeleteWorkout';
 import { db } from '../lib/db';
 import { dayMonth, fullDate, toISODate } from '../lib/format';
-import { activateProgram, createProgram, createWorkout, reorderPrograms } from '../lib/repo';
+import { activateProgram, createProgram, createWorkout, reorderPrograms, reorderWorkouts } from '../lib/repo';
 import { doneSessions } from '../lib/stats';
 import type { Program, Workout } from '../lib/types';
 
@@ -16,6 +18,7 @@ export function Programs() {
   const navigate = useNavigate();
   const { prompt, confirm, toast } = useDialogs();
   const [newOpen, setNewOpen] = useState(false);
+  const removeWorkout = useDeleteWorkout();
 
   const data = useLiveQuery(async () => {
     const programs = (await db.programs.filter((p) => !p.deleted).toArray()).sort((a, b) => b.createdAt - a.createdAt);
@@ -71,7 +74,7 @@ export function Programs() {
     const last = lastDone(w.id);
     const count = itemCount(w.id);
     return (
-      <Link key={w.id} to={`/treino/${w.id}`} className="row" style={{ minHeight: 62, padding: '8px 4px', borderTop: '1px solid var(--border)', color: 'var(--text)' }}>
+      <Link to={`/treino/${w.id}`} className="row" draggable={false} style={{ minHeight: 62, padding: '8px 4px', borderTop: '1px solid var(--border)', color: 'var(--text)' }}>
         <div className="letter">{w.letter}</div>
         <div className="col grow">
           <div className="row" style={{ gap: 8 }}>
@@ -116,7 +119,7 @@ export function Programs() {
       )}
 
       {active && (
-        <section className="card accent" style={{ paddingBottom: 4 }}>
+        <section className="card accent clip" style={{ paddingBottom: 4 }}>
           <Link to={`/ficha/${active.id}`} className="tap-head row between" aria-label={`Abrir a rotina ${active.name}`}>
             <span className="col" style={{ minWidth: 0 }}>
               <span className="display ellipsis" style={{ fontSize: 20 }}>
@@ -132,7 +135,16 @@ export function Programs() {
               Ativa
             </span>
           </Link>
-          {workoutsOf(active.id).map(workoutRow)}
+          <LongPressSort className="tight" ids={workoutsOf(active.id).map((w) => w.id)} onReorder={(ids) => void reorderWorkouts(active.id, ids)}>
+            {(id) => {
+              const w = workouts.find((x) => x.id === id)!;
+              return (
+                <SwipeRow className="in-card" onDelete={() => void removeWorkout(w)}>
+                  {workoutRow(w)}
+                </SwipeRow>
+              );
+            }}
+          </LongPressSort>
           <button type="button" className="card-row-btn" onClick={() => addWorkout(active.id)}>
             <Icon name="plus" /> Adicionar treino
           </button>

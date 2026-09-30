@@ -21,7 +21,7 @@ interface Gesture {
  * Lista que dá para reordenar segurando um item e arrastando (como os ícones do iPhone).
  * Um toque normal continua abrindo o item e arrastar sem segurar continua rolando a tela.
  */
-export function LongPressSort({ ids, onReorder, children }: { ids: string[]; onReorder: (ids: string[]) => void; children: (id: string) => ReactNode }) {
+export function LongPressSort({ ids, onReorder, className = '', children }: { ids: string[]; onReorder: (ids: string[]) => void; className?: string; children: (id: string) => ReactNode }) {
   const listRef = useRef<HTMLDivElement>(null);
   const g = useRef<Gesture | null>(null);
   const frame = useRef<number | null>(null);
@@ -166,7 +166,7 @@ export function LongPressSort({ ids, onReorder, children }: { ids: string[]; onR
   };
 
   return (
-    <div ref={listRef} className={`lp-sort ${drag ? 'sorting' : ''}`}>
+    <div ref={listRef} className={`lp-sort ${className} ${drag ? 'sorting' : ''}`}>
       {shown.map((id, k) => (
         <div
           key={id}

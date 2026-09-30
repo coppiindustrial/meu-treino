@@ -10,6 +10,7 @@ import { IntervalConfigButtons } from '../components/Intervals';
 import { LogTypePicker } from '../components/LogTypePicker';
 import { PlannedSetRow, RepModeSheet, RestSheet, SetTypeSheet } from '../components/SetRow';
 import { SwipeRow } from '../components/SwipeRow';
+import { LongPressSort } from '../components/LongPressSort';
 import { isCardio, logTypeName } from '../lib/cardio';
 import { Sheet } from '../components/Sheet';
 import { db } from '../lib/db';
@@ -30,6 +31,7 @@ import {
   setItemLogType,
   propagatePlanned,
   removeWorkoutItem,
+  reorderWorkoutItems,
   startSession,
   toggleSuperset,
   updateWorkout,
@@ -229,6 +231,7 @@ export function WorkoutDetail() {
   };
 
   const groups = groupSupersets(items);
+  const inSuperset = new Set(groups.filter((g) => g.length > 1).flat().map((it) => it.id));
   const exOf = (i: number) => exerciseOrMissing(map, items[i].exerciseId);
   const setCount = plannedSetCount(items, (i) => exOf(i).logType);
   const volume = plannedVolumeKg(items, exOf);
@@ -313,17 +316,23 @@ export function WorkoutDetail() {
 
       {!editing ? (
         <div className="routine-rows">
-          {groups.map((g) => {
-            const rows = g.map((it) => {
+          {/* Segurar e arrastar muda a ordem; deslizar para o lado remove. Superset: faixa roxa na linha. */}
+          <LongPressSort className="tight" ids={items.map((it) => it.id)} onReorder={(ids) => void reorderWorkoutItems(workout.id, ids)}>
+            {(id) => {
+              const it = items.find((x) => x.id === id)!;
               const ex = exerciseOrMissing(map, it.exerciseId);
+              const ss = inSuperset.has(it.id);
               return (
-                <SwipeRow key={it.id} label="Remover" onDelete={() => removeItem(it)}>
-                  <Link to={`/exercicio/${it.exerciseId}`} className="routine-row">
+                <SwipeRow label="Remover" onDelete={() => removeItem(it)}>
+                  <Link to={`/exercicio/${it.exerciseId}`} className={`routine-row ${ss ? 'ss' : ''}`} draggable={false}>
                     <span className="ex-avatar">
                       <ExerciseThumb exercise={ex} />
                     </span>
                     <div className="col grow">
-                      <span style={{ fontWeight: 600 }}>{ex.name}</span>
+                      <span style={{ fontWeight: 600 }}>
+                        {ex.name}
+                        {ss && <span className="ss-tag">Superset</span>}
+                      </span>
                       <span className="small muted">
                         {itemSummary(it, ex.logType, ex.unit)}
                         {(it.logType ?? ex.logType) !== 'tiros' ? ` · descanso ${restText(it.restSeconds ?? workout.restSeconds)}` : ''}
@@ -334,15 +343,8 @@ export function WorkoutDetail() {
                   </Link>
                 </SwipeRow>
               );
-            });
-            if (g.length === 1) return rows;
-            return (
-              <div key={g[0].id} className="ss-group">
-                <span className="ss-label">Superset</span>
-                {rows}
-              </div>
-            );
-          })}
+            }}
+          </LongPressSort>
           {items.length > 0 && (
             <div className="dock">
               <button type="button" className="btn primary block" onClick={start}>

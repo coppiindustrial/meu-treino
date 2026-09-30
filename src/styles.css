@@ -3798,3 +3798,58 @@ html.vt-running .dock {
   text-transform: uppercase;
   color: var(--muted);
 }
+
+/* ------------------------------------------------------------ Segurar e arrastar + deslizar nas listas de treinos e exercícios */
+
+/* Lista sem espaço entre as linhas (linhas separadas por traço, como no treino e no cartão da rotina). */
+.lp-sort.tight {
+  gap: 0;
+}
+
+/* Item "pego": a linha ganha fundo e sombra, qualquer que seja a lista. */
+.lp-item.lifted .swipe-row {
+  background: var(--raised);
+  border-radius: 16px;
+}
+
+/* Deslizar em cartões (tela da rotina): o botão fica dentro do cartão, sem ir até a borda da tela. */
+.swipe-wrap.inset {
+  margin: 0;
+  border-radius: 16px;
+}
+
+.swipe-wrap.inset .swipe-del {
+  border-radius: 0 16px 16px 0;
+}
+
+.swipe-wrap.inset .swipe-row {
+  background: transparent;
+}
+
+/* Deslizar dentro do cartão da rotina ativa (aba Treinos): vai até a borda do cartão. */
+.card.clip {
+  overflow: hidden;
+}
+
+.swipe-wrap.in-card {
+  margin: 0 -16px;
+}
+
+.swipe-wrap.in-card .swipe-row {
+  background: var(--card);
+  padding: 0 16px;
+}
+
+/* Exercício em superset na lista do treino. */
+.routine-row.ss {
+  box-shadow: inset 3px 0 0 #a06cff;
+}
+
+.ss-tag {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #a06cff;
+}

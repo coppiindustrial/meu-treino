@@ -20,6 +20,7 @@ import { MeasureForm } from './screens/MeasureForm';
 import { NewExercise } from './screens/NewExercise';
 import { Profile } from './screens/Profile';
 import { ProgramDetail } from './screens/ProgramDetail';
+import { ReorderProgram } from './screens/ReorderProgram';
 import { ReorderWorkout } from './screens/ReorderWorkout';
 import { Programs } from './screens/Programs';
 import { Settings } from './screens/Settings';
@@ -60,6 +61,7 @@ function Shell() {
         <Route path="/treinos" element={<Programs />} />
         <Route path="/treinos/colar" element={<ImportProgram />} />
         <Route path="/ficha/:programId" element={<ProgramDetail />} />
+        <Route path="/ficha/:programId/reordenar" element={<ReorderProgram />} />
         <Route path="/treino/:workoutId" element={<WorkoutDetail />} />
         <Route path="/treino/:workoutId/adicionar" element={<ExercisePicker mode="workout" />} />
         <Route path="/treino/:workoutId/reordenar" element={<ReorderWorkout />} />

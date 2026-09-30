@@ -271,10 +271,31 @@ export async function deleteWorkout(id: string, renumber = true): Promise<void> 
   const w = await db.workouts.get(id);
   for (const it of await itemsOf(id)) await softDelete('workoutItems', it.id);
   await softDelete('workouts', id);
-  if (renumber && w) {
-    const rest = await workoutsOf(w.programId);
-    for (const [i, x] of rest.entries()) if (x.position !== i) await patch('workouts', x.id, { position: i });
+  if (renumber && w) await relabelWorkouts(await workoutsOf(w.programId));
+}
+
+/** Letra do treino pela posição: A, B, C… (depois do Z: AA, AB…). */
+function letterFor(i: number): string {
+  return i < 26 ? String.fromCharCode(65 + i) : String.fromCharCode(64 + Math.floor(i / 26)) + String.fromCharCode(65 + (i % 26));
+}
+
+/** Regrava a posição e a letra dos treinos na ordem dada (as letras seguem a ordem). Treinos já feitos guardam o título antigo. */
+async function relabelWorkouts(ordered: Workout[]): Promise<void> {
+  for (const [i, w] of ordered.entries()) {
+    const changes: Partial<Workout> = {};
+    if (w.position !== i) changes.position = i;
+    if (w.letter !== letterFor(i)) changes.letter = letterFor(i);
+    if (Object.keys(changes).length) await patch('workouts', w.id, changes);
   }
+}
+
+/** Nova ordem dos treinos da rotina (segurar e arrastar, ou a tela Reordenar). */
+export async function reorderWorkouts(programId: string, orderedIds: string[]): Promise<void> {
+  const list = await workoutsOf(programId);
+  const byId = new Map(list.map((w) => [w.id, w]));
+  const ordered = orderedIds.map((id) => byId.get(id)).filter((w): w is Workout => !!w);
+  for (const w of list) if (!orderedIds.includes(w.id)) ordered.push(w);
+  await relabelWorkouts(ordered);
 }
 
 // ---------------------------------------------------------------- Exercícios do treino

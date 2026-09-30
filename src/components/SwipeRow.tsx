@@ -6,7 +6,7 @@ const OPEN = 88; // largura do botão "Excluir"
  * Linha que dá para arrastar para a esquerda e mostrar "Excluir" (como no Hevy).
  * Só apaga ao tocar no botão. A rolagem vertical da tela continua normal.
  */
-export function SwipeRow({ onDelete, label = 'Excluir', children }: { onDelete: () => void; label?: string; children: ReactNode }) {
+export function SwipeRow({ onDelete, label = 'Excluir', className = '', children }: { onDelete: () => void; label?: string; className?: string; children: ReactNode }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -116,7 +116,7 @@ export function SwipeRow({ onDelete, label = 'Excluir', children }: { onDelete: 
   }, [open]);
 
   return (
-    <div ref={wrapRef} className={`swipe-wrap ${open ? 'open' : ''}`}>
+    <div ref={wrapRef} className={`swipe-wrap ${className} ${open ? 'open' : ''}`}>
       <button
         type="button"
         className="swipe-del"
