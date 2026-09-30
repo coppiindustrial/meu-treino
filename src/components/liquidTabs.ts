@@ -1,16 +1,22 @@
 /**
- * Bolha do menu de abas no estilo do iOS 26 (versão "Suave 2" escolhida no protótipo):
+ * Bolha do menu de abas no estilo do iOS 26 (versão "Suave 2", velocidade "Mais rápida", escolhidas no protótipo):
  * ao encostar, a pílula vira uma lente de vidro um pouco maior; dá para arrastar o dedo pelo menu
  * (a lente segue, estica de leve e amplia o ícone embaixo); ao soltar, assenta na aba com uma mola.
  * Tudo com molas em JS (requestAnimationFrame), sem re-renderizar o React.
  */
 
 const LENS = { w: 1.14, h: 1.28, mag: 0.14, stretch: 0.06, pillFade: 0.6 };
-const FOLLOW = { k: 900, c: 48 }; // seguindo o dedo: rápido e sem balançar
-const SETTLE = { k: 420, c: 38 }; // assentando na aba: quase sem quique
-const LENS_SPRING = { k: 700, c: 44 }; // a lente aparece rápido, até num toque curto
+
+// Velocidade escolhida no protótipo ("Mais rápida", 1,6×): acelera todas as molas na mesma proporção,
+// sem mudar o quanto elas balançam (rigidez × 1,6², amortecimento × 1,6).
+const SPEED = 1.6;
+const spring = (k: number, c: number) => ({ k: k * SPEED * SPEED, c: c * SPEED });
+const FOLLOW = spring(900, 48); // seguindo o dedo: rápido e sem balançar
+const SETTLE = spring(420, 38); // assentando na aba: quase sem quique
+const LENS_SPRING = spring(700, 44); // a lente aparece rápido, até num toque curto
+const SIZE = spring(520, 30); // largura e altura da bolha
 // Num toque rápido a lente fica acesa pelo menos este tempo e só murcha quando a bolha chega na aba.
-const MIN_LENS_MS = 320;
+const MIN_LENS_MS = 320 / SPEED;
 
 interface State {
   x: number;
@@ -139,10 +145,14 @@ export class LiquidTabs {
     const s = this.s;
     const dt = Math.min(1 / 30, Math.max(1 / 240, (now - this.last) / 1000));
     this.last = now;
-    [s.x, s.vx] = step(s.x, s.vx, s.tx, s.k, s.c, dt);
-    [s.w, s.vw] = step(s.w, s.vw, s.tw, 520, 30, dt);
-    [s.h, s.vh] = step(s.h, s.vh, s.th, 520, 30, dt);
-    [s.L, s.vL] = step(s.L, s.vL, s.tL, LENS_SPRING.k, LENS_SPRING.c, dt);
+    // Passos pequenos (até 1/240 s): as molas continuam estáveis mesmo se o aparelho pular quadros.
+    for (let rem = dt; rem > 1e-6; rem -= 1 / 240) {
+      const h = Math.min(rem, 1 / 240);
+      [s.x, s.vx] = step(s.x, s.vx, s.tx, s.k, s.c, h);
+      [s.w, s.vw] = step(s.w, s.vw, s.tw, SIZE.k, SIZE.c, h);
+      [s.h, s.vh] = step(s.h, s.vh, s.th, SIZE.k, SIZE.c, h);
+      [s.L, s.vL] = step(s.L, s.vL, s.tL, LENS_SPRING.k, LENS_SPRING.c, h);
+    }
     if (this.deflateAt !== null && now >= this.deflateAt && Math.abs(s.x - s.tx) < 4) {
       this.deflateAt = null;
       this.rest();
@@ -168,7 +178,7 @@ export class LiquidTabs {
     const s = this.s;
     const g = this.geo();
     if (!g.slot) return;
-    const stretch = Math.min(Math.abs(s.vx) / 1800, LENS.stretch); // estica de leve com a velocidade
+    const stretch = Math.min(Math.abs(s.vx) / (1800 * SPEED), LENS.stretch); // estica de leve com a velocidade
     const w = s.w * (1 + stretch);
     const h = s.h * (1 - stretch * 0.35);
     const x = s.x - w / 2;
