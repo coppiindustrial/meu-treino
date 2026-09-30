@@ -3812,34 +3812,6 @@ html.vt-running .dock {
   border-radius: 16px;
 }
 
-/* Deslizar em cartões (tela da rotina): o botão fica dentro do cartão, sem ir até a borda da tela. */
-.swipe-wrap.inset {
-  margin: 0;
-  border-radius: 16px;
-}
-
-.swipe-wrap.inset .swipe-del {
-  border-radius: 0 16px 16px 0;
-}
-
-.swipe-wrap.inset .swipe-row {
-  background: transparent;
-}
-
-/* Deslizar dentro do cartão da rotina ativa (aba Treinos): vai até a borda do cartão. */
-.card.clip {
-  overflow: hidden;
-}
-
-.swipe-wrap.in-card {
-  margin: 0 -16px;
-}
-
-.swipe-wrap.in-card .swipe-row {
-  background: var(--card);
-  padding: 0 16px;
-}
-
 /* Exercício em superset na lista do treino. */
 .routine-row.ss {
   box-shadow: inset 3px 0 0 #a06cff;

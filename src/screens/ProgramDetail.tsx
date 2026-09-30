@@ -6,8 +6,6 @@ import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { BackButton, EmptyState, TopBar } from '../components/Layout';
 import { LongPressSort } from '../components/LongPressSort';
-import { SwipeRow } from '../components/SwipeRow';
-import { useDeleteWorkout } from '../components/useDeleteWorkout';
 import { withTransition } from '../lib/nav';
 import { db } from '../lib/db';
 import { dayMonth, fullDate, toISODate } from '../lib/format';
@@ -26,7 +24,6 @@ export function ProgramDetail() {
   const { programId = '' } = useParams();
   const navigate = useNavigate();
   const { prompt, confirm, toast } = useDialogs();
-  const removeWorkout = useDeleteWorkout();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const data = useLiveQuery(async () => {
@@ -144,28 +141,20 @@ export function ProgramDetail() {
         {workouts.length === 0 && (
           <EmptyState title="Nenhum treino nesta rotina" text="Crie o Treino A e escolha os exercícios." />
         )}
-        {workouts.length > 1 && (
-          <div className="row between small muted">
-            <span>Segure para mudar a ordem</span>
-            <span>Deslize para excluir</span>
-          </div>
-        )}
         <LongPressSort ids={workouts.map((w) => w.id)} onReorder={(ids) => void reorderWorkouts(program.id, ids)}>
           {(id) => {
             const w = workouts.find((x) => x.id === id)!;
             return (
-              <SwipeRow className="inset" onDelete={() => void removeWorkout(w)}>
-                <Link to={`/treino/${w.id}`} className="list-row" draggable={false}>
-                  <div className="letter">{w.letter}</div>
-                  <div className="col grow">
-                    <span style={{ fontWeight: 700 }}>{w.name}</span>
-                    <span className="tiny muted">
-                      {counts[w.id] ?? 0} {(counts[w.id] ?? 0) === 1 ? 'exercício' : 'exercícios'} · descanso {w.restSeconds} s
-                    </span>
-                  </div>
-                  <Icon name="next" size={20} color="var(--muted)" />
-                </Link>
-              </SwipeRow>
+              <Link to={`/treino/${w.id}`} className="list-row" draggable={false}>
+                <div className="letter">{w.letter}</div>
+                <div className="col grow">
+                  <span style={{ fontWeight: 700 }}>{w.name}</span>
+                  <span className="tiny muted">
+                    {counts[w.id] ?? 0} {(counts[w.id] ?? 0) === 1 ? 'exercício' : 'exercícios'} · descanso {w.restSeconds} s
+                  </span>
+                </div>
+                <Icon name="next" size={20} color="var(--muted)" />
+              </Link>
             );
           }}
         </LongPressSort>
