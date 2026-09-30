@@ -146,11 +146,11 @@ function SessionStrip() {
         <span className="ellipsis grow">{session.title}</span>
         <span className="session-strip-time">{elapsedText(elapsed)}</span>
       </Link>
-      <button type="button" className="glass circle sm danger-text" aria-label="Descartar treino" onClick={discard}>
-        <Icon name="x" size={16} stroke={2.4} />
+      <button type="button" className="glass circle danger-text" aria-label="Descartar treino" onClick={discard}>
+        <Icon name="x" size={19} stroke={2.4} />
       </button>
-      <Link to="/sessao" className="glass circle sm" aria-label="Abrir o treino">
-        <Icon name="up" size={18} stroke={2.4} />
+      <Link to="/sessao" className="glass circle" aria-label="Abrir o treino">
+        <Icon name="up" size={22} stroke={2.4} />
       </Link>
     </div>
   );
