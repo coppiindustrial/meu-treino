@@ -3760,3 +3760,18 @@ body:has(.session-strip) .rest-bar {
 ::view-transition-new(dock) {
   animation: none;
 }
+
+/* Durante a animação de troca de tela, o vidro fica sem desfoque (quase sólido) e volta ao normal no fim.
+   Nas "fotos" da animação, o Safari desenhava o desfoque errado: um borrão no lugar do menu ou do botão fixo. */
+html.vt-running .tabbar-inner,
+html.vt-running .dock,
+html.vt-running .glass,
+html.vt-running .tab-lens {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html.vt-running .tabbar-inner,
+html.vt-running .dock {
+  background: rgba(30, 30, 33, 0.95);
+}

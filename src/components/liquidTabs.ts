@@ -8,6 +8,9 @@
 const LENS = { w: 1.14, h: 1.28, mag: 0.14, stretch: 0.06, pillFade: 0.6 };
 const FOLLOW = { k: 900, c: 48 }; // seguindo o dedo: rápido e sem balançar
 const SETTLE = { k: 420, c: 38 }; // assentando na aba: quase sem quique
+const LENS_SPRING = { k: 700, c: 44 }; // a lente aparece rápido, até num toque curto
+// Num toque rápido a lente fica acesa pelo menos este tempo e só murcha quando a bolha chega na aba.
+const MIN_LENS_MS = 320;
 
 interface State {
   x: number;
@@ -37,6 +40,8 @@ export class LiquidTabs {
   private raf: number | null = null;
   private last = 0;
   private held = false;
+  private pressedAt = 0;
+  private deflateAt: number | null = null;
   private readonly reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
   constructor(
@@ -68,6 +73,8 @@ export class LiquidTabs {
   /** Dedo encostou: vira lente e vai para baixo do dedo. */
   press(x: number): void {
     this.held = true;
+    this.pressedAt = performance.now();
+    this.deflateAt = null;
     const g = this.geo();
     this.s.tw = g.slot * LENS.w;
     this.s.th = g.h * LENS.h;
@@ -82,20 +89,30 @@ export class LiquidTabs {
     this.kick();
   }
 
-  /** Dedo saiu: volta a ser pílula e assenta na aba. */
+  /** Dedo saiu: a bolha vai (ainda como lente) até a aba e só então volta a ser pílula. */
   release(i: number): void {
     this.held = false;
-    this.settle(i);
+    const g = this.geo();
+    Object.assign(this.s, SETTLE);
+    this.s.tx = g.center(i);
+    this.deflateAt = Math.max(performance.now(), this.pressedAt + MIN_LENS_MS);
+    this.kick();
   }
 
+  /** Vai até a aba (ex.: a tela mudou por outro caminho). Se a lente estiver acesa, ela murcha ao chegar. */
   settle(i: number): void {
     const g = this.geo();
     Object.assign(this.s, SETTLE);
     this.s.tx = g.center(i);
+    if (!this.held && this.deflateAt === null) this.rest();
+    this.kick();
+  }
+
+  private rest(): void {
+    const g = this.geo();
     this.s.tw = g.slot;
     this.s.th = g.h;
     this.s.tL = 0;
-    this.kick();
   }
 
   destroy(): void {
@@ -105,6 +122,10 @@ export class LiquidTabs {
 
   private kick(): void {
     if (this.reduce) {
+      if (!this.held) {
+        this.deflateAt = null;
+        this.rest();
+      }
       Object.assign(this.s, { x: this.s.tx, w: this.s.tw, h: this.s.th, L: this.s.tL, vx: 0 });
       this.draw();
       return;
@@ -121,7 +142,11 @@ export class LiquidTabs {
     [s.x, s.vx] = step(s.x, s.vx, s.tx, s.k, s.c, dt);
     [s.w, s.vw] = step(s.w, s.vw, s.tw, 520, 30, dt);
     [s.h, s.vh] = step(s.h, s.vh, s.th, 520, 30, dt);
-    [s.L, s.vL] = step(s.L, s.vL, s.tL, 420, 34, dt);
+    [s.L, s.vL] = step(s.L, s.vL, s.tL, LENS_SPRING.k, LENS_SPRING.c, dt);
+    if (this.deflateAt !== null && now >= this.deflateAt && Math.abs(s.x - s.tx) < 4) {
+      this.deflateAt = null;
+      this.rest();
+    }
     const still =
       Math.abs(s.x - s.tx) < 0.3 &&
       Math.abs(s.vx) < 4 &&
@@ -129,7 +154,7 @@ export class LiquidTabs {
       Math.abs(s.h - s.th) < 0.3 &&
       Math.abs(s.L - s.tL) < 0.004 &&
       Math.abs(s.vL) < 0.02;
-    if (still && !this.held) {
+    if (still && !this.held && this.deflateAt === null) {
       Object.assign(s, { x: s.tx, w: s.tw, h: s.th, L: s.tL, vx: 0, vw: 0, vh: 0, vL: 0 });
       this.raf = null;
       this.draw();

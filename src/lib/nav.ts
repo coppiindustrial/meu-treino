@@ -22,6 +22,9 @@ export function withTransition(dir: NavDir, update: () => void): void {
     return;
   }
   document.documentElement.dataset.nav = dir;
+  // Durante a animação o vidro fica sem desfoque: nas "fotos" da troca de tela o Safari desenhava
+  // o desfoque errado (borrão no lugar do menu ou do botão fixo de baixo).
+  const endBlurless = blurless();
   // Se o navegador não chegar a desenhar (aba em segundo plano), troca de tela assim mesmo.
   let done = false;
   const run = () => {
@@ -38,6 +41,24 @@ export function withTransition(dir: NavDir, update: () => void): void {
   }) as { ready?: Promise<void>; finished?: Promise<void>; updateCallbackDone?: Promise<void> } | undefined;
   // Uma animação cancelada (ex.: outro toque no meio) não é erro: a tela já trocou.
   vt?.ready?.catch(() => undefined);
-  vt?.finished?.catch(() => undefined);
   vt?.updateCallbackDone?.catch(() => undefined);
+  if (vt?.finished) vt.finished.then(endBlurless, endBlurless);
+  else endBlurless();
+  setTimeout(endBlurless, 1500); // segurança
+}
+
+let blurlessCount = 0;
+
+/** Liga a classe "vt-running" no <html> enquanto houver troca de tela animada; devolve quem a desliga (uma vez só). */
+function blurless(): () => void {
+  const root = document.documentElement;
+  blurlessCount += 1;
+  root.classList.add('vt-running');
+  let ended = false;
+  return () => {
+    if (ended) return;
+    ended = true;
+    blurlessCount = Math.max(0, blurlessCount - 1);
+    if (blurlessCount === 0) setTimeout(() => blurlessCount === 0 && root.classList.remove('vt-running'), 30);
+  };
 }
