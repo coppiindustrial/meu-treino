@@ -1,5 +1,6 @@
+import { DEFAULT_INTERVAL, distText, formatDuration } from './cardio';
 import { loadText } from './equipment';
-import type { LoadUnit, PlannedSet } from './types';
+import type { DistUnit, IntervalConfig, LoadUnit, LogType, PlannedSet } from './types';
 
 /** "8-12" → "8–12" (faixa com travessão). */
 export function repsText(reps: string): string {
@@ -16,6 +17,24 @@ export function plannedSummary(sets: PlannedSet[], unit: LoadUnit): string {
   if (loads.length) text += ` · ${loadText(Math.max(...loads), unit)}`;
   if (warm) text += ` · ${warm} aquec.`;
   return text;
+}
+
+/** Resumo de um exercício da rotina, entendendo cardio (tempo, km e tiros). */
+export function itemSummary(
+  item: { sets: PlannedSet[]; logType?: LogType; distUnit?: DistUnit; interval?: IntervalConfig },
+  fallback: LogType,
+  unit: LoadUnit,
+): string {
+  const logType = item.logType ?? fallback;
+  if (logType === 'carga') return plannedSummary(item.sets, unit);
+  if (logType === 'tiros') {
+    const c = item.interval ?? DEFAULT_INTERVAL;
+    return `Tiros ${c.rounds} × ${formatDuration(c.work)}${c.rest ? ` · descanso ${formatDuration(c.rest)}` : ''}`;
+  }
+  if (item.sets.length === 0) return 'Sem séries';
+  const first = item.sets[0];
+  const parts = [logType === 'tempo_km' ? distText(first.dist, item.distUnit ?? 'km') : '', formatDuration(first.secs)].filter(Boolean);
+  return `${item.sets.length} × ${parts.join(' · ') || '—'}`;
 }
 
 /** Agrupa itens consecutivos ligados em superset. */

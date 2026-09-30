@@ -45,6 +45,7 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M21 16l-5-5-9 9" />
     </>
   ),
+  pause: <path d="M8 5v14M16 5v14" />,
   play: <path d="M7 4.5v15l12.5-7.5z" fill="currentColor" stroke="none" />,
   playCircle: (
     <>

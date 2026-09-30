@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { mmss } from '../lib/format';
+import { beep, unlockAudio } from '../lib/sound';
 import { Icon } from './Icon';
 
 interface RestState {
@@ -33,45 +34,6 @@ function readState(): RestState {
     // sem armazenamento
   }
   return { endsAt: null, total: 0 };
-}
-
-let audioCtx: AudioContext | null = null;
-
-function unlockAudio() {
-  try {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return;
-    if (!audioCtx) audioCtx = new AC();
-    if (audioCtx.state === 'suspended') void audioCtx.resume();
-  } catch {
-    // sem áudio
-  }
-}
-
-function beep() {
-  try {
-    if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    [0, 0.25, 0.5].forEach((offset) => {
-      const osc = audioCtx!.createOscillator();
-      const gain = audioCtx!.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.0001, t0 + offset);
-      gain.gain.exponentialRampToValueAtTime(0.4, t0 + offset + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + offset + 0.18);
-      osc.connect(gain).connect(audioCtx!.destination);
-      osc.start(t0 + offset);
-      osc.stop(t0 + offset + 0.2);
-    });
-  } catch {
-    // sem áudio
-  }
-  try {
-    navigator.vibrate?.([200, 100, 200]);
-  } catch {
-    // sem vibração
-  }
 }
 
 export function RestTimerProvider({ children }: { children: ReactNode }) {

@@ -6,7 +6,11 @@ import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { BackButton, EmptyState, TopBar } from '../components/Layout';
 import { ExerciseThumb } from '../components/Media';
+import { IntervalConfigButtons } from '../components/Intervals';
+import { LogTypePicker } from '../components/LogTypePicker';
 import { PlannedSetRow, RepModeSheet, RestSheet, SetTypeSheet } from '../components/SetRow';
+import { SwipeRow } from '../components/SwipeRow';
+import { isCardio, logTypeName } from '../lib/cardio';
 import { Sheet } from '../components/Sheet';
 import { db } from '../lib/db';
 import { setLabels } from '../lib/equipment';
@@ -22,6 +26,8 @@ import {
   itemsOf,
   moveWorkoutItem,
   editPlannedSets,
+  setItemDistUnit,
+  setItemLogType,
   propagatePlanned,
   removeWorkoutItem,
   startSession,
@@ -30,7 +36,7 @@ import {
   updateWorkoutItem,
 } from '../lib/repo';
 import type { PlannedSet, RepMode, Workout, WorkoutItem } from '../lib/types';
-import { groupSupersets, plannedSummary, restText } from '../lib/workout';
+import { groupSupersets, itemSummary, plannedSummary, restText } from '../lib/workout';
 
 export { groupSupersets, plannedSummary };
 
@@ -269,7 +275,8 @@ export function WorkoutDetail() {
                   <div className="col grow">
                     <span style={{ fontWeight: 600 }}>{ex.name}</span>
                     <span className="small muted">
-                      {plannedSummary(it.sets, ex.unit)} · descanso {restText(it.restSeconds ?? workout.restSeconds)}
+                      {itemSummary(it, ex.logType, ex.unit)}
+                      {(it.logType ?? ex.logType) !== 'tiros' ? ` · descanso ${restText(it.restSeconds ?? workout.restSeconds)}` : ''}
                     </span>
                     {it.note ? <span className="chip method">{it.note}</span> : null}
                   </div>
@@ -344,6 +351,9 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
   const labels = setLabels(item.sets.map((s) => s.type));
   const unitLabel = ex.unit === 'placa' ? 'Placa' : ex.unit;
   const save = (change: (sets: PlannedSet[]) => PlannedSet[]) => editPlannedSets(item.id, change);
+  const logType = item.logType ?? ex.logType;
+  const distUnit = item.distUnit ?? ex.distUnit;
+  const cardio = isCardio(logType);
 
   return (
     <section className="ex-card">
@@ -368,45 +378,69 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
           if (note !== (item.note ?? '')) void updateWorkoutItem(item.id, { note: note.trim() });
         }}
       />
-      <button type="button" className="rest-link" onClick={() => setRestOpen(true)}>
-        <Icon name="timer" size={16} /> Descanso: {restText(item.restSeconds ?? workout.restSeconds)}
-      </button>
-      <div className="sets">
-        <div className="set-row head plan">
-          <span style={{ textAlign: 'center' }}>Série</span>
-          <span style={{ textAlign: 'center' }}>{unitLabel}</span>
-          <span style={{ display: 'flex', justifyContent: 'center' }}>
-            <button type="button" className="unit-toggle" onClick={() => setModeOpen(true)} aria-label="Escolher repetições fixas ou faixa">
-              {mode === 'faixa' ? 'Faixa de reps' : 'Reps'}
-              <Icon name="down" size={12} stroke={2.5} />
-            </button>
-          </span>
-        </div>
-        {item.sets.map((s, i) => (
-          <PlannedSetRow
-            key={i}
-            label={labels[i]}
-            set={s}
-            hint={i > 0 ? item.sets[i - 1] : undefined}
-            repMode={mode}
-            onOpenMenu={() => setTypeIdx(i)}
-            onChange={(changes) => save((sets) => propagatePlanned(sets, i, changes))}
-          />
-        ))}
-        <button
-          type="button"
-          className="btn soft small block"
-          onClick={() => {
-            void save((sets) => {
-              const last = sets[sets.length - 1];
-              const next: PlannedSet = last ? { ...last, type: last.type === 'A' ? 'N' : last.type } : { type: 'N', reps: mode === 'faixa' ? '8-12' : '10', load: null };
-              return [...sets, next];
-            });
-          }}
-        >
-          <Icon name="plus" /> Adicionar série
-        </button>
+      <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+        {cardio && <span className="log-tag">{logTypeName(logType)}</span>}
+        {logType !== 'tiros' && (
+          <button type="button" className="rest-link" onClick={() => setRestOpen(true)}>
+            <Icon name="timer" size={16} /> Descanso: {restText(item.restSeconds ?? workout.restSeconds)}
+          </button>
+        )}
       </div>
+      {logType === 'tiros' ? (
+        <IntervalConfigButtons value={item.interval} onChange={(interval) => updateWorkoutItem(item.id, { interval })} />
+      ) : (
+        <div className="sets">
+          {cardio ? (
+            <div className={`set-row head plan ${logType === 'tempo' ? 'c-t' : 'c-tk'}`}>
+              <span style={{ textAlign: 'center' }}>Série</span>
+              {logType === 'tempo_km' && <span style={{ textAlign: 'center' }}>Meta {distUnit}</span>}
+              <span style={{ textAlign: 'center' }}>Meta tempo</span>
+            </div>
+          ) : (
+            <div className="set-row head plan">
+              <span style={{ textAlign: 'center' }}>Série</span>
+              <span style={{ textAlign: 'center' }}>{unitLabel}</span>
+              <span style={{ display: 'flex', justifyContent: 'center' }}>
+                <button type="button" className="unit-toggle" onClick={() => setModeOpen(true)} aria-label="Escolher repetições fixas ou faixa">
+                  {mode === 'faixa' ? 'Faixa de reps' : 'Reps'}
+                  <Icon name="down" size={12} stroke={2.5} />
+                </button>
+              </span>
+            </div>
+          )}
+          {item.sets.map((s, i) => (
+            <SwipeRow key={i} onDelete={() => save((sets) => sets.filter((_, j) => j !== i))}>
+              <PlannedSetRow
+                label={labels[i]}
+                set={s}
+                hint={i > 0 ? item.sets[i - 1] : undefined}
+                repMode={mode}
+                logType={logType}
+                distUnit={distUnit}
+                onOpenMenu={() => setTypeIdx(i)}
+                onChange={(changes) => save((sets) => propagatePlanned(sets, i, changes))}
+              />
+            </SwipeRow>
+          ))}
+          <button
+            type="button"
+            className="btn soft small block"
+            onClick={() => {
+              void save((sets) => {
+                const last = sets[sets.length - 1];
+                const next: PlannedSet = last
+                  ? { ...last, type: last.type === 'A' ? 'N' : last.type }
+                  : cardio
+                    ? { type: 'N', reps: '', load: null, secs: logType === 'tempo' ? 60 : null, dist: null }
+                    : { type: 'N', reps: mode === 'faixa' ? '8-12' : '10', load: null };
+                return [...sets, next];
+              });
+            }}
+          >
+            <Icon name="plus" /> Adicionar série
+          </button>
+        </div>
+      )}
 
       <SetTypeSheet
         open={typeIdx !== null}
@@ -441,6 +475,18 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
         }}
       />
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={ex.name}>
+        <LogTypePicker
+          value={logType}
+          distUnit={distUnit}
+          onType={async (t) => {
+            await setItemLogType('workoutItems', item.id, item.exerciseId, t);
+            // Cardio sem séries ganha uma linha para as metas (os tiros usam só a configuração).
+            if (t !== 'tiros' && t !== 'carga' && item.sets.length === 0) {
+              await save(() => [{ type: 'N', reps: '', load: null, secs: t === 'tempo' ? 60 : null, dist: null }]);
+            }
+          }}
+          onDistUnit={(u) => setItemDistUnit('workoutItems', item.id, item.exerciseId, u)}
+        />
         <div className="list-group">
           <Link to={`/exercicio/${item.exerciseId}`} className="list-item">
             <Icon name="chart" color="var(--text-2)" />

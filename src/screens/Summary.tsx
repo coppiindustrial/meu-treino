@@ -8,6 +8,7 @@ import { loadText } from '../lib/equipment';
 import { exerciseOrMissing, useExercises } from '../lib/exercises';
 import { duration, longDate, num, sessionMinutes, timeHM } from '../lib/format';
 import { sessionItemsOf, updateSession } from '../lib/repo';
+import { cardioTotals, formatDuration, isCardio } from '../lib/cardio';
 import { bestSet, sessionRecords, summarize } from '../lib/stats';
 
 export function Summary() {
@@ -92,6 +93,14 @@ export function Summary() {
           <span className="tiny muted">Volume total</span>
           <span className="tile-value">{stats.volume > 0 ? `${num(stats.volume, 0)} kg` : '—'}</span>
         </div>
+        {(stats.km > 0 || stats.cardioSecs > 0) && (
+          <div className="tile">
+            <span className="tiny muted">Cardio</span>
+            <span className="tile-value">
+              {[stats.km > 0 ? `${num(stats.km, 2)} km` : '', stats.cardioSecs > 0 ? formatDuration(stats.cardioSecs) : ''].filter(Boolean).join(' · ')}
+            </span>
+          </div>
+        )}
       </div>
 
       {records.map((r) => (
@@ -120,8 +129,12 @@ export function Summary() {
               const ex = exerciseOrMissing(map, it.exerciseId);
               const done = it.sets.filter((s) => s.done && s.type !== 'A');
               const b = bestSet(it.sets);
+              const cardio = isCardio(it.logType);
+              const totals = cardioTotals(it.sets, it.distUnit ?? 'km');
               const text =
-                done.length > 0
+                done.length > 0 && cardio
+                  ? [totals.km ? `${num(totals.km, 2)} km` : '', totals.secs ? formatDuration(totals.secs) : '', `${done.length} ${it.logType === 'tiros' ? (done.length === 1 ? 'tiro' : 'tiros') : done.length === 1 ? 'série' : 'séries'}`].filter(Boolean).join(' · ')
+                  : done.length > 0
                   ? `${done.length} × ${[...new Set(done.map((s) => s.reps ?? 0))].join('/')}${b.load !== null ? ` · ${loadText(b.load, it.unit)}` : ''}`
                   : it.done
                     ? 'Feito'

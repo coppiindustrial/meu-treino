@@ -3016,3 +3016,235 @@ html[data-nav="tab"] .screen:not(.no-tabs) {
     box-shadow: 0 0 0 0 rgba(48, 199, 90, 0);
   }
 }
+
+/* ------------------------------------------------------------ Cardio: colunas de tempo e distância */
+
+.set-row.c-tk {
+  grid-template-columns: 38px minmax(0, 1fr) 64px 64px 40px;
+}
+
+.set-row.c-t {
+  grid-template-columns: 38px minmax(0, 1fr) 88px 40px;
+}
+
+.set-row.plan.c-tk {
+  grid-template-columns: 38px minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.set-row.plan.c-t {
+  grid-template-columns: 38px minmax(0, 1fr);
+}
+
+.log-tag {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--raised);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+/* ------------------------------------------------------------ Deslizar para apagar */
+
+.swipe-wrap {
+  position: relative;
+  overflow: hidden;
+  margin: 0 -20px;
+}
+
+.swipe-del {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 88px;
+  border: 0;
+  background: var(--danger);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Fechado, o botão fica escondido (senão aparece um fio vermelho nas bordas). */
+.swipe-wrap:not(.open):not(.dragging) .swipe-del {
+  visibility: hidden;
+}
+
+.swipe-row {
+  position: relative;
+  z-index: 1;
+  background: var(--bg);
+  touch-action: pan-y;
+  transition: transform 0.35s var(--spring);
+}
+
+.ex-card .swipe-wrap .set-row {
+  margin: 0;
+}
+
+.ss-group .ex-card .swipe-wrap {
+  margin-left: 0;
+}
+
+.ss-group .ex-card .swipe-wrap .set-row {
+  margin: 0;
+  padding-left: 4px;
+}
+
+/* ------------------------------------------------------------ Tiros */
+
+.interval-cfg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.interval-cfg .btn {
+  flex-direction: column;
+  gap: 2px;
+  min-height: 58px;
+  padding: 6px;
+}
+
+.interval-cfg .btn b {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--raised);
+  border-radius: 16px;
+  padding: 10px 12px;
+}
+
+.stepper b {
+  font-size: 30px;
+}
+
+.tiros-panel {
+  border-radius: 20px;
+  padding: 16px;
+  text-align: center;
+  background: #0f1a12;
+  border: 0.5px solid #1f3a28;
+  transition:
+    background-color 0.4s ease,
+    border-color 0.4s ease;
+}
+
+.tiros-panel.rest {
+  background: #0e1826;
+  border-color: #1c3350;
+}
+
+.tiros-phase {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--success);
+}
+
+.tiros-panel.rest .tiros-phase {
+  color: var(--accent);
+}
+
+.tiros-ring {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 8px auto;
+}
+
+.tiros-ring svg {
+  transform: rotate(-90deg);
+}
+
+.tiros-ring svg circle {
+  transition: stroke-dashoffset 0.25s linear;
+}
+
+.tiros-ring b {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 36px;
+  font-weight: 700;
+}
+
+.tiros-ctl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.tiros-ctl .glass.pill {
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+/* ------------------------------------------------------------ Página do exercício: abas */
+
+.ex-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 4px -20px 0;
+  padding: 0 12px;
+  border-bottom: 0.5px solid var(--border-2);
+}
+
+.ex-tabs button {
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font-size: 15px;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.ex-tabs button.on {
+  color: var(--accent);
+}
+
+.ex-tabs-line {
+  position: absolute;
+  left: 12px;
+  bottom: -1px;
+  width: calc((100% - 24px) / 3);
+  height: 3px;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: transform 0.45s var(--spring);
+}
+
+.ex-avatar.big .thumb {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  border-radius: 50%;
+}
+
+.ex-chip.metric {
+  padding: 0 14px;
+}
+
+.hist-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text);
+}
+
+.hist-set {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}

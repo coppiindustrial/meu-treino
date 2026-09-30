@@ -1,5 +1,6 @@
+import { cardioTotals } from './cardio';
 import { db } from './db';
-import type { DoneSet, LoadUnit, Session, SessionItem } from './types';
+import type { DistUnit, DoneSet, LoadUnit, LogType, Session, SessionItem } from './types';
 
 export interface HistoryPoint {
   sessionId: string;
@@ -9,6 +10,8 @@ export interface HistoryPoint {
   best: number | null;
   bestReps: number | null;
   sets: DoneSet[];
+  logType?: LogType;
+  distUnit: DistUnit;
 }
 
 /** Melhor série: maior carga entre as séries normais/até a falha feitas. */
@@ -61,6 +64,8 @@ export async function exerciseHistory(exerciseId: string): Promise<HistoryPoint[
       best: b.load,
       bestReps: b.reps,
       sets: it.sets.filter((x) => x.done),
+      logType: it.logType,
+      distUnit: it.distUnit ?? 'km',
     });
   }
   return points.sort((a, b) => (a.key < b.key ? -1 : 1)).map(({ key: _k, ...p }) => p);
@@ -72,17 +77,22 @@ export async function doneSessions(): Promise<Session[]> {
   return list.sort((a, b) => (sortKey(a) < sortKey(b) ? 1 : -1));
 }
 
-export function summarize(items: SessionItem[]): { exercisesDone: number; setsDone: number; volume: number } {
+export function summarize(items: SessionItem[]): { exercisesDone: number; setsDone: number; volume: number; km: number; cardioSecs: number } {
   let setsDone = 0;
   let volume = 0;
   let exercisesDone = 0;
+  let km = 0;
+  let cardioSecs = 0;
   for (const it of items) {
     const done = it.sets.filter((s) => s.done).length;
     setsDone += done;
     volume += volumeKg(it.sets, it.unit ?? 'kg');
+    const c = cardioTotals(it.sets, it.distUnit ?? 'km');
+    km += c.km;
+    cardioSecs += c.secs;
     if (it.done || done > 0) exercisesDone += 1;
   }
-  return { exercisesDone, setsDone, volume: Math.round(volume) };
+  return { exercisesDone, setsDone, volume: Math.round(volume), km, cardioSecs };
 }
 
 export interface RecordHit {

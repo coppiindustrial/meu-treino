@@ -76,6 +76,20 @@ export interface ExercisePref extends Synced {
   unit?: LoadUnit;
   note?: string;
   videoUrl?: string;
+  /** Como registrar este exercício (padrão: pelo tipo do exercício). */
+  logType?: LogType;
+  distUnit?: DistUnit;
+}
+
+/** Como um exercício é registrado: carga e reps, só tempo, tempo e distância, ou tiros com timer. */
+export type LogType = 'carga' | 'tempo' | 'tempo_km' | 'tiros';
+export type DistUnit = 'km' | 'm';
+
+/** Tiros: tempo de tiro e de descanso (segundos) e número de rodadas. */
+export interface IntervalConfig {
+  work: number;
+  rest: number;
+  rounds: number;
 }
 
 export type ProgramStatus = 'active' | 'ready' | 'archived';
@@ -101,6 +115,9 @@ export interface PlannedSet {
   type: SetType;
   reps: string;
   load: number | null;
+  /** Cardio: meta de tempo (s) e de distância (na unidade do exercício). */
+  secs?: number | null;
+  dist?: number | null;
 }
 
 /** Repetições fixas ("10") ou faixa ("8-12"). */
@@ -117,6 +134,9 @@ export interface WorkoutItem extends Synced {
   repMode?: RepMode;
   /** Descanso deste exercício (s). Vazio = usa o do treino. */
   restSeconds?: number | null;
+  logType?: LogType;
+  distUnit?: DistUnit;
+  interval?: IntervalConfig;
 }
 
 export type SessionStatus = 'active' | 'done';
@@ -145,6 +165,14 @@ export interface DoneSet {
   /** O que foi feito nesta série na última vez. */
   prevLoad?: number | null;
   prevReps?: number | null;
+  /** Cardio: tempo (s) e distância (na unidade do exercício). */
+  secs?: number | null;
+  dist?: number | null;
+  prevSecs?: number | null;
+  prevDist?: number | null;
+  /** Meta de tempo e distância vinda da rotina. */
+  targetSecs?: number | null;
+  targetDist?: number | null;
 }
 
 export interface SessionItem extends Synced {
@@ -159,6 +187,9 @@ export interface SessionItem extends Synced {
   note?: string;
   repMode?: RepMode;
   restSeconds?: number | null;
+  logType?: LogType;
+  distUnit?: DistUnit;
+  interval?: IntervalConfig;
 }
 
 export interface BodyEntry extends Synced {

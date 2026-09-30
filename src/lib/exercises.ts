@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { CATALOG } from '../data/catalog';
 import { db } from './db';
-import type { CustomExercise, EquipmentId, ExercisePref, LoadUnit, MuscleId } from './types';
+import { defaultLogType } from './cardio';
+import type { CustomExercise, DistUnit, EquipmentId, ExercisePref, LoadUnit, LogType, MuscleId } from './types';
 
 export interface ExerciseView {
   id: string;
@@ -14,6 +15,9 @@ export interface ExerciseView {
   images: string[];
   steps: string[];
   unit: LoadUnit;
+  /** Como registrar (carga e reps, só tempo, tempo e km, tiros). */
+  logType: LogType;
+  distUnit: DistUnit;
   custom: boolean;
   videoUrl?: string;
   tips?: string;
@@ -36,6 +40,8 @@ function merge(custom: CustomExercise[], prefs: ExercisePref[]): ExerciseView[] 
       images: c.images ?? [],
       steps: c.steps,
       unit: p?.unit ?? c.unit ?? 'kg',
+      logType: p?.logType ?? defaultLogType(c.id, c.primary),
+      distUnit: p?.distUnit ?? 'km',
       custom: false,
       videoUrl: p?.videoUrl,
       note: p?.note,
@@ -53,6 +59,8 @@ function merge(custom: CustomExercise[], prefs: ExercisePref[]): ExerciseView[] 
       images: c.photos ?? [],
       steps: [],
       unit: p?.unit ?? c.unit ?? 'kg',
+      logType: p?.logType ?? defaultLogType(c.id, c.primary),
+      distUnit: p?.distUnit ?? 'km',
       custom: true,
       videoUrl: p?.videoUrl ?? c.videoUrl,
       tips: c.tips,
@@ -84,6 +92,8 @@ export function missingExercise(id: string): ExerciseView {
     images: [],
     steps: [],
     unit: 'kg',
+    logType: 'carga',
+    distUnit: 'km',
     custom: true,
   };
 }
@@ -98,6 +108,15 @@ export async function exerciseUnit(id: string): Promise<LoadUnit> {
   const custom = await db.customExercises.get(id);
   if (custom && !custom.deleted) return custom.unit ?? 'kg';
   return CATALOG_MAP.get(id)?.unit ?? 'kg';
+}
+
+/** Tipo de registro e unidade de distância de um exercício (preferência do usuário ou padrão). */
+export async function exerciseLog(id: string): Promise<{ logType: LogType; distUnit: DistUnit }> {
+  const pref = await db.exercisePrefs.get(id);
+  const live = pref && !pref.deleted ? pref : undefined;
+  const custom = await db.customExercises.get(id);
+  const primary = custom && !custom.deleted ? custom.primary : CATALOG_MAP.get(id)?.primary ?? 'corpo';
+  return { logType: live?.logType ?? defaultLogType(id, primary), distUnit: live?.distUnit ?? 'km' };
 }
 
 export function thumbOf(ex: ExerciseView): string | undefined {

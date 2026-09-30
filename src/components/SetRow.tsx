@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { SET_TYPE_BY_ID, SET_TYPES } from '../lib/equipment';
 import { num, parseNum } from '../lib/format';
-import type { DoneSet, LoadUnit, PlannedSet, RepMode, SetType } from '../lib/types';
+import { cardioSetText, distText, formatDuration, parseDistance, parseDuration } from '../lib/cardio';
+import type { DistUnit, DoneSet, LoadUnit, LogType, PlannedSet, RepMode, SetType } from '../lib/types';
 import { REST_OPTIONS, repsText, restText } from '../lib/workout';
 import { Icon } from './Icon';
 import { Sheet } from './Sheet';
@@ -15,11 +16,59 @@ function CheckMark() {
   );
 }
 
+/** Campo de tempo: digitar "130" vira 1:30; grava em segundos ao sair do campo. */
+function DurationInput({ value, placeholder, label, onCommit }: { value: number | null | undefined; placeholder: string; label: string; onCommit: (secs: number | null) => void }) {
+  const [text, setText] = useState(formatDuration(value));
+  useEffect(() => setText(formatDuration(value)), [value]);
+  return (
+    <input
+      className="set-input"
+      inputMode="numeric"
+      enterKeyHint="done"
+      value={text}
+      placeholder={placeholder || '0:00'}
+      aria-label={label}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const v = parseDuration(text);
+        setText(formatDuration(v));
+        if (v !== (value ?? null)) onCommit(v);
+      }}
+    />
+  );
+}
+
+/** Campo de distância (km com decimais ou metros inteiros). */
+function DistanceInput({ value, unit, placeholder, label, onCommit }: { value: number | null | undefined; unit: DistUnit; placeholder: string; label: string; onCommit: (dist: number | null) => void }) {
+  const show = (v: number | null | undefined) => (v === null || v === undefined ? '' : unit === 'm' ? String(Math.round(v)) : num(v, 2));
+  const [text, setText] = useState(show(value));
+  useEffect(() => setText(show(value)), [value, unit]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <input
+      className="set-input"
+      inputMode={unit === 'm' ? 'numeric' : 'decimal'}
+      enterKeyHint="next"
+      value={text}
+      placeholder={placeholder || '—'}
+      aria-label={label}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const v = parseDistance(text, unit);
+        if (v !== (value ?? null)) onCommit(v);
+      }}
+    />
+  );
+}
+
+const distPlaceholder = (v: number | null | undefined, unit: DistUnit) => (v === null || v === undefined ? '' : distText(v, unit).replace(/ (km|m)$/, ''));
+
 /** Uma série durante o treino: tipo, anterior, carga, repetições e check. */
 export function SetRow({
   label,
   set,
   unit,
+  logType = 'carga',
+  distUnit = 'km',
   onOpenMenu,
   onCommit,
   onToggle,
@@ -27,9 +76,11 @@ export function SetRow({
   label: string;
   set: DoneSet;
   unit: LoadUnit;
+  logType?: LogType;
+  distUnit?: DistUnit;
   onOpenMenu: () => void;
   onCommit: (changes: Partial<DoneSet>) => void;
-  onToggle: (load: number | null, reps: number | null) => void;
+  onToggle: (values: Partial<DoneSet>) => void;
 }) {
   const [load, setLoad] = useState(set.load === null ? '' : num(set.load, 2));
   const [reps, setReps] = useState(set.reps === null ? '' : String(set.reps));
@@ -45,11 +96,51 @@ export function SetRow({
         : '—';
   const repsPlaceholder = set.prevReps ? String(set.prevReps) : set.target ? repsText(set.target) : '';
 
+  const typeButton = (
+    <button type="button" className={`set-type ${info.className}`} aria-label={`Série ${label}, ${info.name}. Trocar tipo`} onClick={onOpenMenu}>
+      {label}
+    </button>
+  );
+  const check = (values: Partial<DoneSet>) => (
+    <button
+      type="button"
+      className={`set-check ${set.done ? 'on' : ''}`}
+      aria-pressed={set.done}
+      aria-label={set.done ? `Desmarcar série ${label}` : `Marcar série ${label} como feita`}
+      onClick={() => onToggle(values)}
+    >
+      <CheckMark />
+    </button>
+  );
+
+  // Cardio: distância e/ou tempo no lugar de carga e repetições.
+  if (logType !== 'carga') {
+    const hasPrev = set.prevSecs || set.prevDist;
+    const prev = hasPrev ? cardioSetText({ secs: set.prevSecs, dist: set.prevDist }, distUnit) : '—';
+    const timeHint = formatDuration(set.targetSecs ?? set.prevSecs);
+    const withDist = logType !== 'tempo';
+    return (
+      <div className={`set-row ${withDist ? 'c-tk' : 'c-t'} ${set.done ? 'done' : ''}`}>
+        {typeButton}
+        <span className="small muted ellipsis">{prev}</span>
+        {withDist && (
+          <DistanceInput
+            value={set.dist}
+            unit={distUnit}
+            placeholder={distPlaceholder(set.targetDist ?? set.prevDist, distUnit)}
+            label={`Distância da série ${label}`}
+            onCommit={(dist) => onCommit({ dist })}
+          />
+        )}
+        <DurationInput value={set.secs} placeholder={timeHint} label={`Tempo da série ${label}`} onCommit={(secs) => onCommit({ secs })} />
+        {check({})}
+      </div>
+    );
+  }
+
   return (
     <div className={`set-row ${set.done ? 'done' : ''}`}>
-      <button type="button" className={`set-type ${info.className}`} aria-label={`Série ${label}, ${info.name}. Trocar tipo`} onClick={onOpenMenu}>
-        {label}
-      </button>
+      {typeButton}
       <span className="small muted ellipsis">{prevText}</span>
       <input
         className="set-input"
@@ -78,19 +169,7 @@ export function SetRow({
           if (r !== set.reps) onCommit({ reps: r });
         }}
       />
-      <button
-        type="button"
-        className={`set-check ${set.done ? 'on' : ''}`}
-        aria-pressed={set.done}
-        aria-label={set.done ? `Desmarcar série ${label}` : `Marcar série ${label} como feita`}
-        onClick={() => {
-          const l = parseNum(load);
-          const r = parseNum(reps);
-          onToggle(l, r === null ? null : Math.round(r));
-        }}
-      >
-        <CheckMark />
-      </button>
+      {check({ load: parseNum(load), reps: parseNum(reps) === null ? null : Math.round(parseNum(reps) as number) })}
     </div>
   );
 }
@@ -101,6 +180,8 @@ export function PlannedSetRow({
   set,
   hint,
   repMode,
+  logType = 'carga',
+  distUnit = 'km',
   onOpenMenu,
   onChange,
 }: {
@@ -108,6 +189,8 @@ export function PlannedSetRow({
   set: PlannedSet;
   hint: PlannedSet | undefined;
   repMode: RepMode;
+  logType?: LogType;
+  distUnit?: DistUnit;
   onOpenMenu: () => void;
   onChange: (changes: Partial<PlannedSet>) => void;
 }) {
@@ -133,6 +216,27 @@ export function PlannedSetRow({
     const value = repMode === 'faixa' ? (x && y ? `${x}-${y}` : x || y) : x;
     if (value !== set.reps) onChange({ reps: value });
   };
+
+  if (logType !== 'carga') {
+    const withDist = logType !== 'tempo';
+    return (
+      <div className={`set-row plan ${withDist ? 'c-tk' : 'c-t'}`}>
+        <button type="button" className={`set-type ${info.className}`} aria-label={`Série ${label}, ${info.name}. Trocar tipo`} onClick={onOpenMenu}>
+          {label}
+        </button>
+        {withDist && (
+          <DistanceInput
+            value={set.dist}
+            unit={distUnit}
+            placeholder={distPlaceholder(hint?.dist, distUnit)}
+            label={`Meta de distância da série ${label}`}
+            onCommit={(dist) => onChange({ dist })}
+          />
+        )}
+        <DurationInput value={set.secs} placeholder={formatDuration(hint?.secs)} label={`Meta de tempo da série ${label}`} onCommit={(secs) => onChange({ secs })} />
+      </div>
+    );
+  }
 
   return (
     <div className="set-row plan">

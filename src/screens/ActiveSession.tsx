@@ -6,8 +6,12 @@ import { Icon } from '../components/Icon';
 import { EmptyState } from '../components/Layout';
 import { ExerciseThumb } from '../components/Media';
 import { useRest } from '../components/RestTimer';
+import { IntervalConfigButtons, TirosRunner } from '../components/Intervals';
 import { RestSheet, SetRow, SetTypeSheet } from '../components/SetRow';
+import { SwipeRow } from '../components/SwipeRow';
+import { LogTypePicker } from '../components/LogTypePicker';
 import { Sheet } from '../components/Sheet';
+import { isCardio, logTypeName } from '../lib/cardio';
 import { db } from '../lib/db';
 import { UNITS, setLabels } from '../lib/equipment';
 import { exerciseOrMissing, useExercises } from '../lib/exercises';
@@ -24,6 +28,8 @@ import {
   removeSet,
   sessionItemsOf,
   setSessionItemDone,
+  setItemDistUnit,
+  setItemLogType,
   setSessionItemUnit,
   toggleSessionSuperset,
   updateSessionItem,
@@ -76,9 +82,9 @@ export function ActiveSession() {
   const elapsed = session.startedAt ? (now - session.startedAt) / 1000 : 0;
   const groups = groupSupersets(items);
 
-  const onToggleSet = async (it: SessionItem, index: number, s: DoneSet, load: number | null, reps: number | null) => {
+  const onToggleSet = async (it: SessionItem, index: number, s: DoneSet, values: Partial<DoneSet>) => {
     const willBeDone = !s.done;
-    await updateSet(it.id, index, { load, reps, done: willBeDone });
+    await updateSet(it.id, index, { ...values, done: willBeDone });
     if (!willBeDone) return;
     const group = groups.find((g) => g.some((x) => x.id === it.id)) ?? [it];
     const pos = group.findIndex((x) => x.id === it.id);
@@ -131,6 +137,9 @@ export function ActiveSession() {
     const ex = exerciseOrMissing(map, it.exerciseId);
     const labels = setLabels(it.sets.map((s) => s.type));
     const unitLabel = it.unit === 'placa' ? 'Placa' : it.unit;
+    const logType = it.logType ?? ex.logType;
+    const distUnit = it.distUnit ?? ex.distUnit;
+    const cardio = isCardio(logType);
     return (
       <section key={it.id} className="ex-card">
         <div className="ex-head">
@@ -154,33 +163,53 @@ export function ActiveSession() {
           </button>
         </div>
         <NoteField item={it} />
-        <button type="button" className="rest-link" onClick={() => setRestFor(it.id)}>
-          <Icon name="timer" size={16} /> Descanso: {restText(restOf(it))}
-        </button>
-        <div className="sets">
-          <div className="set-row head">
-            <span style={{ textAlign: 'center' }}>Série</span>
-            <span>Anterior</span>
-            <span style={{ textAlign: 'center' }}>{unitLabel}</span>
-            <span style={{ textAlign: 'center' }}>Reps</span>
-            <span style={{ display: 'flex', justifyContent: 'center' }}>
-              <Icon name="check" size={14} stroke={3} />
-            </span>
+        <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+          {cardio && <span className="log-tag">{logTypeName(logType)}</span>}
+          {logType !== 'tiros' && (
+            <button type="button" className="rest-link" onClick={() => setRestFor(it.id)}>
+              <Icon name="timer" size={16} /> Descanso: {restText(restOf(it))}
+            </button>
+          )}
+        </div>
+        {logType === 'tiros' && (
+          <div className="stack">
+            <IntervalConfigButtons value={it.interval} onChange={(interval) => updateSessionItem(it.id, { interval })} />
+            <TirosRunner itemId={it.id} config={it.interval} onFinished={(n) => toast(`${n} tiros concluídos`)} />
           </div>
+        )}
+        <div className="sets">
+          {(logType !== 'tiros' || it.sets.length > 0) && (
+            <div className={`set-row head ${cardio ? (logType === 'tempo' ? 'c-t' : 'c-tk') : ''}`}>
+              <span style={{ textAlign: 'center' }}>{logType === 'tiros' ? 'Tiro' : 'Série'}</span>
+              <span>Anterior</span>
+              {!cardio && <span style={{ textAlign: 'center' }}>{unitLabel}</span>}
+              {!cardio && <span style={{ textAlign: 'center' }}>Reps</span>}
+              {cardio && logType !== 'tempo' && <span style={{ textAlign: 'center' }}>{distUnit}</span>}
+              {cardio && <span style={{ textAlign: 'center' }}>Tempo</span>}
+              <span style={{ display: 'flex', justifyContent: 'center' }}>
+                <Icon name="check" size={14} stroke={3} />
+              </span>
+            </div>
+          )}
           {it.sets.map((s, i) => (
-            <SetRow
-              key={i}
-              label={labels[i]}
-              set={s}
-              unit={it.unit}
-              onOpenMenu={() => setTypeMenu({ itemId: it.id, index: i })}
-              onCommit={(changes) => updateSet(it.id, i, changes)}
-              onToggle={(load, reps) => onToggleSet(it, i, s, load, reps)}
-            />
+            <SwipeRow key={i} onDelete={() => removeSet(it.id, i)}>
+              <SetRow
+                label={labels[i]}
+                set={s}
+                unit={it.unit}
+                logType={logType}
+                distUnit={distUnit}
+                onOpenMenu={() => setTypeMenu({ itemId: it.id, index: i })}
+                onCommit={(changes) => updateSet(it.id, i, changes)}
+                onToggle={(values) => onToggleSet(it, i, s, values)}
+              />
+            </SwipeRow>
           ))}
-          <button type="button" className="btn soft small block" onClick={() => addSet(it.id)}>
-            <Icon name="plus" /> Adicionar série
-          </button>
+          {logType !== 'tiros' && (
+            <button type="button" className="btn soft small block" onClick={() => addSet(it.id)}>
+              <Icon name="plus" /> Adicionar série
+            </button>
+          )}
         </div>
       </section>
     );
@@ -203,15 +232,23 @@ export function ActiveSession() {
         </button>
       </div>
 
-      <div className="stats-row">
+      <div className="stats-row" style={{ gridTemplateColumns: `repeat(${stats.volume > 0 && stats.km > 0 ? 4 : 3}, minmax(0, 1fr))` }}>
         <div>
           <span>Duração</span>
           <b style={{ color: 'var(--accent)' }}>{elapsedText(elapsed)}</b>
         </div>
-        <div>
-          <span>Volume</span>
-          <b>{num(stats.volume, 0)} kg</b>
-        </div>
+        {(stats.volume > 0 || stats.km === 0) && (
+          <div>
+            <span>Volume</span>
+            <b>{num(stats.volume, 0)} kg</b>
+          </div>
+        )}
+        {stats.km > 0 && (
+          <div>
+            <span>Distância</span>
+            <b>{num(stats.km, 2)} km</b>
+          </div>
+        )}
         <div>
           <span>Séries</span>
           <b>{stats.setsDone}</b>
@@ -266,6 +303,13 @@ export function ActiveSession() {
       <Sheet open={!!menuItem} onClose={() => setMenuFor(null)} title={menuItem ? exerciseOrMissing(map, menuItem.exerciseId).name : undefined}>
         {menuItem && (
           <>
+            <LogTypePicker
+              value={menuItem.logType ?? exerciseOrMissing(map, menuItem.exerciseId).logType}
+              distUnit={menuItem.distUnit ?? exerciseOrMissing(map, menuItem.exerciseId).distUnit}
+              onType={(t) => setItemLogType('sessionItems', menuItem.id, menuItem.exerciseId, t)}
+              onDistUnit={(u) => setItemDistUnit('sessionItems', menuItem.id, menuItem.exerciseId, u)}
+            />
+            {!isCardio(menuItem.logType ?? exerciseOrMissing(map, menuItem.exerciseId).logType) && (
             <div className="field">
               <span className="label">Anotar a carga em</span>
               <div className="seg">
@@ -282,6 +326,7 @@ export function ActiveSession() {
                 ))}
               </div>
             </div>
+            )}
             <div className="list-group">
               <Link to={`/exercicio/${menuItem.exerciseId}`} className="list-item" onClick={() => setMenuFor(null)}>
                 <Icon name="chart" color="var(--text-2)" />
@@ -349,3 +394,4 @@ function NoteField({ item }: { item: SessionItem }) {
     />
   );
 }
+

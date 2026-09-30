@@ -1,14 +1,17 @@
 import { db, tableOf, type SyncedTableName } from './db';
-import { exerciseUnit } from './exercises';
+import { DEFAULT_INTERVAL, isCardio } from './cardio';
+import { exerciseLog, exerciseUnit } from './exercises';
 import { todayISO } from './format';
 import { newId } from './ids';
 import { scheduleSync } from './sync';
 import type {
   BodyEntry,
   CustomExercise,
+  DistUnit,
   DoneSet,
   ExercisePref,
   LoadUnit,
+  LogType,
   PlannedSet,
   Profile,
   Program,
@@ -277,24 +280,44 @@ export function defaultPlannedSets(): PlannedSet[] {
   return [0, 1, 2].map(() => ({ type: 'N' as SetType, reps: '8-12', load: null }));
 }
 
+/** Séries iniciais conforme o tipo de registro (cardio começa sem as 3 × 8–12). */
+export function plannedSetsFor(logType: LogType): PlannedSet[] {
+  if (logType === 'tempo') return [0, 1, 2].map(() => ({ type: 'N' as SetType, reps: '', load: null, secs: 60 }));
+  if (logType === 'tempo_km') return [{ type: 'N', reps: '', load: null, secs: null, dist: null }];
+  if (logType === 'tiros') return [];
+  return defaultPlannedSets();
+}
+
+/** Campos de cardio de um item novo: tipo, unidade, descanso desligado e tiros padrão. */
+function cardioFields(logType: LogType, distUnit: DistUnit) {
+  return {
+    logType,
+    distUnit,
+    restSeconds: logType === 'tempo_km' || logType === 'tiros' ? 0 : null,
+    ...(logType === 'tiros' ? { interval: { ...DEFAULT_INTERVAL } } : {}),
+  };
+}
+
 export async function addExercisesToWorkout(workoutId: string, exerciseIds: string[]): Promise<void> {
   const items = await itemsOf(workoutId);
   const now = Date.now();
-  await putMany<WorkoutItem>(
-    'workoutItems',
-    exerciseIds.map((exerciseId, i) => ({
+  const rows: WorkoutItem[] = [];
+  for (const [i, exerciseId] of exerciseIds.entries()) {
+    const log = await exerciseLog(exerciseId);
+    rows.push({
       id: newId(),
       workoutId,
       exerciseId,
       position: items.length + i,
       supersetNext: false,
-      sets: defaultPlannedSets(),
+      sets: plannedSetsFor(log.logType),
       note: '',
       repMode: 'faixa',
-      restSeconds: null,
+      ...cardioFields(log.logType, log.distUnit),
       updatedAt: now,
-    })),
-  );
+    });
+  }
+  await putMany<WorkoutItem>('workoutItems', rows);
 }
 
 /**
@@ -305,12 +328,12 @@ export function propagatePlanned(sets: PlannedSet[], index: number, changes: Par
   const old = sets[index];
   const out = sets.slice();
   out[index] = { ...old, ...changes };
-  for (const f of ['reps', 'load'] as const) {
+  for (const f of ['reps', 'load', 'secs', 'dist'] as const) {
     if (!(f in changes) || changes[f] === old[f]) continue;
     for (let j = index + 1; j < out.length; j++) {
       const s = out[j];
       if (s.type === 'A') continue;
-      const empty = s[f] === null || s[f] === '';
+      const empty = s[f] === null || s[f] === undefined || s[f] === '';
       if (empty || s[f] === old[f]) out[j] = { ...s, [f]: changes[f] } as PlannedSet;
       else break;
     }
@@ -424,6 +447,12 @@ function buildSets(planned: PlannedSet[], prev: SessionItem | undefined): DoneSe
       target: p.reps,
       prevLoad: pv?.load ?? null,
       prevReps: pv?.reps ?? null,
+      secs: null,
+      dist: null,
+      prevSecs: pv?.secs ?? null,
+      prevDist: pv?.dist ?? null,
+      targetSecs: p.secs ?? null,
+      targetDist: p.dist ?? null,
     };
   });
 }
@@ -434,6 +463,8 @@ export function fillSet(s: DoneSet): DoneSet {
     ...s,
     load: s.load ?? s.prevLoad ?? null,
     reps: s.reps ?? s.prevReps ?? firstNumber(s.target) ?? null,
+    secs: s.secs ?? s.targetSecs ?? s.prevSecs ?? null,
+    dist: s.dist ?? s.targetDist ?? s.prevDist ?? null,
     done: true,
   };
 }
@@ -445,9 +476,12 @@ async function sessionItemFrom(
   planned: PlannedSet[],
   supersetNext: boolean,
   note: string,
-  extra: Pick<SessionItem, 'repMode' | 'restSeconds'> = {},
+  extra: Pick<SessionItem, 'repMode' | 'restSeconds' | 'logType' | 'distUnit' | 'interval'> = {},
 ): Promise<SessionItem> {
   const prev = await lastDoneItemFor(exerciseId);
+  const log = await exerciseLog(exerciseId);
+  const logType = extra.logType ?? log.logType;
+  const cardio = cardioFields(logType, extra.distUnit ?? log.distUnit);
   return {
     id: newId(),
     sessionId,
@@ -459,7 +493,9 @@ async function sessionItemFrom(
     sets: buildSets(planned, prev),
     note,
     repMode: extra.repMode ?? 'faixa',
-    restSeconds: extra.restSeconds ?? null,
+    ...cardio,
+    restSeconds: extra.restSeconds ?? cardio.restSeconds,
+    ...(logType === 'tiros' ? { interval: extra.interval ?? cardio.interval } : {}),
     updatedAt: Date.now(),
   };
 }
@@ -483,6 +519,9 @@ export async function startSession(workoutId: string | null): Promise<string> {
           await sessionItemFrom(id, wi.exerciseId, i, wi.sets, wi.supersetNext, wi.note ?? '', {
             repMode: wi.repMode ?? (wi.sets.some((x) => x.reps.includes('-')) ? 'faixa' : 'fixa'),
             restSeconds: wi.restSeconds ?? null,
+            logType: wi.logType,
+            distUnit: wi.distUnit,
+            interval: wi.interval,
           }),
         );
       }
@@ -509,7 +548,8 @@ export async function addExercisesToSession(sessionId: string, exerciseIds: stri
   const items = await sessionItemsOf(sessionId);
   const created: SessionItem[] = [];
   for (const [i, exId] of exerciseIds.entries()) {
-    created.push(await sessionItemFrom(sessionId, exId, items.length + i, defaultPlannedSets(), false, ''));
+    const log = await exerciseLog(exId);
+    created.push(await sessionItemFrom(sessionId, exId, items.length + i, plannedSetsFor(log.logType), false, ''));
   }
   await putMany('sessionItems', created);
 }
@@ -577,12 +617,12 @@ function updatedSets(item: SessionItem, index: number, changes: Partial<DoneSet>
   if (changes.done === true) sets[index] = fillSet(sets[index]);
   // Carga e repetições digitadas "descem" para as séries seguintes ainda não feitas
   // que estavam iguais (ou vazias) — assim não é preciso repetir o mesmo valor.
-  for (const f of ['load', 'reps'] as const) {
+  for (const f of ['load', 'reps', 'secs', 'dist'] as const) {
     if (!(f in changes) || changes[f] === old[f]) continue;
     for (let j = index + 1; j < sets.length; j++) {
       const s = sets[j];
       if (s.done || s.type === 'A') continue;
-      if (s[f] === null || s[f] === old[f]) sets[j] = { ...s, [f]: changes[f] ?? null };
+      if (s[f] === null || s[f] === undefined || s[f] === old[f]) sets[j] = { ...s, [f]: changes[f] ?? null };
       else break;
     }
   }
@@ -598,9 +638,13 @@ export async function addSet(itemId: string): Promise<void> {
       load: last?.load ?? null,
       reps: null,
       done: false,
-      target: last?.target ?? '10',
+      target: last?.target ?? (isCardio(item.logType) ? '' : '10'),
       prevLoad: null,
       prevReps: null,
+      secs: null,
+      dist: null,
+      targetSecs: last?.secs ?? last?.targetSecs ?? null,
+      targetDist: last?.dist ?? last?.targetDist ?? null,
     };
     return { sets: [...item.sets, next], done: false };
   });
@@ -611,6 +655,47 @@ export async function removeSet(itemId: string, index: number): Promise<void> {
     const sets = item.sets.filter((_, i) => i !== index);
     return { sets, done: sets.length > 0 && sets.every((s) => s.done) };
   });
+}
+
+/** Troca como o exercício é registrado (neste treino ou rotina) e lembra a escolha para as próximas vezes. */
+export async function setItemLogType(
+  table: 'sessionItems' | 'workoutItems',
+  itemId: string,
+  exerciseId: string,
+  logType: LogType,
+): Promise<void> {
+  const item = table === 'sessionItems' ? await db.sessionItems.get(itemId) : await db.workoutItems.get(itemId);
+  if (!item) return;
+  const changes: Partial<Omit<SessionItem, 'sets'> & Omit<WorkoutItem, 'sets'>> & { sets?: DoneSet[] } = { logType };
+  if (logType === 'tiros' && !item.interval) changes.interval = { ...DEFAULT_INTERVAL };
+  if (isCardio(logType) && !isCardio(item.logType) && (item.restSeconds === null || item.restSeconds === undefined)) {
+    changes.restSeconds = logType === 'tempo' ? null : 0;
+  }
+  if (table === 'sessionItems') {
+    const sets = (item as SessionItem).sets;
+    // Tiros: as séries vêm do timer (fica só o que já foi feito). Outros tipos: pelo menos uma linha.
+    if (logType === 'tiros') changes.sets = sets.filter((x) => x.done);
+    else if (sets.length === 0) changes.sets = [{ type: 'N', load: null, reps: null, done: false, secs: null, dist: null }];
+  }
+  await patch(table, itemId, changes);
+  await savePref(exerciseId, { logType });
+}
+
+export async function setItemDistUnit(
+  table: 'sessionItems' | 'workoutItems',
+  itemId: string,
+  exerciseId: string,
+  distUnit: DistUnit,
+): Promise<void> {
+  await patch(table, itemId, { distUnit });
+  await savePref(exerciseId, { distUnit });
+}
+
+/** Tiros: registra um tiro terminado como série feita. */
+export async function logTiro(itemId: string, secs: number): Promise<void> {
+  await editSessionItem(itemId, (item) => ({
+    sets: [...item.sets, { type: 'N', load: null, reps: null, done: true, secs: Math.round(secs), dist: null }],
+  }));
 }
 
 export async function setSessionItemUnit(itemId: string, exerciseId: string, unit: LoadUnit): Promise<void> {
