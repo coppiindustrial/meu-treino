@@ -379,12 +379,40 @@ export async function removeWorkoutItem(id: string): Promise<void> {
   await normalizeItems(item.workoutId);
 }
 
-export async function moveWorkoutItem(workoutId: string, from: number, to: number): Promise<void> {
+/**
+ * Grava a ordem da tela "Reordenar". Quem ficou de fora sai da rotina; um superset só continua
+ * se o exercício de baixo for o mesmo de antes (grupos separados na nova ordem se desfazem).
+ */
+export async function reorderWorkoutItems(workoutId: string, orderedIds: string[]): Promise<void> {
   const items = await itemsOf(workoutId);
-  if (to < 0 || to >= items.length || from === to) return;
-  const [moved] = items.splice(from, 1);
-  items.splice(to, 0, moved);
-  await normalizeItems(workoutId, items);
+  const byId = new Map(items.map((it) => [it.id, it]));
+  const keep = new Set(orderedIds);
+  for (const it of items) if (!keep.has(it.id)) await softDelete('workoutItems', it.id);
+  const nextBefore = new Map(items.map((it, i) => [it.id, items[i + 1]?.id]));
+  const ordered = orderedIds.map((id) => byId.get(id)).filter((it): it is WorkoutItem => !!it);
+  for (const [i, it] of ordered.entries()) {
+    if (it.supersetNext && nextBefore.get(it.id) !== ordered[i + 1]?.id) {
+      await patch('workoutItems', it.id, { supersetNext: false });
+      ordered[i] = { ...it, supersetNext: false };
+    }
+  }
+  await normalizeItems(workoutId, ordered);
+}
+
+/**
+ * Troca o exercício de um item da rotina mantendo séries, anotação, descanso e superset.
+ * Se o novo exercício anota de outro jeito (ex.: musculação → esteira), as séries mudam de formato.
+ */
+export async function replaceWorkoutItemExercise(itemId: string, exerciseId: string): Promise<void> {
+  const item = await db.workoutItems.get(itemId);
+  if (!item) return;
+  const oldType = item.logType ?? (await exerciseLog(item.exerciseId)).logType;
+  const log = await exerciseLog(exerciseId);
+  if (log.logType === oldType) {
+    await patch('workoutItems', itemId, { exerciseId });
+    return;
+  }
+  await patch('workoutItems', itemId, { exerciseId, sets: plannedSetsFor(log.logType), ...cardioFields(log.logType, log.distUnit) });
 }
 
 export async function toggleSuperset(itemId: string): Promise<void> {

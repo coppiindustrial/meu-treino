@@ -151,6 +151,9 @@ const PATHS: Record<string, ReactNode> = {
     </>
   ),
   book: <path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4zM5 16a4 4 0 0 1 4-4h10" />,
+  sort: <path d="M7 4v16M4 17l3 3 3-3M17 20V4M14 7l3-3 3 3" />,
+  swap: <path d="M4 7h13l-3-3M20 17H7l3 3" />,
+  lines: <path d="M4 8h16M4 12h16M4 16h16" />,
 };
 
 export type IconName = keyof typeof PATHS;

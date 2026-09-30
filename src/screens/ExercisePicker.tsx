@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { BackButton, TopBar } from '../components/Layout';
@@ -8,18 +8,20 @@ import { ExerciseThumb } from '../components/Media';
 import { EquipmentPicker, MusclePicker } from '../components/Pickers';
 import { db } from '../lib/db';
 import { equipmentName } from '../lib/equipment';
-import { normalize, useExercises } from '../lib/exercises';
+import { exerciseOrMissing, normalize, useExercises } from '../lib/exercises';
 import { muscleName } from '../lib/muscles';
-import { addExercisesToSession, addExercisesToWorkout, getActiveSession } from '../lib/repo';
+import { withTransition } from '../lib/nav';
+import { addExercisesToSession, addExercisesToWorkout, getActiveSession, replaceWorkoutItemExercise } from '../lib/repo';
 import type { EquipmentId, MuscleId } from '../lib/types';
 
-type Mode = 'browse' | 'workout' | 'session';
+type Mode = 'browse' | 'workout' | 'session' | 'replace';
 
 export function ExercisePicker({ mode }: { mode: Mode }) {
-  const { workoutId = '' } = useParams();
+  const { workoutId = '', itemId = '' } = useParams();
+  const [params] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useDialogs();
-  const { list } = useExercises();
+  const { list, map } = useExercises();
   const [query, setQuery] = useState('');
   const [muscle, setMuscle] = useState<MuscleId | null>(null);
   const [equipment, setEquipment] = useState<EquipmentId | null>(null);
@@ -27,7 +29,15 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
   const [equipOpen, setEquipOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
 
-  const workout = useLiveQuery(() => (workoutId ? db.workouts.get(workoutId) : undefined), [workoutId]);
+  // Substituir: o exercício que vai sair (a lista começa pelos do mesmo músculo).
+  const replacing = useLiveQuery(() => (mode === 'replace' && itemId ? db.workoutItems.get(itemId) : undefined), [mode, itemId]);
+  const current = replacing ? exerciseOrMissing(map, replacing.exerciseId) : null;
+  const presetDone = useRef(false);
+  useEffect(() => {
+    if (!current || presetDone.current || current.primary === undefined) return;
+    presetDone.current = true;
+    setMuscle(current.primary);
+  }, [current]);
   const usage = useLiveQuery(async () => {
     const items = await db.sessionItems.filter((i) => !i.deleted).toArray();
     const counts: Record<string, number> = {};
@@ -41,6 +51,7 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
       if (muscle && e.primary !== muscle && !e.secondary.includes(muscle)) return false;
       if (equipment && e.equipment !== equipment) return false;
       if (q && !normalize(e.name).includes(q)) return false;
+      if (replacing && e.id === replacing.exerciseId) return false;
       return true;
     });
     if (muscle) {
@@ -48,17 +59,26 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
       out.sort((a, b) => Number(b.primary === muscle) - Number(a.primary === muscle));
     }
     return out;
-  }, [list, query, muscle, equipment]);
+  }, [list, query, muscle, equipment, replacing]);
 
   const recent = useMemo(() => {
-    if (!usage || query || muscle || equipment || mode === 'browse') return [];
+    if (!usage || query || muscle || equipment || mode === 'browse' || mode === 'replace') return [];
     return list
       .filter((e) => (usage[e.id] ?? 0) > 0)
       .sort((a, b) => (usage[b.id] ?? 0) - (usage[a.id] ?? 0))
       .slice(0, 6);
   }, [usage, list, query, muscle, equipment, mode]);
 
-  const adding = mode !== 'browse';
+  const adding = mode === 'workout' || mode === 'session';
+
+  const replaceWith = async (exerciseId: string) => {
+    await replaceWorkoutItemExercise(itemId, exerciseId);
+    toast('Exercício substituído');
+    withTransition('back', () => {
+      if (window.history.state && window.history.state.idx > 0) navigate(-1);
+      else navigate(`/treino/${workoutId}?editar=1`, { replace: true });
+    });
+  };
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
   const confirmAdd = async () => {
@@ -76,10 +96,26 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
 
   const createLink =
     mode === 'workout' ? `/exercicios/novo?treino=${workoutId}` : mode === 'session' ? '/exercicios/novo?sessao=1' : '/exercicios/novo';
+  const backTo = mode === 'workout' ? `/treino/${workoutId}` : mode === 'replace' ? `/treino/${workoutId}?editar=1` : mode === 'session' ? '/sessao' : '/treinos';
 
   const row = (e: (typeof list)[number]) => {
     const on = selected.includes(e.id);
     const sub = `${muscleName(e.primary)} · ${equipmentName(e.equipment)}`;
+    if (mode === 'replace') {
+      return (
+        <button key={e.id} type="button" className="list-row" style={{ padding: 10, width: '100%', textAlign: 'left' }} onClick={() => replaceWith(e.id)}>
+          <ExerciseThumb exercise={e} size="lg" />
+          <div className="col grow">
+            <div className="row" style={{ gap: 6 }}>
+              <span style={{ fontWeight: 700 }}>{e.name}</span>
+              {e.custom && <span className="chip soft-accent">Seu</span>}
+            </div>
+            <span className="small muted">{sub}</span>
+          </div>
+          <Icon name="swap" size={20} color="var(--accent)" />
+        </button>
+      );
+    }
     if (!adding) {
       return (
         <Link key={e.id} to={`/exercicio/${e.id}`} className="list-row" style={{ padding: 10 }}>
@@ -131,10 +167,7 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
     <main className="screen no-tabs tight">
       <TopBar
         left={
-          <BackButton
-            to={mode === 'workout' ? `/treino/${workoutId}` : mode === 'session' ? '/sessao' : '/treinos'}
-            label={mode === 'workout' ? `Treino ${workout?.letter ?? ''}` : mode === 'session' ? 'Treino' : 'Voltar'}
-          />
+          <BackButton to={backTo} />
         }
         right={
           <Link to={createLink} className="glass circle" aria-label="Criar exercício">
@@ -142,9 +175,12 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
           </Link>
         }
       />
-      <h1 className="h1">
-        {adding ? 'Adicionar exercício' : 'Exercícios'}
-      </h1>
+      <h1 className="h1">{mode === 'replace' ? 'Substituir exercício' : adding ? 'Adicionar exercício' : 'Exercícios'}</h1>
+      {current && (
+        <p className="small muted" style={{ margin: '-6px 0 0' }}>
+          No lugar de <b style={{ color: 'var(--text)' }}>{current.name}</b>. As séries e a anotação continuam.
+        </p>
+      )}
 
       <label className="search">
         <Icon name="search" size={20} />
@@ -152,6 +188,7 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
           type="search"
           placeholder="Buscar exercício"
           aria-label="Buscar exercício"
+          autoFocus={params.get('buscar') === '1'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />

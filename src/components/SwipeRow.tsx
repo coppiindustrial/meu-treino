@@ -75,10 +75,16 @@ export function SwipeRow({ onDelete, label = 'Excluir', children }: { onDelete: 
       setTimeout(() => wrapRef.current?.classList.remove('dragging'), 380);
     };
     // Depois de arrastar, o toque não conta como clique (não marca série sem querer).
+    // Com o botão aberto, tocar na linha só fecha.
     const click = (e: MouseEvent) => {
-      if (justDragged) {
-        e.preventDefault();
-        e.stopPropagation();
+      if (!justDragged && !openRef.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!justDragged) {
+        setOpen(false);
+        setX(0, true);
+        wrapRef.current?.classList.add('dragging');
+        setTimeout(() => wrapRef.current?.classList.remove('dragging'), 380);
       }
     };
     row.addEventListener('pointerdown', down);

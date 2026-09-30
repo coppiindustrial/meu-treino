@@ -106,9 +106,14 @@ export function Home() {
     <main className="screen">
       <header className="tab-head">
         <h1 className="h1">Treino</h1>
-        <Link to="/perfil" className="glass circle" aria-label="Abrir perfil">
-          <Icon name="user" size={21} />
-        </Link>
+        <div className="actions">
+          <Link to="/exercicios?buscar=1" className="glass circle" aria-label="Buscar exercício">
+            <Icon name="search" size={21} />
+          </Link>
+          <Link to="/perfil" className="glass circle" aria-label="Abrir perfil">
+            <Icon name="user" size={21} />
+          </Link>
+        </div>
       </header>
 
       {/* Com treino em andamento, ele aparece no menu de baixo (sem repetir aqui). */}

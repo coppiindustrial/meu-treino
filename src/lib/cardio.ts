@@ -26,23 +26,6 @@ export function logTypeName(t: LogType): string {
 
 export const isCardio = (t: LogType | undefined): boolean => t === 'tempo' || t === 'tempo_km' || t === 'tiros';
 
-/**
- * Lê um tempo digitado: "1:30" = 1 min 30 s; só números contam os dois últimos dígitos como
- * segundos ("130" = 1:30, "45" = 0:45, "3000" = 30:00). "1:05:00" = 1 h 5 min.
- */
-export function parseDuration(text: string): number | null {
-  const t = text.trim();
-  if (!t) return null;
-  if (t.includes(':')) {
-    const parts = t.split(':').map((p) => Number(p.replace(/\D/g, '') || '0'));
-    return parts.reduce((acc, p) => acc * 60 + p, 0);
-  }
-  const digits = t.replace(/\D/g, '');
-  if (!digits) return null;
-  if (digits.length <= 2) return Number(digits);
-  return Number(digits.slice(0, -2)) * 60 + Number(digits.slice(-2));
-}
-
 /** 90 → "1:30"; 3900 → "1:05:00". */
 export function formatDuration(secs: number | null | undefined): string {
   if (secs === null || secs === undefined || !Number.isFinite(secs)) return '';

@@ -20,6 +20,7 @@ import { MeasureForm } from './screens/MeasureForm';
 import { NewExercise } from './screens/NewExercise';
 import { Profile } from './screens/Profile';
 import { ProgramDetail } from './screens/ProgramDetail';
+import { ReorderWorkout } from './screens/ReorderWorkout';
 import { Programs } from './screens/Programs';
 import { Progress } from './screens/Progress';
 import { Summary } from './screens/Summary';
@@ -38,6 +39,8 @@ function Shell() {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       const a = (e.target as Element | null)?.closest?.('a[href^="#/"]') as HTMLAnchorElement | null;
       if (!a || a.target) return;
+      // Soltar o dedo depois de deslizar uma linha (ou tocar nela aberta) não abre o link dela.
+      if (a.closest('.swipe-wrap.dragging, .swipe-wrap.open')) return;
       const to = a.getAttribute('href')!.slice(1);
       e.preventDefault();
       e.stopPropagation();
@@ -58,6 +61,8 @@ function Shell() {
         <Route path="/ficha/:programId" element={<ProgramDetail />} />
         <Route path="/treino/:workoutId" element={<WorkoutDetail />} />
         <Route path="/treino/:workoutId/adicionar" element={<ExercisePicker mode="workout" />} />
+        <Route path="/treino/:workoutId/reordenar" element={<ReorderWorkout />} />
+        <Route path="/treino/:workoutId/substituir/:itemId" element={<ExercisePicker mode="replace" />} />
         <Route path="/exercicios" element={<ExercisePicker mode="browse" />} />
         <Route path="/exercicios/novo" element={<NewExercise />} />
         <Route path="/exercicios/:exerciseId/editar" element={<NewExercise />} />

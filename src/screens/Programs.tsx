@@ -99,9 +99,14 @@ export function Programs() {
     <main className="screen">
       <header className="tab-head">
         <h1 className="h1">Treinos</h1>
-        <button type="button" className="glass circle" aria-label="Nova ficha" onClick={newProgram}>
-          <Icon name="plus" size={22} stroke={2.4} />
-        </button>
+        <div className="actions">
+          <Link to="/exercicios?buscar=1" className="glass circle" aria-label="Buscar exercício">
+            <Icon name="search" size={21} />
+          </Link>
+          <button type="button" className="glass circle" aria-label="Nova ficha" onClick={newProgram}>
+            <Icon name="plus" size={22} stroke={2.4} />
+          </button>
+        </div>
       </header>
 
       {programs.length === 0 ? (
@@ -168,17 +173,6 @@ export function Programs() {
           })}
         </section>
       )}
-
-      <Link to="/exercicios" className="list-row">
-        <span className="notice-icon">
-          <Icon name="book" />
-        </span>
-        <span className="col grow">
-          <span style={{ fontWeight: 700 }}>Biblioteca de exercícios</span>
-          <span className="tiny muted">Animações, fotos e passo a passo</span>
-        </span>
-        <Icon name="next" size={20} color="var(--muted)" />
-      </Link>
 
       <Sheet open={newOpen} onClose={() => setNewOpen(false)} title="Nova ficha">
         <div className="list-group">

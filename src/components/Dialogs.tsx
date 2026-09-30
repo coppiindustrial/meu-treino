@@ -18,10 +18,16 @@ interface PromptOptions {
   inputMode?: 'text' | 'numeric' | 'decimal';
 }
 
+interface ToastOptions {
+  /** Botão no aviso (ex.: "Desfazer"). */
+  action?: { label: string; onClick: () => void };
+  ms?: number;
+}
+
 interface Dialogs {
   confirm: (opts: ConfirmOptions) => Promise<boolean>;
   prompt: (opts: PromptOptions) => Promise<string | null>;
-  toast: (message: string) => void;
+  toast: (message: string, opts?: ToastOptions) => void;
 }
 
 const Ctx = createContext<Dialogs | null>(null);
@@ -36,7 +42,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   const [confirmState, setConfirmState] = useState<ConfirmOptions | null>(null);
   const [promptState, setPromptState] = useState<PromptOptions | null>(null);
   const [promptValue, setPromptValue] = useState('');
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<{ message: string; action?: ToastOptions['action'] } | null>(null);
   const resolver = useRef<((v: unknown) => void) | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -55,10 +61,10 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const toast = useCallback((message: string) => {
-    setToastMsg(message);
+  const toast = useCallback((message: string, opts?: ToastOptions) => {
+    setToastMsg({ message, action: opts?.action });
     if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToastMsg(null), 2200);
+    toastTimer.current = setTimeout(() => setToastMsg(null), opts?.ms ?? (opts?.action ? 4000 : 2200));
   }, []);
 
   const closeConfirm = (value: boolean) => {
@@ -119,8 +125,22 @@ export function DialogProvider({ children }: { children: ReactNode }) {
         </form>
       </Sheet>
       {toastMsg && (
-        <div className="toast" role="status">
-          {toastMsg}
+        <div className={`toast ${toastMsg.action ? 'with-action' : ''}`} role="status">
+          <span>{toastMsg.message}</span>
+          {toastMsg.action && (
+            <button
+              type="button"
+              className="toast-action"
+              onClick={() => {
+                const act = toastMsg.action;
+                setToastMsg(null);
+                if (toastTimer.current) clearTimeout(toastTimer.current);
+                act?.onClick();
+              }}
+            >
+              {toastMsg.action.label}
+            </button>
+          )}
         </div>
       )}
     </Ctx.Provider>

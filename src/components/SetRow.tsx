@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { SET_TYPE_BY_ID, SET_TYPES } from '../lib/equipment';
 import { num, parseNum } from '../lib/format';
-import { cardioSetText, distText, formatDuration, parseDistance, parseDuration } from '../lib/cardio';
+import { cardioSetText, distText, formatDuration, parseDistance } from '../lib/cardio';
 import type { DistUnit, DoneSet, LoadUnit, LogType, PlannedSet, RepMode, SetType } from '../lib/types';
 import { REST_OPTIONS, repsText, restText } from '../lib/workout';
+import { DurationSheet } from './DurationWheel';
 import { Icon } from './Icon';
 import { Sheet } from './Sheet';
 
@@ -16,25 +17,27 @@ function CheckMark() {
   );
 }
 
-/** Campo de tempo: digitar "130" vira 1:30; grava em segundos ao sair do campo. */
-function DurationInput({ value, placeholder, label, onCommit }: { value: number | null | undefined; placeholder: string; label: string; onCommit: (secs: number | null) => void }) {
-  const [text, setText] = useState(formatDuration(value));
-  useEffect(() => setText(formatDuration(value)), [value]);
+/** Campo de tempo: tocar abre as roletas de minutos e segundos. */
+function DurationInput({ value, hint, label, onCommit }: { value: number | null | undefined; hint: number | null | undefined; label: string; onCommit: (secs: number | null) => void }) {
+  const [open, setOpen] = useState(false);
+  const has = value !== null && value !== undefined;
   return (
-    <input
-      className="set-input"
-      inputMode="numeric"
-      enterKeyHint="done"
-      value={text}
-      placeholder={placeholder || '0:00'}
-      aria-label={label}
-      onChange={(e) => setText(e.target.value)}
-      onBlur={() => {
-        const v = parseDuration(text);
-        setText(formatDuration(v));
-        if (v !== (value ?? null)) onCommit(v);
-      }}
-    />
+    <>
+      <button type="button" className={`set-input dur-input ${has ? '' : 'blank'}`} aria-label={label} onClick={() => setOpen(true)}>
+        {has ? formatDuration(value) : formatDuration(hint) || '0:00'}
+      </button>
+      <DurationSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title={label}
+        start={value ?? hint ?? 0}
+        canClear={has}
+        onDone={(secs) => {
+          setOpen(false);
+          if (secs !== (value ?? null)) onCommit(secs);
+        }}
+      />
+    </>
   );
 }
 
@@ -117,7 +120,6 @@ export function SetRow({
   if (logType !== 'carga') {
     const hasPrev = set.prevSecs || set.prevDist;
     const prev = hasPrev ? cardioSetText({ secs: set.prevSecs, dist: set.prevDist }, distUnit) : '—';
-    const timeHint = formatDuration(set.targetSecs ?? set.prevSecs);
     const withDist = logType !== 'tempo';
     return (
       <div className={`set-row ${withDist ? 'c-tk' : 'c-t'} ${set.done ? 'done' : ''}`}>
@@ -132,7 +134,7 @@ export function SetRow({
             onCommit={(dist) => onCommit({ dist })}
           />
         )}
-        <DurationInput value={set.secs} placeholder={timeHint} label={`Tempo da série ${label}`} onCommit={(secs) => onCommit({ secs })} />
+        <DurationInput value={set.secs} hint={set.targetSecs ?? set.prevSecs} label={`Tempo da série ${label}`} onCommit={(secs) => onCommit({ secs })} />
         {check({})}
       </div>
     );
@@ -233,7 +235,7 @@ export function PlannedSetRow({
             onCommit={(dist) => onChange({ dist })}
           />
         )}
-        <DurationInput value={set.secs} placeholder={formatDuration(hint?.secs)} label={`Meta de tempo da série ${label}`} onCommit={(secs) => onChange({ secs })} />
+        <DurationInput value={set.secs} hint={hint?.secs} label={`Meta de tempo da série ${label}`} onCommit={(secs) => onChange({ secs })} />
       </div>
     );
   }

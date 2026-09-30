@@ -24,7 +24,6 @@ import {
   type WorkoutSnapshot,
   getActiveSession,
   itemsOf,
-  moveWorkoutItem,
   editPlannedSets,
   setItemDistUnit,
   setItemLogType,
@@ -36,7 +35,9 @@ import {
   updateWorkoutItem,
 } from '../lib/repo';
 import type { PlannedSet, RepMode, Workout, WorkoutItem } from '../lib/types';
-import { groupSupersets, itemSummary, plannedSummary, restText } from '../lib/workout';
+import { withTransition } from '../lib/nav';
+import { num } from '../lib/format';
+import { groupSupersets, itemSummary, plannedSetCount, plannedSummary, plannedVolumeKg, restText } from '../lib/workout';
 
 export { groupSupersets, plannedSummary };
 
@@ -74,12 +75,30 @@ function convertReps(sets: PlannedSet[], mode: RepMode): PlannedSet[] {
   });
 }
 
+/** Tira um exercício da rotina e mostra "Desfazer" por alguns segundos. */
+function useRemoveItem() {
+  const { toast } = useDialogs();
+  return async (item: WorkoutItem) => {
+    const snap = await snapshotWorkout(item.workoutId);
+    await removeWorkoutItem(item.id);
+    toast('Exercício removido', {
+      action: {
+        label: 'Desfazer',
+        onClick: () => {
+          if (snap) void restoreWorkout(snap);
+        },
+      },
+    });
+  };
+}
+
 export function WorkoutDetail() {
   const { workoutId = '' } = useParams();
   const [params, setParams] = useSearchParams();
   const editing = params.get('editar') === '1';
   const navigate = useNavigate();
   const { confirm, toast } = useDialogs();
+  const removeItem = useRemoveItem();
   const [menuOpen, setMenuOpen] = useState(false);
   const { map } = useExercises();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -100,9 +119,12 @@ export function WorkoutDetail() {
     }
   }, [data?.workout?.id, editing]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Ao entrar na edição, guarda como a rotina estava.
+  // Ao entrar na edição, guarda como a rotina estava. Fora da edição, descarta alguma foto velha
+  // (ex.: app fechado no meio de uma edição), para o "Cancelar" não voltar a um estado antigo.
   useEffect(() => {
-    if (!editing || !workoutId || readSnap(workoutId)) return;
+    if (!workoutId) return;
+    if (!editing) return writeSnap(workoutId, null);
+    if (readSnap(workoutId)) return;
     void snapshotWorkout(workoutId).then((snap) => snap && writeSnap(workoutId, snap));
   }, [editing, workoutId]);
 
@@ -206,9 +228,12 @@ export function WorkoutDetail() {
   };
 
   const groups = groupSupersets(items);
+  const exOf = (i: number) => exerciseOrMissing(map, items[i].exerciseId);
+  const setCount = plannedSetCount(items, (i) => exOf(i).logType);
+  const volume = plannedVolumeKg(items, exOf);
 
   return (
-    <main className="screen no-tabs">
+    <main className={`screen no-tabs ${!editing && items.length > 0 ? 'with-dock' : ''}`}>
       <TopBar
         left={
           editing ? (
@@ -226,9 +251,14 @@ export function WorkoutDetail() {
               Atualizar
             </button>
           ) : (
-            <button type="button" className="glass circle" aria-label="Opções da rotina" onClick={() => setMenuOpen(true)}>
-              <Icon name="more" size={22} />
-            </button>
+            <div className="head-actions">
+              <Link to={`/treino/${workout.id}/adicionar`} className="glass circle" aria-label="Adicionar exercício">
+                <Icon name="plus" size={22} stroke={2.4} />
+              </Link>
+              <button type="button" className="glass circle" aria-label="Opções da rotina" onClick={() => setMenuOpen(true)}>
+                <Icon name="more" size={22} />
+              </button>
+            </div>
           )
         }
       />
@@ -238,14 +268,26 @@ export function WorkoutDetail() {
           <div className="col">
             <h1 className="h1">{workout.name}</h1>
             <span className="small muted">
-              Treino {workout.letter} · {items.length} {items.length === 1 ? 'exercício' : 'exercícios'}
+              Treino {workout.letter}
               {program ? ` · ${program.name}` : ''}
             </span>
           </div>
-          <button type="button" className="btn primary block" onClick={start} disabled={items.length === 0}>
-            <Icon name="play" /> Iniciar rotina
-          </button>
-          {items.length > 0 && <span className="label" style={{ marginTop: 8 }}>Exercícios</span>}
+          {items.length > 0 && (
+            <div className="routine-stats">
+              <div>
+                <b className="tnum">{items.length}</b>
+                <span>{items.length === 1 ? 'exercício' : 'exercícios'}</span>
+              </div>
+              <div>
+                <b className="tnum">{setCount}</b>
+                <span>{setCount === 1 ? 'série' : 'séries'}</span>
+              </div>
+              <div>
+                <b className="tnum">{volume ? `${num(volume, 0)} kg` : '—'}</b>
+                <span>volume previsto</span>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="row" style={{ alignItems: 'flex-end' }}>
@@ -260,7 +302,13 @@ export function WorkoutDetail() {
         </div>
       )}
 
-      {items.length === 0 && <EmptyState title="Nenhum exercício ainda" text="Adicione os exercícios deste treino." />}
+      {items.length === 0 && (
+        <EmptyState
+          title="Nenhum exercício ainda"
+          text="Adicione os exercícios deste treino."
+          action={editing ? undefined : { label: 'Adicionar exercício', to: `/treino/${workout.id}/adicionar` }}
+        />
+      )}
 
       {!editing ? (
         <div className="routine-rows">
@@ -268,20 +316,22 @@ export function WorkoutDetail() {
             const rows = g.map((it) => {
               const ex = exerciseOrMissing(map, it.exerciseId);
               return (
-                <Link key={it.id} to={`/exercicio/${it.exerciseId}`} className="routine-row">
-                  <span className="ex-avatar">
-                    <ExerciseThumb exercise={ex} />
-                  </span>
-                  <div className="col grow">
-                    <span style={{ fontWeight: 600 }}>{ex.name}</span>
-                    <span className="small muted">
-                      {itemSummary(it, ex.logType, ex.unit)}
-                      {(it.logType ?? ex.logType) !== 'tiros' ? ` · descanso ${restText(it.restSeconds ?? workout.restSeconds)}` : ''}
+                <SwipeRow key={it.id} label="Remover" onDelete={() => removeItem(it)}>
+                  <Link to={`/exercicio/${it.exerciseId}`} className="routine-row">
+                    <span className="ex-avatar">
+                      <ExerciseThumb exercise={ex} />
                     </span>
-                    {it.note ? <span className="chip method">{it.note}</span> : null}
-                  </div>
-                  <Icon name="next" size={20} color="var(--muted)" />
-                </Link>
+                    <div className="col grow">
+                      <span style={{ fontWeight: 600 }}>{ex.name}</span>
+                      <span className="small muted">
+                        {itemSummary(it, ex.logType, ex.unit)}
+                        {(it.logType ?? ex.logType) !== 'tiros' ? ` · descanso ${restText(it.restSeconds ?? workout.restSeconds)}` : ''}
+                      </span>
+                      {it.note ? <span className="chip method">{it.note}</span> : null}
+                    </div>
+                    <Icon name="next" size={20} color="var(--muted)" />
+                  </Link>
+                </SwipeRow>
               );
             });
             if (g.length === 1) return rows;
@@ -292,9 +342,13 @@ export function WorkoutDetail() {
               </div>
             );
           })}
-          <Link to={`/treino/${workout.id}/adicionar`} className="btn soft block" style={{ marginTop: 12 }}>
-            <Icon name="plus" /> Adicionar exercício
-          </Link>
+          {items.length > 0 && (
+            <div className="dock">
+              <button type="button" className="btn primary block" onClick={start}>
+                <Icon name="play" /> Iniciar rotina
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="stack-lg">
@@ -328,8 +382,9 @@ export function WorkoutDetail() {
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         actions={[
-          { icon: 'copy', label: 'Duplicar rotina', onClick: duplicate },
+          { icon: 'sort', label: 'Reordenar exercícios', hidden: items.length < 2, onClick: () => withTransition('forward', () => navigate(`/treino/${workout.id}/reordenar`)) },
           { icon: 'pencil', label: 'Editar rotina', onClick: () => setEditing(true) },
+          { icon: 'copy', label: 'Duplicar rotina', onClick: duplicate },
           { icon: 'x', label: 'Excluir rotina', danger: true, onClick: removeWorkout },
         ]}
       />
@@ -339,7 +394,7 @@ export function WorkoutDetail() {
 }
 
 function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; index: number; total: number; workout: Workout; ex: ExerciseView }) {
-  const { confirm } = useDialogs();
+  const removeItem = useRemoveItem();
   const [menuOpen, setMenuOpen] = useState(false);
   const [restOpen, setRestOpen] = useState(false);
   const [modeOpen, setModeOpen] = useState(false);
@@ -488,22 +543,16 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
           onDistUnit={(u) => setItemDistUnit('workoutItems', item.id, item.exerciseId, u)}
         />
         <div className="list-group">
-          <Link to={`/exercicio/${item.exerciseId}`} className="list-item">
-            <Icon name="chart" color="var(--text-2)" />
-            <span className="grow">Ver exercício e progresso</span>
+          {total > 1 && (
+            <Link to={`/treino/${workout.id}/reordenar`} className="list-item">
+              <Icon name="sort" color="var(--text-2)" />
+              <span className="grow">Reordenar exercícios</span>
+            </Link>
+          )}
+          <Link to={`/treino/${workout.id}/substituir/${item.id}`} className="list-item">
+            <Icon name="swap" color="var(--text-2)" />
+            <span className="grow">Substituir exercício</span>
           </Link>
-          {index > 0 && (
-            <button type="button" className="list-item" onClick={() => moveWorkoutItem(item.workoutId, index, index - 1)}>
-              <Icon name="up" color="var(--text-2)" />
-              <span className="grow">Mover para cima</span>
-            </button>
-          )}
-          {index < total - 1 && (
-            <button type="button" className="list-item" onClick={() => moveWorkoutItem(item.workoutId, index, index + 1)}>
-              <Icon name="down" color="var(--text-2)" />
-              <span className="grow">Mover para baixo</span>
-            </button>
-          )}
           {index < total - 1 && (
             <button
               type="button"
@@ -514,21 +563,26 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
               }}
             >
               <Icon name="link" color="var(--text-2)" />
-              <span className="grow">{item.supersetNext ? 'Separar do superset' : 'Fazer superset com o próximo'}</span>
+              <span className="grow col">
+                <span>{item.supersetNext ? 'Tirar do superset' : 'Adicionar ao superset'}</span>
+                {!item.supersetNext && <span className="tiny muted">Junta com o próximo exercício</span>}
+              </span>
             </button>
           )}
+          <Link to={`/exercicio/${item.exerciseId}`} className="list-item">
+            <Icon name="chart" color="var(--text-2)" />
+            <span className="grow">Ver exercício e progresso</span>
+          </Link>
           <button
             type="button"
             className="list-item danger"
-            onClick={async () => {
-              const ok = await confirm({ title: `Remover ${ex.name} da rotina?`, confirmLabel: 'Remover', danger: true });
-              if (!ok) return;
+            onClick={() => {
               setMenuOpen(false);
-              await removeWorkoutItem(item.id);
+              void removeItem(item);
             }}
           >
             <Icon name="trash" />
-            <span className="grow">Remover da rotina</span>
+            <span className="grow">Remover exercício</span>
           </button>
         </div>
       </Sheet>
