@@ -3694,10 +3694,16 @@ html[data-nav="tab"] .screen:not(.no-tabs) {
 .lp-item {
   position: relative;
   touch-action: pan-y;
+  transition: transform 0.22s var(--press);
+}
+
+/* No iPhone, segurar um link liga o "arrastar para outro app" do sistema, que deixava um fantasma cinza. */
+.lp-item,
+.lp-item * {
+  -webkit-user-drag: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
-  transition: transform 0.22s var(--press);
 }
 
 .lp-item > * {

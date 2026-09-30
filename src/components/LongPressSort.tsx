@@ -82,6 +82,7 @@ export function LongPressSort({ ids, onReorder, children }: { ids: string[]; onR
       // sem captura
     }
     list.setAttribute('data-drag-lock', '');
+    window.getSelection()?.removeAllRanges();
     tick();
     setDrag({ from: s.index, to: s.index, dy: 0, step: s.step });
     frame.current = requestAnimationFrame(autoScroll);
@@ -105,6 +106,9 @@ export function LongPressSort({ ids, onReorder, children }: { ids: string[]; onR
       onReorder(next);
     }
     setDrag(null);
+    // Limpa o que o toque longo possa ter deixado marcado no item (efeito de apertado, foco do link).
+    s.el.querySelectorAll('.pressed').forEach((n) => n.classList.remove('pressed'));
+    (document.activeElement as HTMLElement | null)?.blur?.();
     // O toque que termina o arraste não abre o item.
     justDropped.current = true;
     setTimeout(() => {
@@ -174,6 +178,7 @@ export function LongPressSort({ ids, onReorder, children }: { ids: string[]; onR
           onPointerCancel={finish}
           onClickCapture={onClickCapture}
           onContextMenu={(e) => e.preventDefault()}
+          onDragStart={(e) => e.preventDefault()}
         >
           {children(id)}
         </div>

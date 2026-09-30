@@ -164,7 +164,7 @@ export function Programs() {
                   : `Encerrada${p.endedAt ? ` em ${fullDate(toISODate(new Date(p.endedAt)))}` : ''} · ${sessionCount(p.id)} no histórico`;
               return (
                 <div className="list-row" style={{ padding: 6 }}>
-                  <Link to={`/ficha/${p.id}`} className="tap-head col grow" aria-label={`Abrir a rotina ${p.name}`}>
+                  <Link to={`/ficha/${p.id}`} className="tap-head col grow" draggable={false} aria-label={`Abrir a rotina ${p.name}`}>
                     <span style={{ fontWeight: 700 }}>{p.name}</span>
                     <span className="tiny muted">{status}</span>
                   </Link>
