@@ -23,6 +23,7 @@ import {
   snapshotWorkout,
   type WorkoutSnapshot,
   getActiveSession,
+  lastDoneItemFor,
   itemsOf,
   editPlannedSets,
   setItemDistUnit,
@@ -34,7 +35,7 @@ import {
   updateWorkout,
   updateWorkoutItem,
 } from '../lib/repo';
-import type { PlannedSet, RepMode, Workout, WorkoutItem } from '../lib/types';
+import type { DoneSet, PlannedSet, RepMode, Workout, WorkoutItem } from '../lib/types';
 import { withTransition } from '../lib/nav';
 import { num } from '../lib/format';
 import { groupSupersets, itemSummary, plannedSetCount, plannedSummary, plannedVolumeKg, restText } from '../lib/workout';
@@ -371,7 +372,7 @@ export function WorkoutDetail() {
               </div>
             );
           })}
-          <Link to={`/treino/${workout.id}/adicionar`} className="btn big dashed block">
+          <Link to={`/treino/${workout.id}/adicionar`} className="btn small primary block">
             <Icon name="plus" /> Adicionar exercício
           </Link>
         </div>
@@ -409,6 +410,11 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
   const logType = item.logType ?? ex.logType;
   const distUnit = item.distUnit ?? ex.distUnit;
   const cardio = isCardio(logType);
+
+  // "Anterior": o que foi feito da última vez em cada série (mesma regra do treino).
+  const lastItem = useLiveQuery(() => lastDoneItemFor(item.exerciseId), [item.exerciseId]);
+  const lastDone = lastItem ? lastItem.sets.filter((x) => x.done) : [];
+  const prevOf = (i: number): DoneSet | undefined => (lastItem?.sets[i]?.done ? lastItem.sets[i] : lastDone[i]);
 
   return (
     <section className="ex-card">
@@ -448,12 +454,14 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
           {cardio ? (
             <div className={`set-row head plan ${logType === 'tempo' ? 'c-t' : 'c-tk'}`}>
               <span style={{ textAlign: 'center' }}>Série</span>
+              <span style={{ textAlign: 'center' }}>Anterior</span>
               {logType === 'tempo_km' && <span style={{ textAlign: 'center' }}>Meta {distUnit}</span>}
               <span style={{ textAlign: 'center' }}>Meta tempo</span>
             </div>
           ) : (
             <div className="set-row head plan">
               <span style={{ textAlign: 'center' }}>Série</span>
+              <span style={{ textAlign: 'center' }}>Anterior</span>
               <span style={{ textAlign: 'center' }}>{unitLabel}</span>
               <span style={{ display: 'flex', justifyContent: 'center' }}>
                 <button type="button" className="unit-toggle" onClick={() => setModeOpen(true)} aria-label="Escolher repetições fixas ou faixa">
@@ -469,6 +477,8 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
                 label={labels[i]}
                 set={s}
                 hint={i > 0 ? item.sets[i - 1] : undefined}
+                prev={prevOf(i)}
+                unit={ex.unit}
                 repMode={mode}
                 logType={logType}
                 distUnit={distUnit}

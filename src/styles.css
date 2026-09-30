@@ -3527,3 +3527,81 @@ html[data-nav="tab"] .screen:not(.no-tabs) {
   color: var(--text-2);
   pointer-events: none;
 }
+
+/* ------------------------------------------------------------ Edição da rotina com a coluna "Anterior" */
+
+.set-row.plan {
+  grid-template-columns: 38px minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.25fr);
+}
+
+.set-row.plan.c-tk {
+  grid-template-columns: 38px minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 0.9fr);
+}
+
+.set-row.plan.c-t {
+  grid-template-columns: 38px minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.set-prev {
+  text-align: center;
+  font-size: 13px;
+}
+
+.set-row.head .unit-toggle {
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+
+/* ------------------------------------------------------------ Campos e botões quase pretos (como o Hevy) */
+
+:root {
+  --field: #121214;
+  --field-border: #2a2a2d;
+  --fill: #161618;
+}
+
+.set-input {
+  background: var(--field);
+  border: 1px solid var(--field-border);
+}
+
+.set-input:focus {
+  border-color: var(--accent);
+}
+
+.set-type {
+  background: var(--field);
+  border-color: var(--field-border);
+}
+
+.set-check:not(.on) {
+  background: var(--fill);
+}
+
+.screen .btn:not(.primary, .dashed, .light, .outline-accent) {
+  background: var(--fill);
+}
+
+/* Dentro de cartões e janelas (que já são desse cinza), o botão continua um tom acima. */
+.screen :is(.card, .notice, .list-row) .btn:not(.primary, .dashed, .light, .outline-accent) {
+  background: var(--raised);
+}
+
+/* Campo vazio: o valor sugerido aparece em cinza e some ao tocar (fica só o cursor). */
+.set-input::placeholder {
+  color: #5c5c61;
+  font-weight: 600;
+  opacity: 1;
+}
+
+.set-input:focus::placeholder {
+  color: transparent;
+}
+
+/* ------------------------------------------------------------ Texto dos botões com "+" no centro exato */
+
+.btn:has(> svg:first-child)::after {
+  content: '';
+  flex: none;
+  width: 1.05em;
+}

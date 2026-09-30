@@ -268,7 +268,7 @@ export function ActiveSession() {
         ),
       )}
 
-      <Link to="/sessao/adicionar" className="btn big primary block">
+      <Link to="/sessao/adicionar" className="btn small primary block">
         <Icon name="plus" /> Adicionar exercício
       </Link>
       <button type="button" className="btn block danger" style={{ border: 0 }} onClick={discard}>

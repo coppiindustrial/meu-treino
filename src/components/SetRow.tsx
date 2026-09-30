@@ -52,7 +52,7 @@ function DistanceInput({ value, unit, placeholder, label, onCommit }: { value: n
       inputMode={unit === 'm' ? 'numeric' : 'decimal'}
       enterKeyHint="next"
       value={text}
-      placeholder={placeholder || '—'}
+      placeholder={placeholder}
       aria-label={label}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => {
@@ -64,6 +64,16 @@ function DistanceInput({ value, unit, placeholder, label, onCommit }: { value: n
 }
 
 const distPlaceholder = (v: number | null | undefined, unit: DistUnit) => (v === null || v === undefined ? '' : distText(v, unit).replace(/ (km|m)$/, ''));
+
+/** "24 kg × 10" (ou "9,4 km · 30:00" no cardio) do que foi feito da última vez. */
+function prevSetText(p: { load?: number | null; reps?: number | null; secs?: number | null; dist?: number | null } | undefined, unit: LoadUnit, logType: LogType, distUnit: DistUnit): string {
+  if (!p) return '—';
+  if (logType !== 'carga') return p.secs || p.dist ? cardioSetText({ secs: p.secs, dist: p.dist }, distUnit) : '—';
+  if (p.load !== null && p.load !== undefined) return `${num(p.load)}${unit === 'placa' ? '' : ` ${unit}`} × ${p.reps ?? '—'}`;
+  return p.reps ? `${p.reps} reps` : '—';
+}
+
+const loadPlaceholder = (v: number | null | undefined) => (v === null || v === undefined ? '' : num(v, 2));
 
 /** Uma série durante o treino: tipo, anterior, carga, repetições e check. */
 export function SetRow({
@@ -91,12 +101,7 @@ export function SetRow({
   useEffect(() => setReps(set.reps === null ? '' : String(set.reps)), [set.reps]);
 
   const info = SET_TYPE_BY_ID[set.type];
-  const prevText =
-    set.prevLoad !== null && set.prevLoad !== undefined
-      ? `${num(set.prevLoad)}${unit === 'placa' ? '' : ` ${unit}`} × ${set.prevReps ?? '—'}`
-      : set.prevReps
-        ? `${set.prevReps} reps`
-        : '—';
+  const prevText = prevSetText({ load: set.prevLoad, reps: set.prevReps }, unit, 'carga', distUnit);
   const repsPlaceholder = set.prevReps ? String(set.prevReps) : set.target ? repsText(set.target) : '';
 
   const typeButton = (
@@ -149,7 +154,7 @@ export function SetRow({
         inputMode="decimal"
         enterKeyHint="next"
         value={load}
-        placeholder="—"
+        placeholder={loadPlaceholder(set.prevLoad)}
         aria-label={`Carga da série ${label}`}
         onChange={(e) => setLoad(e.target.value)}
         onBlur={() => {
@@ -181,6 +186,8 @@ export function PlannedSetRow({
   label,
   set,
   hint,
+  prev,
+  unit,
   repMode,
   logType = 'carga',
   distUnit = 'km',
@@ -190,6 +197,9 @@ export function PlannedSetRow({
   label: string;
   set: PlannedSet;
   hint: PlannedSet | undefined;
+  /** O que foi feito nessa série da última vez (coluna "Anterior"). */
+  prev: DoneSet | undefined;
+  unit: LoadUnit;
   repMode: RepMode;
   logType?: LogType;
   distUnit?: DistUnit;
@@ -212,6 +222,7 @@ export function PlannedSetRow({
 
   const info = SET_TYPE_BY_ID[set.type];
   const [hMin, hMax] = split(hint?.reps ?? (repMode === 'faixa' ? '8-12' : '10'));
+  const prevCell = <span className="small muted ellipsis set-prev">{prevSetText(prev, unit, logType, distUnit)}</span>;
   const commitReps = (a: string, b: string) => {
     const x = a.replace(/\D/g, '');
     const y = b.replace(/\D/g, '');
@@ -226,16 +237,17 @@ export function PlannedSetRow({
         <button type="button" className={`set-type ${info.className}`} aria-label={`Série ${label}, ${info.name}. Trocar tipo`} onClick={onOpenMenu}>
           {label}
         </button>
+        {prevCell}
         {withDist && (
           <DistanceInput
             value={set.dist}
             unit={distUnit}
-            placeholder={distPlaceholder(hint?.dist, distUnit)}
+            placeholder={distPlaceholder(hint?.dist ?? prev?.dist, distUnit)}
             label={`Meta de distância da série ${label}`}
             onCommit={(dist) => onChange({ dist })}
           />
         )}
-        <DurationInput value={set.secs} hint={hint?.secs} label={`Meta de tempo da série ${label}`} onCommit={(secs) => onChange({ secs })} />
+        <DurationInput value={set.secs} hint={hint?.secs ?? prev?.secs} label={`Meta de tempo da série ${label}`} onCommit={(secs) => onChange({ secs })} />
       </div>
     );
   }
@@ -245,11 +257,12 @@ export function PlannedSetRow({
       <button type="button" className={`set-type ${info.className}`} aria-label={`Série ${label}, ${info.name}. Trocar tipo`} onClick={onOpenMenu}>
         {label}
       </button>
+      {prevCell}
       <input
         className="set-input"
         inputMode="decimal"
         value={load}
-        placeholder={hint?.load !== null && hint?.load !== undefined ? num(hint.load, 2) : '—'}
+        placeholder={loadPlaceholder(hint?.load ?? prev?.load)}
         aria-label={`Carga da série ${label}`}
         onChange={(e) => setLoad(e.target.value)}
         onBlur={() => {
