@@ -3192,7 +3192,7 @@ html[data-nav="tab"] .screen:not(.no-tabs) {
 .ex-tabs {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 4px -20px 0;
   padding: 0 12px;
   border-bottom: 0.5px solid var(--border-2);
@@ -3203,7 +3203,7 @@ html[data-nav="tab"] .screen:not(.no-tabs) {
   border: 0;
   background: none;
   color: var(--text-2);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   transition: color 0.2s ease;
 }
@@ -3216,7 +3216,7 @@ html[data-nav="tab"] .screen:not(.no-tabs) {
   position: absolute;
   left: 12px;
   bottom: -1px;
-  width: calc((100% - 24px) / 3);
+  width: calc((100% - 24px) / 4);
   height: 3px;
   border-radius: 3px;
   background: var(--accent);

@@ -73,7 +73,7 @@ function metricsFor(ex: ExerciseView, cardio: boolean): Metric[] {
   ];
 }
 
-const TABS = ['Resumo', 'Histórico', 'Instruções'] as const;
+const TABS = ['Resumo', 'Histórico', 'Instruções', 'Ajustes'] as const;
 
 export function ExerciseDetail() {
   const { exerciseId = '' } = useParams();
@@ -255,6 +255,11 @@ export function ExerciseDetail() {
               />
             </label>
           )}
+        </div>
+      )}
+
+      {tab === 3 && (
+        <div className="stack-lg fade-in" key="ajustes">
           <LogTypePicker
             value={ex.logType}
             distUnit={ex.distUnit}
