@@ -46,6 +46,9 @@ const isTouchIOS = () => !canVibrate() && 'ontouchstart' in window;
 /** Vibração curtinha no Android. No iPhone ela vem do toque no interruptor escondido (veja abaixo). */
 function vibrateAndroid(): void {
   if (!hapticsEnabled() || !canVibrate()) return;
+  // Antes do primeiro toque de verdade o navegador bloqueia (e reclama no console).
+  const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+  if (activation && !activation.hasBeenActive) return;
   try {
     navigator.vibrate(8);
   } catch {

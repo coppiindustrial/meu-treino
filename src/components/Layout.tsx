@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useNow } from '../lib/hooks';
@@ -7,6 +7,8 @@ import { useDialogs } from './Dialogs';
 import { useRest } from './RestTimer';
 import { withTransition } from '../lib/nav';
 import { Icon, type IconName } from './Icon';
+import { LiquidTabs } from './liquidTabs';
+import { tick } from '../lib/touch';
 
 const TABS: { to: string; label: string; icon: IconName }[] = [
   { to: '/', label: 'Início', icon: 'home' },
@@ -21,90 +23,112 @@ function isTabActive(t: (typeof TABS)[number], pathname: string): boolean {
   return pathname.startsWith(t.to);
 }
 
-// Bolha "elástica": a borda da frente sai primeiro e a de trás alcança depois.
-const LEAD = 'cubic-bezier(.25,1.35,.5,1)';
-const TRAIL = 'cubic-bezier(.3,1.2,.5,1)';
-
 export function TabBar({ pathname }: { pathname: string }) {
+  const navigate = useNavigate();
   const activeIndex = Math.max(
     0,
     TABS.findIndex((t) => isTabActive(t, pathname)),
   );
-  const innerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(0);
-  // A bolha anda no toque (antes da tela nova carregar); a rota confirma depois.
-  const [pos, setPos] = useState({ index: activeIndex, from: activeIndex });
-  const [lens, setLens] = useState(false);
   const activeRef = useRef(activeIndex);
   activeRef.current = activeIndex;
+  const rowRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLSpanElement>(null);
+  const lensRef = useRef<HTMLSpanElement>(null);
+  const tabRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const engine = useRef<LiquidTabs | null>(null);
+  const drag = useRef<{ id: number; left: number; x0: number; x: number; moved: boolean; near: number } | null>(null);
 
   useLayoutEffect(() => {
-    const el = innerRef.current;
-    if (!el) return;
-    const measure = () => setWidth(el.clientWidth);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
+    const row = rowRef.current;
+    if (!row || !pillRef.current || !lensRef.current) return;
+    const eng = new LiquidTabs(row, pillRef.current, lensRef.current, () => tabRefs.current.filter((t): t is HTMLAnchorElement => !!t), TABS.length);
+    engine.current = eng;
+    eng.snap(activeRef.current);
+    const ro = new ResizeObserver(() => {
+      if (!drag.current) eng.snap(activeRef.current);
+    });
+    ro.observe(row);
+    return () => {
+      ro.disconnect();
+      eng.destroy();
+      engine.current = null;
+    };
   }, []);
 
+  // A aba mudou por outro caminho (link, voltar): a bolha vai até ela.
   useEffect(() => {
-    setPos((p) => (p.index === activeIndex ? p : { index: activeIndex, from: p.index }));
+    if (!drag.current) engine.current?.settle(activeIndex);
   }, [activeIndex]);
 
-  // Se o toque não virou troca de aba (arrastou o dedo para fora), a bolha volta.
-  useEffect(() => {
-    if (pos.index === activeRef.current) return;
-    const t = setTimeout(() => {
-      if (activeRef.current !== pos.index) setPos((p) => ({ index: activeRef.current, from: p.index }));
-    }, 700);
-    return () => clearTimeout(t);
-  }, [pos.index]);
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const eng = engine.current;
+    if (!eng) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    drag.current = { id: e.pointerId, left: r.left, x0: x, x, moved: false, near: eng.nearest(x) };
+    eng.press(x);
+  };
 
-  const moveTo = (k: number) => setPos((p) => (p.index === k ? p : { index: k, from: p.index }));
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    const eng = engine.current;
+    if (!d || !eng || d.id !== e.pointerId) return;
+    const x = e.clientX - d.left;
+    d.x = x;
+    if (Math.abs(x - d.x0) > 6) d.moved = true;
+    eng.move(x);
+    const n = eng.nearest(x);
+    if (n !== d.near) {
+      d.near = n;
+      tick();
+    }
+  };
 
-  const slot = (width - 10) / 5;
-  const left = 5 + pos.index * slot;
-  const right = width - (5 + (pos.index + 1) * slot);
-  const toRight = pos.index > pos.from;
-  const bubbleStyle: CSSProperties = {
-    left,
-    right,
-    opacity: width ? 1 : 0,
-    transition:
-      pos.index === pos.from || !width
-        ? 'none'
-        : toRight
-          ? `right .3s ${LEAD}, left .5s ${TRAIL} .07s`
-          : `left .3s ${LEAD}, right .5s ${TRAIL} .07s`,
+  // Soltar: assenta na aba onde o dedo saiu e troca de tela.
+  const finish = (e: ReactPointerEvent<HTMLDivElement>, commit: boolean) => {
+    const d = drag.current;
+    const eng = engine.current;
+    if (!d || !eng || d.id !== e.pointerId) return;
+    drag.current = null;
+    const target = commit ? eng.nearest(d.x) : activeRef.current;
+    eng.release(target);
+    if (target !== activeRef.current) withTransition('tab', () => navigate(TABS[target].to));
+    // Se a tela não trocar, a bolha volta para a aba atual.
+    setTimeout(() => {
+      if (!drag.current && activeRef.current !== target) engine.current?.settle(activeRef.current);
+    }, 800);
   };
 
   return (
     <nav className="tabbar" aria-label="Navegação principal">
       <div className="tabbar-inner">
         <SessionStrip />
-        <div className="tabs-row" ref={innerRef}>
-        <span className={`tab-highlight ${lens ? 'lens' : ''}`} aria-hidden="true" style={bubbleStyle}>
-          <i />
-        </span>
-        {TABS.map((t, k) => {
-          const on = isTabActive(t, pathname);
-          return (
+        <div
+          className="tabs-row"
+          ref={rowRef}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={(e) => finish(e, true)}
+          onPointerCancel={(e) => finish(e, false)}
+        >
+          <span className="tab-pill" ref={pillRef} aria-hidden="true" />
+          {TABS.map((t, k) => (
             <NavLink
               key={t.to}
+              ref={(el) => {
+                tabRefs.current[k] = el;
+              }}
               to={t.to}
-              className={`tab ${pos.index === k ? 'on' : ''}`}
-              aria-current={on ? 'page' : undefined}
-              onPointerDown={() => (k === pos.index ? setLens(true) : moveTo(k))}
-              onPointerUp={() => setLens(false)}
-              onPointerLeave={() => setLens(false)}
-              onPointerCancel={() => setLens(false)}
+              className={() => 'tab'}
+              aria-current={isTabActive(t, pathname) ? 'page' : undefined}
+              draggable={false}
             >
               <Icon name={t.icon} size={22} stroke={1.9} />
               <span>{t.label}</span>
             </NavLink>
-          );
-        })}
+          ))}
+          <span className="tab-lens" ref={lensRef} aria-hidden="true" />
         </div>
       </div>
     </nav>

@@ -1,0 +1,168 @@
+/**
+ * Bolha do menu de abas no estilo do iOS 26 (versão "Suave 2" escolhida no protótipo):
+ * ao encostar, a pílula vira uma lente de vidro um pouco maior; dá para arrastar o dedo pelo menu
+ * (a lente segue, estica de leve e amplia o ícone embaixo); ao soltar, assenta na aba com uma mola.
+ * Tudo com molas em JS (requestAnimationFrame), sem re-renderizar o React.
+ */
+
+const LENS = { w: 1.14, h: 1.28, mag: 0.14, stretch: 0.06, pillFade: 0.6 };
+const FOLLOW = { k: 900, c: 48 }; // seguindo o dedo: rápido e sem balançar
+const SETTLE = { k: 420, c: 38 }; // assentando na aba: quase sem quique
+
+interface State {
+  x: number;
+  vx: number;
+  w: number;
+  vw: number;
+  h: number;
+  vh: number;
+  L: number;
+  vL: number;
+  tx: number;
+  tw: number;
+  th: number;
+  tL: number;
+  k: number;
+  c: number;
+}
+
+function step(p: number, v: number, target: number, k: number, c: number, dt: number): [number, number] {
+  const a = -k * (p - target) - c * v;
+  const nv = v + a * dt;
+  return [p + nv * dt, nv];
+}
+
+export class LiquidTabs {
+  private s: State = { x: 0, vx: 0, w: 0, vw: 0, h: 0, vh: 0, L: 0, vL: 0, tx: 0, tw: 0, th: 0, tL: 0, ...SETTLE };
+  private raf: number | null = null;
+  private last = 0;
+  private held = false;
+  private readonly reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
+  constructor(
+    private readonly row: HTMLElement,
+    private readonly pill: HTMLElement,
+    private readonly lens: HTMLElement,
+    private readonly tabs: () => HTMLElement[],
+    private readonly count: number,
+  ) {}
+
+  private geo() {
+    const slot = (this.row.clientWidth - 10) / this.count;
+    return { slot, h: this.row.clientHeight - 10, center: (i: number) => 5 + slot * (i + 0.5) };
+  }
+
+  nearest(x: number): number {
+    const { slot } = this.geo();
+    if (!slot) return 0;
+    return Math.max(0, Math.min(this.count - 1, Math.floor((x - 5) / slot)));
+  }
+
+  /** Coloca a bolha na aba, sem animação (início, mudança de tamanho da tela). */
+  snap(i: number): void {
+    const g = this.geo();
+    Object.assign(this.s, { x: g.center(i), tx: g.center(i), w: g.slot, tw: g.slot, h: g.h, th: g.h, L: 0, tL: 0, vx: 0, vw: 0, vh: 0, vL: 0 });
+    this.draw();
+  }
+
+  /** Dedo encostou: vira lente e vai para baixo do dedo. */
+  press(x: number): void {
+    this.held = true;
+    const g = this.geo();
+    this.s.tw = g.slot * LENS.w;
+    this.s.th = g.h * LENS.h;
+    this.s.tL = 1;
+    this.move(x);
+  }
+
+  move(x: number): void {
+    const g = this.geo();
+    Object.assign(this.s, FOLLOW);
+    this.s.tx = Math.max(g.center(0) - g.slot * 0.35, Math.min(g.center(this.count - 1) + g.slot * 0.35, x));
+    this.kick();
+  }
+
+  /** Dedo saiu: volta a ser pílula e assenta na aba. */
+  release(i: number): void {
+    this.held = false;
+    this.settle(i);
+  }
+
+  settle(i: number): void {
+    const g = this.geo();
+    Object.assign(this.s, SETTLE);
+    this.s.tx = g.center(i);
+    this.s.tw = g.slot;
+    this.s.th = g.h;
+    this.s.tL = 0;
+    this.kick();
+  }
+
+  destroy(): void {
+    if (this.raf) cancelAnimationFrame(this.raf);
+    this.raf = null;
+  }
+
+  private kick(): void {
+    if (this.reduce) {
+      Object.assign(this.s, { x: this.s.tx, w: this.s.tw, h: this.s.th, L: this.s.tL, vx: 0 });
+      this.draw();
+      return;
+    }
+    if (this.raf) return;
+    this.last = performance.now();
+    this.raf = requestAnimationFrame(this.frame);
+  }
+
+  private frame = (now: number): void => {
+    const s = this.s;
+    const dt = Math.min(1 / 30, Math.max(1 / 240, (now - this.last) / 1000));
+    this.last = now;
+    [s.x, s.vx] = step(s.x, s.vx, s.tx, s.k, s.c, dt);
+    [s.w, s.vw] = step(s.w, s.vw, s.tw, 520, 30, dt);
+    [s.h, s.vh] = step(s.h, s.vh, s.th, 520, 30, dt);
+    [s.L, s.vL] = step(s.L, s.vL, s.tL, 420, 34, dt);
+    const still =
+      Math.abs(s.x - s.tx) < 0.3 &&
+      Math.abs(s.vx) < 4 &&
+      Math.abs(s.w - s.tw) < 0.3 &&
+      Math.abs(s.h - s.th) < 0.3 &&
+      Math.abs(s.L - s.tL) < 0.004 &&
+      Math.abs(s.vL) < 0.02;
+    if (still && !this.held) {
+      Object.assign(s, { x: s.tx, w: s.tw, h: s.th, L: s.tL, vx: 0, vw: 0, vh: 0, vL: 0 });
+      this.raf = null;
+      this.draw();
+      return;
+    }
+    this.draw();
+    this.raf = requestAnimationFrame(this.frame);
+  };
+
+  private draw(): void {
+    const s = this.s;
+    const g = this.geo();
+    if (!g.slot) return;
+    const stretch = Math.min(Math.abs(s.vx) / 1800, LENS.stretch); // estica de leve com a velocidade
+    const w = s.w * (1 + stretch);
+    const h = s.h * (1 - stretch * 0.35);
+    const x = s.x - w / 2;
+    const y = 5 + (g.h - h) / 2;
+    const lensAmount = Math.max(0, Math.min(1, s.L));
+    for (const el of [this.pill, this.lens]) {
+      el.style.width = `${w}px`;
+      el.style.height = `${h}px`;
+      el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    }
+    this.lens.style.opacity = String(lensAmount);
+    this.pill.style.opacity = String(1 - lensAmount * LENS.pillFade);
+    const on = this.nearest(s.x);
+    this.tabs().forEach((t, i) => {
+      const d = Math.abs(s.x - g.center(i)) / g.slot;
+      const m = 1 + LENS.mag * lensAmount * Math.max(0, 1 - d); // "lupa" no ícone embaixo da lente
+      t.style.transform = m > 1.002 ? `scale(${m.toFixed(3)})` : '';
+      if (i === on) t.dataset.on = '';
+      else delete t.dataset.on;
+    });
+  }
+}
