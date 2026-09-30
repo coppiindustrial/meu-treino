@@ -40,7 +40,7 @@ export function ProgramDetail() {
     return (
       <main className="screen no-tabs">
         <TopBar left={<BackButton to="/treinos" label="Treinos" />} />
-        <EmptyState title="Ficha não encontrada" action={{ label: 'Ver fichas', to: '/treinos' }} />
+        <EmptyState title="Rotina não encontrada" action={{ label: 'Ver rotinas', to: '/treinos' }} />
       </main>
     );
   }
@@ -53,7 +53,7 @@ export function ProgramDetail() {
         : `Encerrada${program.endedAt ? ` em ${fullDate(toISODate(new Date(program.endedAt)))}` : ''}`;
 
   const rename = async () => {
-    const name = await prompt({ title: 'Renomear ficha', label: 'Nome da ficha', initial: program.name });
+    const name = await prompt({ title: 'Renomear rotina', label: 'Nome da rotina', initial: program.name });
     if (name !== null) await renameProgram(program.id, name);
   };
 
@@ -66,28 +66,28 @@ export function ProgramDetail() {
 
   const activate = async () => {
     const ok = await confirm({
-      title: 'Ativar esta ficha?',
-      message: 'A ficha ativa atual será encerrada. O histórico dela continua guardado.',
-      confirmLabel: 'Ativar ficha',
+      title: 'Ativar esta rotina?',
+      message: 'A rotina ativa atual será encerrada. O histórico dela continua guardado.',
+      confirmLabel: 'Ativar rotina',
     });
     if (!ok) return;
     await activateProgram(program.id);
-    toast('Ficha ativada');
+    toast('Rotina ativada');
   };
 
   const archive = async () => {
     const ok = await confirm({
-      title: 'Encerrar esta ficha?',
+      title: 'Encerrar esta rotina?',
       message: 'Ela sai do Início, mas o histórico e os treinos continuam guardados. Você pode ativá-la de novo quando quiser.',
-      confirmLabel: 'Encerrar ficha',
+      confirmLabel: 'Encerrar rotina',
     });
     if (ok) await archiveProgram(program.id);
   };
 
   const duplicate = async () => {
     const ok = await confirm({
-      title: 'Duplicar esta ficha?',
-      message: `Uma cópia de "${program.name}" será criada com todas as rotinas, pronta para usar.`,
+      title: 'Duplicar esta rotina?',
+      message: `Uma cópia de "${program.name}" será criada com todos os treinos, pronta para usar.`,
       confirmLabel: 'Duplicar',
     });
     if (!ok) return;
@@ -98,9 +98,9 @@ export function ProgramDetail() {
 
   const remove = async () => {
     const ok = await confirm({
-      title: 'Excluir esta ficha?',
+      title: 'Excluir esta rotina?',
       message: 'Os treinos montados nela serão apagados. Os treinos que você já fez continuam no histórico.',
-      confirmLabel: 'Excluir ficha',
+      confirmLabel: 'Excluir rotina',
       danger: true,
     });
     if (!ok) return;
@@ -112,13 +112,13 @@ export function ProgramDetail() {
     <main className="screen no-tabs">
       <TopBar
         left={<BackButton to="/treinos" />}
-        title="Ficha"
+        title="Rotina"
         right={
           <>
             <button type="button" className="glass circle" aria-label="Adicionar treino" onClick={addWorkout}>
               <Icon name="plus" size={22} stroke={2.4} />
             </button>
-            <button type="button" className="glass circle" aria-label="Opções da ficha" onClick={() => setMenuOpen(true)}>
+            <button type="button" className="glass circle" aria-label="Opções da rotina" onClick={() => setMenuOpen(true)}>
               <Icon name="more" size={22} />
             </button>
           </>
@@ -136,7 +136,7 @@ export function ProgramDetail() {
 
       <section className="stack">
         {workouts.length === 0 && (
-          <EmptyState title="Nenhum treino nesta ficha" text="Crie o Treino A e escolha os exercícios." />
+          <EmptyState title="Nenhum treino nesta rotina" text="Crie o Treino A e escolha os exercícios." />
         )}
         {workouts.map((w) => (
           <Link key={w.id} to={`/treino/${w.id}`} className="list-row">
@@ -156,11 +156,11 @@ export function ProgramDetail() {
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         actions={[
-          { icon: 'check', label: 'Ativar esta ficha', hidden: program.status === 'active', onClick: activate },
-          { icon: 'pencil', label: 'Renomear ficha', onClick: rename },
-          { icon: 'copy', label: 'Duplicar ficha', onClick: duplicate },
-          { icon: 'archive', label: 'Encerrar ficha', hidden: program.status !== 'active', onClick: archive },
-          { icon: 'x', label: 'Excluir ficha', danger: true, onClick: remove },
+          { icon: 'check', label: 'Ativar esta rotina', hidden: program.status === 'active', onClick: activate },
+          { icon: 'pencil', label: 'Renomear rotina', onClick: rename },
+          { icon: 'copy', label: 'Duplicar rotina', onClick: duplicate },
+          { icon: 'archive', label: 'Encerrar rotina', hidden: program.status !== 'active', onClick: archive },
+          { icon: 'x', label: 'Excluir rotina', danger: true, onClick: remove },
         ]}
       />
     </main>

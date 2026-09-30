@@ -86,7 +86,7 @@ export async function createProgram(name: string): Promise<string> {
   const id = newId();
   await put<Program>('programs', {
     id,
-    name: name.trim() || 'Minha ficha',
+    name: name.trim() || 'Minha rotina',
     status: hasActive ? 'ready' : 'active',
     createdAt: now,
     startedAt: hasActive ? null : now,
@@ -97,7 +97,7 @@ export async function createProgram(name: string): Promise<string> {
 }
 
 export async function renameProgram(id: string, name: string): Promise<void> {
-  await patch('programs', id, { name: name.trim() || 'Minha ficha' });
+  await patch('programs', id, { name: name.trim() || 'Minha rotina' });
 }
 
 export async function activateProgram(id: string): Promise<void> {
@@ -123,7 +123,7 @@ export async function duplicateProgram(id: string): Promise<string> {
   const newProgramId = newId();
   await put<Program>('programs', {
     id: newProgramId,
-    name: `${source?.name ?? 'Ficha'} (cópia)`,
+    name: `${source?.name ?? 'Rotina'} (cópia)`,
     status: 'ready',
     createdAt: now,
     startedAt: null,

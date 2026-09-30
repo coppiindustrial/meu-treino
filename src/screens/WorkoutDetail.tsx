@@ -178,7 +178,7 @@ export function WorkoutDetail() {
     if (before && now && !sameWorkout(before, now)) {
       const ok = await confirm({
         title: 'Descartar as alterações?',
-        message: 'A rotina volta a ficar como estava antes de você começar a editar.',
+        message: 'O treino volta a ficar como estava antes de você começar a editar.',
         confirmLabel: 'Descartar',
         danger: true,
       });
@@ -191,13 +191,13 @@ export function WorkoutDetail() {
 
   const duplicate = async () => {
     const ok = await confirm({
-      title: 'Duplicar rotina?',
-      message: `Uma cópia de "${workout.name}" será criada nesta ficha.`,
+      title: 'Duplicar treino?',
+      message: `Uma cópia de "${workout.name}" será criada nesta rotina.`,
       confirmLabel: 'Duplicar',
     });
     if (!ok) return;
     const id = await duplicateWorkout(workout.id);
-    toast('Rotina duplicada');
+    toast('Treino duplicado');
     navigate(`/treino/${id}`);
   };
 
@@ -218,9 +218,9 @@ export function WorkoutDetail() {
 
   const removeWorkout = async () => {
     const ok = await confirm({
-      title: `Excluir a rotina ${workout.letter}?`,
+      title: `Excluir o treino ${workout.letter}?`,
       message: 'Os exercícios montados nele serão apagados. O histórico do que você já fez continua guardado.',
-      confirmLabel: 'Excluir rotina',
+      confirmLabel: 'Excluir treino',
       danger: true,
     });
     if (!ok) return;
@@ -245,7 +245,7 @@ export function WorkoutDetail() {
             <BackButton to={program ? `/ficha/${program.id}` : '/treinos'} />
           )
         }
-        title={editing ? 'Editar rotina' : 'Rotina'}
+        title={editing ? 'Editar treino' : 'Treino'}
         right={
           editing ? (
             <button type="button" className="pill-primary" onClick={finishEditing}>
@@ -256,7 +256,7 @@ export function WorkoutDetail() {
               <Link to={`/treino/${workout.id}/adicionar`} className="glass circle" aria-label="Adicionar exercício">
                 <Icon name="plus" size={22} stroke={2.4} />
               </Link>
-              <button type="button" className="glass circle" aria-label="Opções da rotina" onClick={() => setMenuOpen(true)}>
+              <button type="button" className="glass circle" aria-label="Opções do treino" onClick={() => setMenuOpen(true)}>
                 <Icon name="more" size={22} />
               </button>
             </div>
@@ -346,7 +346,7 @@ export function WorkoutDetail() {
           {items.length > 0 && (
             <div className="dock">
               <button type="button" className="btn primary block" onClick={start}>
-                <Icon name="play" /> Iniciar rotina
+                <Icon name="play" /> Iniciar treino
               </button>
             </div>
           )}
@@ -384,9 +384,9 @@ export function WorkoutDetail() {
         onClose={() => setMenuOpen(false)}
         actions={[
           { icon: 'sort', label: 'Reordenar exercícios', hidden: items.length < 2, onClick: () => withTransition('forward', () => navigate(`/treino/${workout.id}/reordenar`)) },
-          { icon: 'pencil', label: 'Editar rotina', onClick: () => setEditing(true) },
-          { icon: 'copy', label: 'Duplicar rotina', onClick: duplicate },
-          { icon: 'x', label: 'Excluir rotina', danger: true, onClick: removeWorkout },
+          { icon: 'pencil', label: 'Editar treino', onClick: () => setEditing(true) },
+          { icon: 'copy', label: 'Duplicar treino', onClick: duplicate },
+          { icon: 'x', label: 'Excluir treino', danger: true, onClick: removeWorkout },
         ]}
       />
 

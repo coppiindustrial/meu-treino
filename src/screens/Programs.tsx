@@ -45,7 +45,7 @@ export function Programs() {
 
   const newEmptyProgram = async () => {
     setNewOpen(false);
-    const name = await prompt({ title: 'Nova ficha', label: 'Nome da ficha', placeholder: 'Hipertrofia · outubro' });
+    const name = await prompt({ title: 'Nova rotina', label: 'Nome da rotina', placeholder: 'Hipertrofia · outubro' });
     if (name === null) return;
     const id = await createProgram(name);
     navigate(`/ficha/${id}`);
@@ -62,13 +62,13 @@ export function Programs() {
     const ok = await confirm({
       title: `Ativar "${p.name}"?`,
       message: active
-        ? `A ficha "${active.name}" será encerrada. O histórico dela continua guardado.`
+        ? `A rotina "${active.name}" será encerrada. O histórico dela continua guardado.`
         : 'Ela passa a definir o seu próximo treino.',
-      confirmLabel: 'Ativar ficha',
+      confirmLabel: 'Ativar rotina',
     });
     if (!ok) return;
     await activateProgram(p.id);
-    toast('Ficha ativada');
+    toast('Rotina ativada');
   };
 
   const workoutRow = (w: Workout) => {
@@ -103,7 +103,7 @@ export function Programs() {
           <Link to="/exercicios?buscar=1" className="glass circle" aria-label="Buscar exercício">
             <Icon name="search" size={21} />
           </Link>
-          <button type="button" className="glass circle" aria-label="Nova ficha" onClick={newProgram}>
+          <button type="button" className="glass circle" aria-label="Nova rotina" onClick={newProgram}>
             <Icon name="plus" size={22} stroke={2.4} />
           </button>
         </div>
@@ -111,35 +111,33 @@ export function Programs() {
 
       {programs.length === 0 ? (
         <EmptyState
-          title="Nenhuma ficha ainda"
-          text="Uma ficha reúne os treinos que você está seguindo (A, B, C…). Deixe as próximas prontas e ative quando for trocar."
-          action={{ label: 'Criar minha primeira ficha', onClick: newProgram }}
+          title="Nenhuma rotina ainda"
+          text="Uma rotina reúne os treinos que você está seguindo (A, B, C…). Deixe as próximas prontas e ative quando for trocar."
+          action={{ label: 'Criar minha primeira rotina', onClick: newProgram }}
         />
       ) : (
         <p className="small muted" style={{ lineHeight: 1.5 }}>
-          A ficha ativa define o seu próximo treino. Deixe as próximas prontas e ative quando for trocar.
+          A rotina ativa define o seu próximo treino. Deixe as próximas prontas e ative quando for trocar.
         </p>
       )}
 
       {active && (
         <section className="card accent" style={{ paddingBottom: 4 }}>
-          <div className="row between" style={{ alignItems: 'flex-start', paddingBottom: 10 }}>
-            <div className="col">
-              <span className="chip accent eyebrow" style={{ fontSize: 11 }}>
-                Ficha ativa
-              </span>
-              <span className="display" style={{ fontSize: 20 }}>
+          <Link to={`/ficha/${active.id}`} className="tap-head row between" aria-label={`Abrir a rotina ${active.name}`}>
+            <span className="col" style={{ minWidth: 0 }}>
+              <span className="display ellipsis" style={{ fontSize: 20 }}>
                 {active.name}
               </span>
               <span className="tiny muted">
                 {active.startedAt ? `Desde ${dayMonth(toISODate(new Date(active.startedAt)))} · ` : ''}
                 {sessionCount(active.id)} {sessionCount(active.id) === 1 ? 'treino feito' : 'treinos feitos'}
               </span>
-            </div>
-            <Link to={`/ficha/${active.id}`} className="text-btn">
-              Editar
-            </Link>
-          </div>
+            </span>
+            <span className="active-tag">
+              <i aria-hidden="true" />
+              Ativa
+            </span>
+          </Link>
           {workoutsOf(active.id).map(workoutRow)}
           <button type="button" className="card-row-btn" onClick={() => addWorkout(active.id)}>
             <Icon name="plus" /> Adicionar treino
@@ -150,7 +148,7 @@ export function Programs() {
       {others.length > 0 && (
         <section className="stack">
           <div className="section-head">
-            <h2 className="h2">Outras fichas</h2>
+            <h2 className="h2">Outras rotinas</h2>
             <span className="small muted">Prontas ou antigas</span>
           </div>
           {others.map((p) => {
@@ -160,8 +158,8 @@ export function Programs() {
                 ? `Pronta para usar · ${ws.length} ${ws.length === 1 ? 'treino' : 'treinos'}`
                 : `Encerrada${p.endedAt ? ` em ${fullDate(toISODate(new Date(p.endedAt)))}` : ''} · ${sessionCount(p.id)} no histórico`;
             return (
-              <div key={p.id} className="list-row" style={{ padding: '10px 10px 10px 16px' }}>
-                <Link to={`/ficha/${p.id}`} className="col grow" style={{ color: 'var(--text)' }}>
+              <div key={p.id} className="list-row" style={{ padding: 6 }}>
+                <Link to={`/ficha/${p.id}`} className="tap-head col grow" aria-label={`Abrir a rotina ${p.name}`}>
                   <span style={{ fontWeight: 700 }}>{p.name}</span>
                   <span className="tiny muted">{status}</span>
                 </Link>
@@ -174,7 +172,7 @@ export function Programs() {
         </section>
       )}
 
-      <Sheet open={newOpen} onClose={() => setNewOpen(false)} title="Nova ficha">
+      <Sheet open={newOpen} onClose={() => setNewOpen(false)} title="Nova rotina">
         <div className="list-group">
           <button type="button" className="list-item" style={{ minHeight: 64 }} onClick={newEmptyProgram}>
             <span className="notice-icon">
@@ -182,7 +180,7 @@ export function Programs() {
             </span>
             <span className="col grow">
               <span style={{ fontSize: 16, fontWeight: 600 }}>Criar do zero</span>
-              <span className="tiny muted">Monte as rotinas escolhendo os exercícios</span>
+              <span className="tiny muted">Monte os treinos escolhendo os exercícios</span>
             </span>
           </button>
           <button
@@ -199,7 +197,7 @@ export function Programs() {
             </span>
             <span className="col grow">
               <span style={{ fontSize: 16, fontWeight: 600 }}>Colar treino pronto</span>
-              <span className="tiny muted">Cole o texto e o app monta a ficha sozinho</span>
+              <span className="tiny muted">Cole o texto e o app monta a rotina sozinho</span>
             </span>
           </button>
         </div>

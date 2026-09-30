@@ -46,8 +46,8 @@ export function History() {
       <TopBar left={<BackButton to="/perfil" />} title="Histórico" />
 
       {programs.length > 1 && (
-        <select className="select" aria-label="Filtrar por ficha" value={programFilter} onChange={(e) => setProgramFilter(e.target.value)}>
-          <option value="todas">Todas as fichas</option>
+        <select className="select" aria-label="Filtrar por rotina" value={programFilter} onChange={(e) => setProgramFilter(e.target.value)}>
+          <option value="todas">Todas as rotinas</option>
           {programs.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}

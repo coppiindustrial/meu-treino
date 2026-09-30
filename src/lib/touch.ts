@@ -21,7 +21,7 @@ export function setHapticsEnabled(on: boolean): void {
   if (sw) sw.disabled = !on;
 }
 
-const PRESSABLE = '.glass, .pill-primary';
+const PRESSABLE = '.glass, .pill-primary, .tap-head';
 const VIBRATE_ON = [
   '.glass',
   '.pill-primary',

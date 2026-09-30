@@ -81,7 +81,7 @@ export function Home() {
   const lastSession = sessions[0];
 
   const newProgram = async () => {
-    const name = await prompt({ title: 'Nova ficha', label: 'Nome da ficha', placeholder: 'Hipertrofia · outubro' });
+    const name = await prompt({ title: 'Nova rotina', label: 'Nome da rotina', placeholder: 'Hipertrofia · outubro' });
     if (name === null) return;
     const id = await createProgram(name);
     navigate(`/ficha/${id}`);
@@ -124,25 +124,25 @@ export function Home() {
       {!program ? (
         <section className="card stack-lg">
           <span className="display" style={{ fontSize: 22 }}>
-            Monte sua primeira ficha
+            Monte sua primeira rotina
           </span>
           <p className="small muted" style={{ lineHeight: 1.5 }}>
-            Uma ficha reúne suas rotinas (A, B, C…). Depois é só escolher os exercícios de cada uma.
+            Uma rotina reúne seus treinos (A, B, C…). Depois é só escolher os exercícios de cada um.
           </p>
           <button type="button" className="btn primary block" onClick={newProgram}>
-            <Icon name="plus" /> Criar ficha
+            <Icon name="plus" /> Criar rotina
           </button>
         </section>
       ) : (
         <section className="stack">
-          <span className="label">Rotinas</span>
+          <span className="label">Treinos</span>
           <div className={`folder ${folderOpen ? '' : 'closed'}`}>
             <button type="button" className="folder-head" aria-expanded={folderOpen} onClick={() => toggleFolder()}>
               <Icon name="folder" size={20} color="var(--muted)" />
               <span className="col grow" style={{ gap: 0 }}>
                 <span style={{ fontSize: 16, fontWeight: 600 }}>{program.name}</span>
                 <span className="tiny muted">
-                  Ficha ativa · {workouts.length} {workouts.length === 1 ? 'rotina' : 'rotinas'}
+                  Rotina ativa · {workouts.length} {workouts.length === 1 ? 'treino' : 'treinos'}
                 </span>
               </span>
               <span className="chev">
@@ -153,7 +153,7 @@ export function Home() {
               <div>
                 {workouts.length === 0 && (
                   <Link to={`/ficha/${program.id}`} className="btn soft block">
-                    <Icon name="plus" /> Adicionar rotina
+                    <Icon name="plus" /> Adicionar treino
                   </Link>
                 )}
                 {workouts.map((w, i) => {
@@ -173,7 +173,7 @@ export function Home() {
                       </p>
                       {!active && items.length > 0 && (
                         <button type="button" className="btn primary block" onClick={() => start(w.id)}>
-                          Iniciar rotina
+                          Iniciar treino
                         </button>
                       )}
                     </div>

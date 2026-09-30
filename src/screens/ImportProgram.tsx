@@ -126,7 +126,7 @@ export function ImportProgram() {
     }
     setSaving(true);
     const id = await importProgram(
-      programName.trim() || 'Ficha colada',
+      programName.trim() || 'Rotina colada',
       days
         .map((d) => ({
           name: d.name,
@@ -136,7 +136,7 @@ export function ImportProgram() {
         }))
         .filter((d) => d.items.length > 0),
     );
-    toast('Ficha criada');
+    toast('Rotina criada');
     navigate(`/ficha/${id}`, { replace: true });
   };
 
@@ -149,11 +149,11 @@ export function ImportProgram() {
         <div className="col">
           <h1 className="h1">Colar treino</h1>
           <span className="small muted" style={{ lineHeight: 1.5 }}>
-            Cole o treino em texto. Cada dia vira uma rotina (A, B, C…) e os exercícios são procurados na biblioteca.
+            Cole o treino em texto. Cada dia vira um treino (A, B, C…) e os exercícios são procurados na biblioteca.
           </span>
         </div>
         <label className="field">
-          <span className="label">Nome da ficha</span>
+          <span className="label">Nome da rotina</span>
           <input className="input" value={programName} placeholder="Hipertrofia · outubro" onChange={(e) => setProgramName(e.target.value)} />
         </label>
         <label className="field">
@@ -183,8 +183,8 @@ export function ImportProgram() {
         title="Conferir"
       />
       <label className="field">
-        <span className="label">Nome da ficha</span>
-        <input className="input" value={programName} placeholder="Ficha colada" onChange={(e) => setProgramName(e.target.value)} />
+        <span className="label">Nome da rotina</span>
+        <input className="input" value={programName} placeholder="Rotina colada" onChange={(e) => setProgramName(e.target.value)} />
       </label>
       <div className="import-summary">
         <span className="ok">
@@ -201,7 +201,7 @@ export function ImportProgram() {
             <input
               className="import-day-name"
               value={day.name}
-              aria-label={`Nome da rotina ${String.fromCharCode(65 + d)}`}
+              aria-label={`Nome do treino ${String.fromCharCode(65 + d)}`}
               onChange={(e) => setDays((prev) => prev && prev.map((x, i) => (i === d ? { ...x, name: e.target.value } : x)))}
             />
           </div>
@@ -223,7 +223,7 @@ export function ImportProgram() {
       <div className="bottom-bar">
         <div className="bottom-bar-inner">
           <button type="button" className="btn big primary grow" disabled={saving || rows.length === 0} onClick={create}>
-            Criar ficha
+            Criar rotina
           </button>
         </div>
       </div>
