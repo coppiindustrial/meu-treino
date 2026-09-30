@@ -26,10 +26,12 @@ async function load(): Promise<Ready> {
   if (!row) {
     const keys = await webpush.generateVapidKeys({ extractable: true });
     const exported = await webpush.exportVapidKeys(keys);
-    await sql`insert into public.push_config (id, vapid) values (1, ${JSON.stringify(exported)}::jsonb) on conflict (id) do nothing`;
+    await sql`insert into public.push_config (id, vapid) values (1, ${sql.json(exported as unknown as postgres.JSONValue)}) on conflict (id) do nothing`;
     [row] = await sql`select vapid from public.push_config where id = 1`;
   }
-  const vapidKeys = await webpush.importVapidKeys(row.vapid, { extractable: false });
+  // A chave pode ter sido gravada como texto em vez de objeto: aceita os dois.
+  const stored = typeof row.vapid === 'string' ? JSON.parse(row.vapid) : row.vapid;
+  const vapidKeys = await webpush.importVapidKeys(stored, { extractable: false });
   return {
     publicKey: await webpush.exportApplicationServerKey(vapidKeys),
     server: await webpush.ApplicationServer.new({
