@@ -3736,3 +3736,17 @@ html[data-nav="tab"] .screen:not(.no-tabs) {
     transition: none;
   }
 }
+
+/* Botão fixo de baixo ("Iniciar treino", "Concluído"): camada própria na troca de tela, como o menu.
+   Dentro da foto da tela, o Safari desenhava o vidro errado (retângulo azul borrado, sem texto). */
+.dock {
+  view-transition-name: dock;
+}
+
+::view-transition-old(dock) {
+  display: none;
+}
+
+::view-transition-new(dock) {
+  animation: none;
+}

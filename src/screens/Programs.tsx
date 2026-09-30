@@ -36,13 +36,6 @@ export function Programs() {
   const sessionCount = (pId: string) => sessions.filter((s) => s.programId === pId).length;
   const lastDone = (wId: string) => sessions.find((s) => s.workoutId === wId);
 
-  let nextId: string | undefined;
-  if (active) {
-    const ws = workoutsOf(active.id);
-    const last = sessions.find((s) => s.programId === active.id && s.workoutId);
-    const idx = last ? ws.findIndex((w) => w.id === last.workoutId) : -1;
-    nextId = ws.length ? ws[(idx + 1) % ws.length].id : undefined;
-  }
 
   const newProgram = () => setNewOpen(true);
 
@@ -77,16 +70,14 @@ export function Programs() {
   const workoutRow = (w: Workout) => {
     const last = lastDone(w.id);
     const count = itemCount(w.id);
-    const isNext = w.id === nextId;
     return (
       <Link key={w.id} to={`/treino/${w.id}`} className="row" style={{ minHeight: 62, padding: '8px 4px', borderTop: '1px solid var(--border)', color: 'var(--text)' }}>
-        <div className={`letter ${isNext ? 'on' : ''}`}>{w.letter}</div>
+        <div className="letter">{w.letter}</div>
         <div className="col grow">
           <div className="row" style={{ gap: 8 }}>
             <span className="ellipsis" style={{ fontWeight: 700 }}>
               {w.name}
             </span>
-            {isNext && <span className="chip accent">Próximo</span>}
           </div>
           <span className="tiny muted">
             {count} {count === 1 ? 'exercício' : 'exercícios'}

@@ -48,23 +48,15 @@ export function Home() {
       getProfile(),
     ]);
     const workouts = program ? await workoutsOf(program.id) : [];
-    let next = workouts[0];
-    if (program && workouts.length > 0) {
-      const last = sessions.find((s) => s.programId === program.id && s.workoutId);
-      if (last) {
-        const idx = workouts.findIndex((w) => w.id === last.workoutId);
-        if (idx >= 0) next = workouts[(idx + 1) % workouts.length];
-      }
-    }
     const itemsByWorkout = await Promise.all(workouts.map((w) => itemsOf(w.id)));
     const bodies = (await db.bodyEntries.filter((b) => !b.deleted && b.weight !== null).toArray()).sort((a, b) =>
       a.date < b.date ? 1 : -1,
     );
-    return { program, sessions, active, profile, workouts, next, itemsByWorkout, weight: bodies[0]?.weight ?? null };
+    return { program, sessions, active, profile, workouts, itemsByWorkout, weight: bodies[0]?.weight ?? null };
   }, []);
 
   if (!data) return <main className="screen" />;
-  const { program, sessions, active, profile, workouts, next, itemsByWorkout, weight } = data;
+  const { program, sessions, active, profile, workouts, itemsByWorkout, weight } = data;
 
   const today = todayISO();
   const monday = weekStart(today);
@@ -164,7 +156,7 @@ export function Home() {
                         <span className="routine-title ellipsis">
                           {w.letter} · {w.name}
                         </span>
-                        {next?.id === w.id && !active ? <span className="pill-tag">Próximo</span> : <Icon name="next" size={18} color="var(--muted)" />}
+                        <Icon name="next" size={18} color="var(--muted)" />
                       </Link>
                       <p className="routine-list">
                         {items.length === 0
