@@ -95,7 +95,8 @@ function RestBar() {
   useEffect(() => {
     if (rest.endsAt && now >= rest.endsAt && alerted.current !== rest.endsAt) {
       alerted.current = rest.endsAt;
-      beep();
+      // Só apita na hora certa. Se o descanso acabou com o app fechado, quem avisou foi a notificação.
+      if (now - rest.endsAt < 2000) beep();
       setFinishedAt(Date.now());
       rest.stop();
     }
