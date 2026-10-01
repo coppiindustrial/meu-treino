@@ -3463,19 +3463,55 @@ body:has(.session-strip) .rest-bar {
   font-weight: 600;
 }
 
+/* Grupos de roletas lado a lado (carga | repetições); cada coluna ocupa a sua parte inteira da janela,
+   para rolar tocando em qualquer ponto dela, não só em cima do número. */
 .wheels {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0 14px;
+}
+
+.wheel-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wheel-head {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.wheel-row {
   position: relative;
   display: flex;
+}
+
+.wheel-sep {
+  flex: 0 0 14px;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 4px;
-  margin: 4px 0 10px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-2);
+  pointer-events: none;
+}
+
+.wheel-pad {
+  height: 90px;
 }
 
 .wheels-band {
   position: absolute;
   left: 0;
   right: 0;
-  top: 80px;
+  top: 90px;
   height: 40px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.08);
@@ -3485,11 +3521,12 @@ body:has(.session-strip) .rest-bar {
 
 .wheel {
   position: relative;
-  width: 130px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .wheel-scroll {
-  height: 200px;
+  height: 220px;
   overflow-y: scroll;
   overscroll-behavior: contain;
   scroll-snap-type: y mandatory;
@@ -3506,14 +3543,19 @@ body:has(.session-strip) .rest-bar {
   display: block;
   width: 100%;
   height: 40px;
-  padding: 0 56px 0 0;
+  padding: 0;
   border: 0;
   background: none;
   color: var(--muted);
-  font-size: 20px;
+  font-size: 21px;
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: center;
   scroll-snap-align: center;
+}
+
+/* Com unidade ("kg", "reps"), o número fica um pouco à esquerda e a unidade à direita, na faixa. */
+.wheel.has-unit .wheel-item {
+  padding-right: 30px;
 }
 
 .wheel-item.near {
@@ -3528,11 +3570,11 @@ body:has(.session-strip) .rest-bar {
 
 .wheel-unit {
   position: absolute;
-  top: 80px;
-  right: 14px;
+  top: 90px;
+  right: 8px;
   height: 40px;
   line-height: 40px;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-2);
   pointer-events: none;
@@ -3704,7 +3746,13 @@ body:has(.session-strip) .rest-bar {
 .lp-item {
   position: relative;
   touch-action: pan-y;
-  transition: transform 0.22s var(--press);
+  /* Vizinhos abrem espaço com uma mola suave. */
+  transition: transform 0.26s cubic-bezier(0.3, 1.15, 0.5, 1);
+}
+
+/* No quadro em que a lista muda de ordem, nada anima (o item pego pousa por conta própria). */
+.lp-sort.settling .lp-item {
+  transition: none !important;
 }
 
 /* No iPhone, segurar um link liga o "arrastar para outro app" do sistema, que deixava um fantasma cinza. */
@@ -3729,15 +3777,45 @@ body:has(.session-strip) .rest-bar {
   transition: none;
 }
 
-.lp-item.lifted > * {
-  transform: scale(1.03);
-  background: var(--raised);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+/* Mais claro e com contorno fino, para aparecer sobre o fundo preto (a sombra sozinha não aparecia).
+   "landing": o mesmo visual enquanto pousa, sumindo aos poucos. A classe .lp-sort vence o :active dos links. */
+.lp-sort .lp-item.lifted > *,
+.lp-sort .lp-item.landing > * {
+  transform: scale(1.04);
+  background: var(--raised-2);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.16),
+    0 18px 40px rgba(0, 0, 0, 0.7);
+  opacity: 1;
 }
 
 .lp-sort.sorting .tap-head {
   background: none;
   transform: none;
+}
+
+/* O efeito de toque (apagar ou diminuir) não vale enquanto arrasta. */
+.lp-sort.sorting .ex-row-link:active,
+.lp-sort.sorting .routine-row:active {
+  opacity: 1;
+}
+
+/* Linhas de largura total (com deslizar): pegas, viram um cartão arredondado um pouco para dentro. */
+.lp-sort .lp-item.lifted > .swipe-wrap,
+.lp-sort .lp-item.landing > .swipe-wrap {
+  margin: 0 -8px;
+  overflow: hidden;
+}
+
+.lp-sort .lp-item.lifted .ex-row,
+.lp-sort .lp-item.landing .ex-row {
+  border-bottom-color: transparent;
+}
+
+.lp-sort .lp-item.lifted .muscle-badge,
+.lp-sort .lp-item.landing .muscle-badge {
+  border-color: var(--raised-2);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3807,8 +3885,9 @@ html.vt-running .dock {
 }
 
 /* Item "pego": a linha ganha fundo e sombra, qualquer que seja a lista. */
-.lp-item.lifted .swipe-row {
-  background: var(--raised);
+.lp-item.lifted .swipe-row,
+.lp-item.landing .swipe-row {
+  background: var(--raised-2);
   border-radius: 16px;
 }
 
@@ -3867,4 +3946,87 @@ html.vt-running .screen > .tab-head {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   background: rgba(0, 0, 0, 0.94);
+}
+
+/* ------------------------------------------------------------ Lista do treino: foto maior, músculos e ⋮ */
+
+.ex-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px 10px 20px;
+  color: var(--text);
+  border-bottom: 0.5px solid var(--border);
+}
+
+/* Superset: faixa roxa na linha. */
+.ex-row.ss {
+  box-shadow: inset 3px 0 0 #a06cff;
+}
+
+/* Foto e nome: tocar abre o exercício. */
+.ex-row-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+  transition: opacity 0.2s ease;
+}
+
+.ex-row-link:active {
+  opacity: 0.6;
+  transition-duration: 0.05s;
+}
+
+.ex-row-name {
+  font-weight: 600;
+}
+
+.ex-photo {
+  position: relative;
+  flex: none;
+  width: 64px;
+  height: 64px;
+}
+
+.ex-photo .thumb {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  border-radius: 14px;
+}
+
+/* Quadradinho dos músculos no canto da foto (como no BeFit). */
+.muscle-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: #1c1c1e;
+  border: 2px solid var(--bg);
+  overflow: hidden;
+}
+
+.muscle-badge svg {
+  display: block;
+}
+
+.ex-row-more {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  border-radius: 22px;
+  background: none;
+  color: var(--text-2);
+  display: grid;
+  place-items: center;
+}
+
+.ex-row-more:active {
+  background: var(--raised);
 }

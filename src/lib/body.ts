@@ -117,6 +117,55 @@ export function muscleViewBox(gender: BodyGender, id: MuscleId): string {
   return vb;
 }
 
+export interface MusclesDrawing {
+  viewBox: string;
+  paths: { d: string; tone: 'main' | 'also' | 'skin' | 'base' }[];
+}
+
+const drawings = new Map<string, MusclesDrawing | null>();
+
+/**
+ * Corpo enquadrado no músculo principal e nos que também trabalham (o selinho da lista do treino).
+ * Cardio usa o primeiro músculo secundário como principal (ex.: bicicleta → quadríceps).
+ */
+export function musclesDrawing(gender: BodyGender, primary: MuscleId, secondary: MuscleId[]): MusclesDrawing | null {
+  const key = `${gender}.${primary}.${secondary.join(',')}`;
+  if (drawings.has(key)) return drawings.get(key)!;
+  let main = primary;
+  let also = secondary;
+  if (MUSCLE_BY_ID[main]?.view === 'i') {
+    main = secondary[0];
+    also = secondary.slice(1);
+  }
+  if (!main || !MUSCLE_BY_ID[main] || MUSCLE_BY_ID[main].view === 'i') {
+    drawings.set(key, null);
+    return null;
+  }
+  const view = muscleView(main);
+  const parts = bodyParts(gender, view);
+  const isMain = muscleTest(main);
+  const alsoTests = also.filter((m) => MUSCLE_BY_ID[m]?.view !== 'i').map(muscleTest);
+  const isAlso = (p: BodyPart) => alsoTests.some((t) => t(p));
+  let viewBox = BODY[gender][view].vb;
+  if (main !== 'corpo') {
+    const hits = parts.filter((p) => isMain(p) || isAlso(p)).map((p) => partBox(p.d));
+    if (hits.length > 0) {
+      const x1 = Math.min(...hits.map((b) => b.x));
+      const y1 = Math.min(...hits.map((b) => b.y));
+      const x2 = Math.max(...hits.map((b) => b.x + b.w));
+      const y2 = Math.max(...hits.map((b) => b.y + b.h));
+      const size = Math.max(x2 - x1, y2 - y1) * 1.18 + 40;
+      viewBox = [(x1 + x2) / 2 - size / 2, (y1 + y2) / 2 - size / 2, size, size].map((n) => Math.round(n)).join(' ');
+    }
+  }
+  const drawing: MusclesDrawing = {
+    viewBox,
+    paths: parts.map((p) => ({ d: p.d, tone: isMain(p) ? 'main' : isAlso(p) ? 'also' : NON_MUSCLE.has(p.slug) ? 'skin' : 'base' })),
+  };
+  drawings.set(key, drawing);
+  return drawing;
+}
+
 /** Corpo usado nos desenhos (masculino ou feminino), escolhido no Perfil. */
 export function useBodyGender(): BodyGender {
   return useLiveQuery(async () => (await getProfile()).body ?? 'male', [], 'male');

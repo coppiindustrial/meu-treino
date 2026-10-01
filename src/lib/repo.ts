@@ -98,10 +98,13 @@ export async function createProgram(name: string): Promise<string> {
 
 /** Nova ordem das rotinas em "Outras rotinas" (segurar e arrastar). */
 export async function reorderPrograms(ids: string[]): Promise<void> {
-  for (const [i, id] of ids.entries()) {
-    const p = await db.programs.get(id);
-    if (p && p.position !== i) await patch('programs', id, { position: i });
-  }
+  // Tudo de uma vez: a lista na tela muda uma vez só, sem passar por ordens pela metade.
+  await db.transaction('rw', db.programs, async () => {
+    for (const [i, id] of ids.entries()) {
+      const p = await db.programs.get(id);
+      if (p && p.position !== i) await patch('programs', id, { position: i });
+    }
+  });
 }
 
 export async function renameProgram(id: string, name: string): Promise<void> {
@@ -291,11 +294,14 @@ async function relabelWorkouts(ordered: Workout[]): Promise<void> {
 
 /** Nova ordem dos treinos da rotina (segurar e arrastar, ou a tela Reordenar). */
 export async function reorderWorkouts(programId: string, orderedIds: string[]): Promise<void> {
-  const list = await workoutsOf(programId);
-  const byId = new Map(list.map((w) => [w.id, w]));
-  const ordered = orderedIds.map((id) => byId.get(id)).filter((w): w is Workout => !!w);
-  for (const w of list) if (!orderedIds.includes(w.id)) ordered.push(w);
-  await relabelWorkouts(ordered);
+  // Numa transação só: as letras não "piscam" passando por ordens pela metade.
+  await db.transaction('rw', db.workouts, async () => {
+    const list = await workoutsOf(programId);
+    const byId = new Map(list.map((w) => [w.id, w]));
+    const ordered = orderedIds.map((id) => byId.get(id)).filter((w): w is Workout => !!w);
+    for (const w of list) if (!orderedIds.includes(w.id)) ordered.push(w);
+    await relabelWorkouts(ordered);
+  });
 }
 
 // ---------------------------------------------------------------- Exercícios do treino
@@ -413,6 +419,11 @@ export async function removeWorkoutItem(id: string): Promise<void> {
  * se o exercício de baixo for o mesmo de antes (grupos separados na nova ordem se desfazem).
  */
 export async function reorderWorkoutItems(workoutId: string, orderedIds: string[]): Promise<void> {
+  // Numa transação só: a lista muda uma vez, sem a faixa do superset piscar.
+  await db.transaction('rw', db.workoutItems, () => reorderItemsNow(workoutId, orderedIds));
+}
+
+async function reorderItemsNow(workoutId: string, orderedIds: string[]): Promise<void> {
   const items = await itemsOf(workoutId);
   const byId = new Map(items.map((it) => [it.id, it]));
   const keep = new Set(orderedIds);

@@ -204,6 +204,7 @@ export function ActiveSession() {
                 label={labels[i]}
                 set={s}
                 unit={it.unit}
+                name={ex.name}
                 logType={logType}
                 distUnit={distUnit}
                 onOpenMenu={() => setTypeMenu({ itemId: it.id, index: i })}

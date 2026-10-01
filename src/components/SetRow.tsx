@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { SET_TYPE_BY_ID, SET_TYPES } from '../lib/equipment';
-import { num, parseNum } from '../lib/format';
+import { num } from '../lib/format';
 import { cardioSetText, distText, formatDuration, parseDistance } from '../lib/cardio';
 import type { DistUnit, DoneSet, LoadUnit, LogType, PlannedSet, RepMode, SetType } from '../lib/types';
 import { REST_OPTIONS, repsText, restText } from '../lib/workout';
 import { DurationSheet } from './DurationWheel';
 import { Icon } from './Icon';
+import { loadText, SetWheelSheet } from './SetWheel';
 import { Sheet } from './Sheet';
 
 /** Check que se "desenha" ao marcar. */
@@ -75,11 +76,15 @@ function prevSetText(p: { load?: number | null; reps?: number | null; secs?: num
 
 const loadPlaceholder = (v: number | null | undefined) => (v === null || v === undefined ? '' : num(v, 2));
 
+/** Primeiro número das repetições ("8-12" → 8), ou o padrão. */
+const firstReps = (r: string | null | undefined, fallback: number) => Number(String(r ?? '').split('-')[0]) || fallback;
+
 /** Uma série durante o treino: tipo, anterior, carga, repetições e check. */
 export function SetRow({
   label,
   set,
   unit,
+  name,
   logType = 'carga',
   distUnit = 'km',
   onOpenMenu,
@@ -89,17 +94,15 @@ export function SetRow({
   label: string;
   set: DoneSet;
   unit: LoadUnit;
+  /** Nome do exercício (título da roleta). */
+  name?: string;
   logType?: LogType;
   distUnit?: DistUnit;
   onOpenMenu: () => void;
   onCommit: (changes: Partial<DoneSet>) => void;
   onToggle: (values: Partial<DoneSet>) => void;
 }) {
-  const [load, setLoad] = useState(set.load === null ? '' : num(set.load, 2));
-  const [reps, setReps] = useState(set.reps === null ? '' : String(set.reps));
-  useEffect(() => setLoad(set.load === null ? '' : num(set.load, 2)), [set.load]);
-  useEffect(() => setReps(set.reps === null ? '' : String(set.reps)), [set.reps]);
-
+  const [wheelOpen, setWheelOpen] = useState(false);
   const info = SET_TYPE_BY_ID[set.type];
   const prevText = prevSetText({ load: set.prevLoad, reps: set.prevReps }, unit, 'carga', distUnit);
   const repsPlaceholder = set.prevReps ? String(set.prevReps) : set.target ? repsText(set.target) : '';
@@ -145,38 +148,42 @@ export function SetRow({
     );
   }
 
+  // Carga e repetições abrem a mesma janela de roletas (carga à esquerda, repetições à direita).
   return (
     <div className={`set-row ${set.done ? 'done' : ''}`}>
       {typeButton}
       <span className="small muted ellipsis">{prevText}</span>
-      <input
-        className="set-input"
-        inputMode="decimal"
-        enterKeyHint="next"
-        value={load}
-        placeholder={loadPlaceholder(set.prevLoad)}
-        aria-label={`Carga da série ${label}`}
-        onChange={(e) => setLoad(e.target.value)}
-        onBlur={() => {
-          const v = parseNum(load);
-          if (v !== set.load) onCommit({ load: v });
-        }}
-      />
-      <input
-        className="set-input"
-        inputMode="numeric"
-        enterKeyHint="done"
-        value={reps}
-        placeholder={repsPlaceholder}
-        aria-label={`Repetições da série ${label}`}
-        onChange={(e) => setReps(e.target.value)}
-        onBlur={() => {
-          const v = parseNum(reps);
-          const r = v === null ? null : Math.round(v);
-          if (r !== set.reps) onCommit({ reps: r });
-        }}
-      />
-      {check({ load: parseNum(load), reps: parseNum(reps) === null ? null : Math.round(parseNum(reps) as number) })}
+      <button type="button" className={`set-input dur-input ${set.load === null ? 'blank' : ''}`} aria-label={`Carga da série ${label}`} onClick={() => setWheelOpen(true)}>
+        {set.load !== null ? loadText(set.load) : loadPlaceholder(set.prevLoad)}
+      </button>
+      <button type="button" className={`set-input dur-input ${set.reps === null ? 'blank' : ''}`} aria-label={`Repetições da série ${label}`} onClick={() => setWheelOpen(true)}>
+        {set.reps !== null ? set.reps : repsPlaceholder}
+      </button>
+      {check({})}
+      {wheelOpen && (
+        <SetWheelSheet
+          onClose={() => setWheelOpen(false)}
+          title={name ?? `Série ${label}`}
+          subtitle={name ? `Série ${label}` : undefined}
+          unit={unit}
+          load={set.load}
+          loadStart={set.prevLoad ?? null}
+          reps={[set.reps ?? set.prevReps ?? firstReps(set.target, 10)]}
+          range={false}
+          canClear={set.load !== null || set.reps !== null}
+          onSave={(load, [reps]) => {
+            setWheelOpen(false);
+            const changes: Partial<DoneSet> = {};
+            if (load !== set.load) changes.load = load;
+            if (reps !== set.reps) changes.reps = reps;
+            if (Object.keys(changes).length) onCommit(changes);
+          }}
+          onClear={() => {
+            setWheelOpen(false);
+            onCommit({ load: null, reps: null });
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -188,6 +195,7 @@ export function PlannedSetRow({
   hint,
   prev,
   unit,
+  name,
   repMode,
   logType = 'carga',
   distUnit = 'km',
@@ -200,6 +208,8 @@ export function PlannedSetRow({
   /** O que foi feito nessa série da última vez (coluna "Anterior"). */
   prev: DoneSet | undefined;
   unit: LoadUnit;
+  /** Nome do exercício (título da roleta). */
+  name?: string;
   repMode: RepMode;
   logType?: LogType;
   distUnit?: DistUnit;
@@ -210,25 +220,14 @@ export function PlannedSetRow({
     const [a = '', b = ''] = r.split('-');
     return [a.trim(), b.trim()];
   };
-  const [load, setLoad] = useState(set.load === null ? '' : num(set.load, 2));
-  const [min, setMin] = useState(split(set.reps)[0]);
-  const [max, setMax] = useState(split(set.reps)[1]);
-  useEffect(() => setLoad(set.load === null ? '' : num(set.load, 2)), [set.load]);
-  useEffect(() => {
-    const [a, b] = split(set.reps);
-    setMin(a);
-    setMax(b);
-  }, [set.reps]);
-
+  const [wheelOpen, setWheelOpen] = useState(false);
+  const faixa = repMode === 'faixa';
+  const [min, max] = split(set.reps);
   const info = SET_TYPE_BY_ID[set.type];
-  const [hMin, hMax] = split(hint?.reps ?? (repMode === 'faixa' ? '8-12' : '10'));
+  const [hMin, hMax] = split(hint?.reps ?? (faixa ? '8-12' : '10'));
   const prevCell = <span className="small muted ellipsis set-prev">{prevSetText(prev, unit, logType, distUnit)}</span>;
-  const commitReps = (a: string, b: string) => {
-    const x = a.replace(/\D/g, '');
-    const y = b.replace(/\D/g, '');
-    const value = repMode === 'faixa' ? (x && y ? `${x}-${y}` : x || y) : x;
-    if (value !== set.reps) onChange({ reps: value });
-  };
+  const repsShown = min ? (faixa && max ? `${min}–${max}` : min) : null;
+  const repsHint = faixa ? `${hMin}–${hMax || hMin}` : hMin;
 
   if (logType !== 'carga') {
     const withDist = logType !== 'tempo';
@@ -258,49 +257,40 @@ export function PlannedSetRow({
         {label}
       </button>
       {prevCell}
-      <input
-        className="set-input"
-        inputMode="decimal"
-        value={load}
-        placeholder={loadPlaceholder(hint?.load ?? prev?.load)}
-        aria-label={`Carga da série ${label}`}
-        onChange={(e) => setLoad(e.target.value)}
-        onBlur={() => {
-          const v = parseNum(load);
-          if (v !== set.load) onChange({ load: v });
-        }}
-      />
-      {repMode === 'faixa' ? (
-        <span className="reps-range">
-          <input
-            className="set-input"
-            inputMode="numeric"
-            value={min}
-            placeholder={hMin}
-            aria-label={`Mínimo de repetições da série ${label}`}
-            onChange={(e) => setMin(e.target.value)}
-            onBlur={() => commitReps(min, max)}
-          />
-          <span className="muted">–</span>
-          <input
-            className="set-input"
-            inputMode="numeric"
-            value={max}
-            placeholder={hMax || hMin}
-            aria-label={`Máximo de repetições da série ${label}`}
-            onChange={(e) => setMax(e.target.value)}
-            onBlur={() => commitReps(min, max)}
-          />
-        </span>
-      ) : (
-        <input
-          className="set-input"
-          inputMode="numeric"
-          value={min}
-          placeholder={hMin}
-          aria-label={`Repetições da série ${label}`}
-          onChange={(e) => setMin(e.target.value)}
-          onBlur={() => commitReps(min, '')}
+      <button type="button" className={`set-input dur-input ${set.load === null ? 'blank' : ''}`} aria-label={`Carga da série ${label}`} onClick={() => setWheelOpen(true)}>
+        {set.load !== null ? loadText(set.load) : loadPlaceholder(hint?.load ?? prev?.load)}
+      </button>
+      <button
+        type="button"
+        className={`set-input dur-input ${repsShown ? '' : 'blank'}`}
+        aria-label={faixa ? `Faixa de repetições da série ${label}` : `Repetições da série ${label}`}
+        onClick={() => setWheelOpen(true)}
+      >
+        {repsShown ?? repsHint}
+      </button>
+      {wheelOpen && (
+        <SetWheelSheet
+          onClose={() => setWheelOpen(false)}
+          title={name ?? `Série ${label}`}
+          subtitle={name ? `Série ${label}` : undefined}
+          unit={unit}
+          load={set.load}
+          loadStart={hint?.load ?? prev?.load ?? null}
+          reps={faixa ? [Number(min || hMin) || 8, Number(max || hMax || min || hMin) || 12] : [Number(min || hMin) || 10]}
+          range={faixa}
+          canClear={set.load !== null || !!set.reps}
+          onSave={(load, [a, b]) => {
+            setWheelOpen(false);
+            const reps = faixa ? `${a}-${b ?? a}` : String(a);
+            const changes: Partial<PlannedSet> = {};
+            if (load !== set.load) changes.load = load;
+            if (reps !== set.reps) changes.reps = reps;
+            if (Object.keys(changes).length) onChange(changes);
+          }}
+          onClear={() => {
+            setWheelOpen(false);
+            onChange({ load: null, reps: '' });
+          }}
         />
       )}
     </div>

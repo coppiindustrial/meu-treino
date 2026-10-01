@@ -6,6 +6,7 @@ import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { BackButton, EmptyState, LoadingScreen, TopBar } from '../components/Layout';
 import { ExerciseThumb } from '../components/Media';
+import { MuscleBadge } from '../components/MuscleBadge';
 import { IntervalConfigButtons } from '../components/Intervals';
 import { LogTypePicker } from '../components/LogTypePicker';
 import { PlannedSetRow, RepModeSheet, RestSheet, SetTypeSheet } from '../components/SetRow';
@@ -103,6 +104,7 @@ export function WorkoutDetail() {
   const { confirm, toast } = useDialogs();
   const removeItem = useRemoveItem();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [itemMenu, setItemMenu] = useState<string | null>(null);
   const { map } = useExercises();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -230,6 +232,7 @@ export function WorkoutDetail() {
     navigate(program ? `/ficha/${program.id}` : '/treinos', { replace: true });
   };
 
+  const menuItem = itemMenu ? items.find((x) => x.id === itemMenu) : undefined;
   const groups = groupSupersets(items);
   const inSuperset = new Set(groups.filter((g) => g.length > 1).flat().map((it) => it.id));
   const exOf = (i: number) => exerciseOrMissing(map, items[i].exerciseId);
@@ -324,23 +327,29 @@ export function WorkoutDetail() {
               const ss = inSuperset.has(it.id);
               return (
                 <SwipeRow label="Remover" onDelete={() => removeItem(it)}>
-                  <Link to={`/exercicio/${it.exerciseId}`} className={`routine-row ${ss ? 'ss' : ''}`} draggable={false}>
-                    <span className="ex-avatar">
-                      <ExerciseThumb exercise={ex} />
-                    </span>
-                    <div className="col grow">
-                      <span style={{ fontWeight: 600 }}>
-                        {ex.name}
-                        {ss && <span className="ss-tag">Superset</span>}
+                  <div className={`ex-row ${ss ? 'ss' : ''}`}>
+                    {/* Foto e nome abrem o exercício; o ⋮ abre o mesmo menu do Editar. */}
+                    <Link to={`/exercicio/${it.exerciseId}`} className="ex-row-link" draggable={false}>
+                      <span className="ex-photo">
+                        <ExerciseThumb exercise={ex} />
+                        <MuscleBadge primary={ex.primary} secondary={ex.secondary} />
                       </span>
-                      <span className="small muted">
-                        {itemSummary(it, ex.logType, ex.unit)}
-                        {(it.logType ?? ex.logType) !== 'tiros' ? ` · descanso ${restText(it.restSeconds ?? workout.restSeconds)}` : ''}
+                      <span className="col grow" style={{ minWidth: 0 }}>
+                        <span className="ex-row-name">
+                          {ex.name}
+                          {ss && <span className="ss-tag">Superset</span>}
+                        </span>
+                        <span className="small muted">
+                          {itemSummary(it, ex.logType, ex.unit)}
+                          {(it.logType ?? ex.logType) !== 'tiros' ? ` · descanso ${restText(it.restSeconds ?? workout.restSeconds)}` : ''}
+                        </span>
+                        {it.note ? <span className="chip method">{it.note}</span> : null}
                       </span>
-                      {it.note ? <span className="chip method">{it.note}</span> : null}
-                    </div>
-                    <Icon name="next" size={20} color="var(--muted)" />
-                  </Link>
+                    </Link>
+                    <button type="button" className="ex-row-more" aria-label={`Opções de ${ex.name}`} onClick={() => setItemMenu(it.id)}>
+                      <Icon name="moreV" size={22} />
+                    </button>
+                  </div>
                 </SwipeRow>
               );
             }}
@@ -381,6 +390,18 @@ export function WorkoutDetail() {
       )}
       <div ref={bottomRef} />
 
+      {menuItem && (
+        <ItemMenuSheet
+          open
+          onClose={() => setItemMenu(null)}
+          item={menuItem}
+          ex={exerciseOrMissing(map, menuItem.exerciseId)}
+          workout={workout}
+          index={items.indexOf(menuItem)}
+          total={items.length}
+        />
+      )}
+
       <ActionMenu
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
@@ -397,13 +418,10 @@ export function WorkoutDetail() {
 }
 
 function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; index: number; total: number; workout: Workout; ex: ExerciseView }) {
-  const removeItem = useRemoveItem();
   const [menuOpen, setMenuOpen] = useState(false);
   const [restOpen, setRestOpen] = useState(false);
   const [modeOpen, setModeOpen] = useState(false);
   const [typeIdx, setTypeIdx] = useState<number | null>(null);
-  const [note, setNote] = useState(item.note ?? '');
-  useEffect(() => setNote(item.note ?? ''), [item.note]);
 
   const mode = repModeOf(item);
   const labels = setLabels(item.sets.map((s) => s.type));
@@ -431,16 +449,6 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
           <Icon name="more" />
         </button>
       </div>
-      <input
-        className="ex-note"
-        value={note}
-        placeholder="Método ou observação (ex.: drop-set na última)"
-        aria-label="Método ou observação"
-        onChange={(e) => setNote(e.target.value)}
-        onBlur={() => {
-          if (note !== (item.note ?? '')) void updateWorkoutItem(item.id, { note: note.trim() });
-        }}
-      />
       <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
         {cardio && <span className="log-tag">{logTypeName(logType)}</span>}
         {logType !== 'tiros' && (
@@ -481,6 +489,7 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
                 hint={i > 0 ? item.sets[i - 1] : undefined}
                 prev={prevOf(i)}
                 unit={ex.unit}
+                name={ex.name}
                 repMode={mode}
                 logType={logType}
                 distUnit={distUnit}
@@ -541,63 +550,105 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
           setModeOpen(false);
         }}
       />
-      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={ex.name}>
-        <LogTypePicker
-          value={logType}
-          distUnit={distUnit}
-          onType={async (t) => {
-            await setItemLogType('workoutItems', item.id, item.exerciseId, t);
-            // Cardio sem séries ganha uma linha para as metas (os tiros usam só a configuração).
-            if (t !== 'tiros' && t !== 'carga' && item.sets.length === 0) {
-              await save(() => [{ type: 'N', reps: '', load: null, secs: t === 'tempo' ? 60 : null, dist: null }]);
-            }
-          }}
-          onDistUnit={(u) => setItemDistUnit('workoutItems', item.id, item.exerciseId, u)}
-        />
-        <div className="list-group">
-          {total > 1 && (
-            <Link to={`/treino/${workout.id}/reordenar`} className="list-item">
-              <Icon name="sort" color="var(--text-2)" />
-              <span className="grow">Reordenar exercícios</span>
-            </Link>
-          )}
-          <Link to={`/treino/${workout.id}/substituir/${item.id}`} className="list-item">
-            <Icon name="swap" color="var(--text-2)" />
-            <span className="grow">Substituir exercício</span>
+      <ItemMenuSheet
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        item={item}
+        ex={ex}
+        workout={workout}
+        index={index}
+        total={total}
+        showView
+      />
+    </section>
+  );
+}
+
+/**
+ * Menu de um exercício do treino: tipo de registro, reordenar, substituir, superset e remover.
+ * O mesmo no Editar e no ⋮ da lista (lá sem "Ver exercício", porque tocar na linha já abre o exercício).
+ */
+function ItemMenuSheet({
+  open,
+  onClose,
+  item,
+  ex,
+  workout,
+  index,
+  total,
+  showView = false,
+}: {
+  open: boolean;
+  onClose: () => void;
+  item: WorkoutItem;
+  ex: ExerciseView;
+  workout: Workout;
+  index: number;
+  total: number;
+  showView?: boolean;
+}) {
+  const removeItem = useRemoveItem();
+  const logType = item.logType ?? ex.logType;
+  const distUnit = item.distUnit ?? ex.distUnit;
+  return (
+    <Sheet open={open} onClose={onClose} title={ex.name}>
+      <LogTypePicker
+        value={logType}
+        distUnit={distUnit}
+        onType={async (t) => {
+          await setItemLogType('workoutItems', item.id, item.exerciseId, t);
+          // Cardio sem séries ganha uma linha para as metas (os tiros usam só a configuração).
+          if (t !== 'tiros' && t !== 'carga' && item.sets.length === 0) {
+            await editPlannedSets(item.id, () => [{ type: 'N', reps: '', load: null, secs: t === 'tempo' ? 60 : null, dist: null }]);
+          }
+        }}
+        onDistUnit={(u) => setItemDistUnit('workoutItems', item.id, item.exerciseId, u)}
+      />
+      <div className="list-group">
+        {total > 1 && (
+          <Link to={`/treino/${workout.id}/reordenar`} className="list-item">
+            <Icon name="sort" color="var(--text-2)" />
+            <span className="grow">Reordenar exercícios</span>
           </Link>
-          {index < total - 1 && (
-            <button
-              type="button"
-              className="list-item"
-              onClick={async () => {
-                await toggleSuperset(item.id);
-                setMenuOpen(false);
-              }}
-            >
-              <Icon name="link" color="var(--text-2)" />
-              <span className="grow col">
-                <span>{item.supersetNext ? 'Tirar do superset' : 'Adicionar ao superset'}</span>
-                {!item.supersetNext && <span className="tiny muted">Junta com o próximo exercício</span>}
-              </span>
-            </button>
-          )}
+        )}
+        <Link to={`/treino/${workout.id}/substituir/${item.id}`} className="list-item">
+          <Icon name="swap" color="var(--text-2)" />
+          <span className="grow">Substituir exercício</span>
+        </Link>
+        {index < total - 1 && (
+          <button
+            type="button"
+            className="list-item"
+            onClick={async () => {
+              await toggleSuperset(item.id);
+              onClose();
+            }}
+          >
+            <Icon name="link" color="var(--text-2)" />
+            <span className="grow col">
+              <span>{item.supersetNext ? 'Tirar do superset' : 'Adicionar ao superset'}</span>
+              {!item.supersetNext && <span className="tiny muted">Junta com o próximo exercício</span>}
+            </span>
+          </button>
+        )}
+        {showView && (
           <Link to={`/exercicio/${item.exerciseId}`} className="list-item">
             <Icon name="chart" color="var(--text-2)" />
             <span className="grow">Ver exercício e progresso</span>
           </Link>
-          <button
-            type="button"
-            className="list-item danger"
-            onClick={() => {
-              setMenuOpen(false);
-              void removeItem(item);
-            }}
-          >
-            <Icon name="trash" />
-            <span className="grow">Remover exercício</span>
-          </button>
-        </div>
-      </Sheet>
-    </section>
+        )}
+        <button
+          type="button"
+          className="list-item danger"
+          onClick={() => {
+            onClose();
+            void removeItem(item);
+          }}
+        >
+          <Icon name="trash" />
+          <span className="grow">Remover exercício</span>
+        </button>
+      </div>
+    </Sheet>
   );
 }
