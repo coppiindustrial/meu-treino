@@ -9,6 +9,18 @@ import { installTouchFeedback } from './lib/touch';
 // Efeito de pressionar e vibração leve nos botões.
 installTouchFeedback();
 
+// Sem zoom com dois dedos: o Safari do iPhone ignora o "user-scalable=no" da página, então o gesto é cancelado aqui.
+for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+}
+document.addEventListener(
+  'touchmove',
+  (e) => {
+    if (e.touches.length > 1 && e.cancelable) e.preventDefault();
+  },
+  { passive: false },
+);
+
 // Procura versão nova ao abrir, ao voltar para o app e a cada hora.
 registerSW({
   immediate: true,

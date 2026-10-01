@@ -4030,3 +4030,101 @@ html.vt-running .screen > .tab-head {
 .ex-row-more:active {
   background: var(--raised);
 }
+
+/* ------------------------------------------------------------ Roleta: tocar no número para digitar */
+
+/* Tracejado embaixo do número escolhido: avisa que dá para tocar e digitar (como no BeFit). */
+.wheel-item {
+  position: relative;
+}
+
+.wheel-item.on::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 34px;
+  transform: translateX(-50%);
+  border-bottom: 2px dashed rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.wheel.has-unit .wheel-item.on::after {
+  left: calc(50% - 15px);
+}
+
+/* Campos do modo digitar: sempre montados sobre a faixa (o iPhone só abre o teclado com foco dentro do toque). */
+.wheel-typing {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 84px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 8px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.wheels.typing .wheel-typing {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.wheels.typing .wheel,
+.wheels.typing .wheel-sep {
+  visibility: hidden;
+}
+
+.wheel-field {
+  width: 100%;
+  max-width: 110px;
+  min-width: 0;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px dashed #5c5c62;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  outline: none;
+}
+
+.wheel-field.short {
+  max-width: 64px;
+}
+
+.wheel-field:focus {
+  border-bottom: 2px solid var(--accent);
+}
+
+.wheel-typing .u {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.wheel-typing .sep {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.wheel-back {
+  align-self: flex-start;
+  margin: -4px 0 2px;
+}
+
+/* ------------------------------------------------------------ Sem zoom com dois dedos nem com toque duplo */
+
+html {
+  touch-action: pan-x pan-y;
+}

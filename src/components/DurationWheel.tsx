@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { memo, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { tick } from '../lib/touch';
 import { Sheet } from './Sheet';
 
@@ -20,6 +20,7 @@ export const Wheel = memo(function Wheel({
   unit,
   label,
   onChange,
+  onTapCurrent,
 }: {
   values: readonly (string | number)[];
   /** Onde começa (posição na lista). */
@@ -27,11 +28,15 @@ export const Wheel = memo(function Wheel({
   unit?: string;
   label: string;
   onChange: (index: number) => void;
+  /** Tocar no número já escolhido (o do meio, com tracejado): passa a digitar. */
+  onTapCurrent?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const current = useRef(-1);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onTapRef = useRef(onTapCurrent);
+  onTapRef.current = onTapCurrent;
 
   const paint = (i: number) => {
     const el = ref.current;
@@ -78,7 +83,16 @@ export const Wheel = memo(function Wheel({
       <div className="wheel-scroll" ref={ref} aria-label={label}>
         <div className="wheel-pad" aria-hidden="true" />
         {values.map((v, i) => (
-          <button key={i} type="button" tabIndex={-1} className="wheel-item" onClick={() => ref.current?.scrollTo({ top: i * ITEM, behavior: 'smooth' })}>
+          <button
+            key={i}
+            type="button"
+            tabIndex={-1}
+            className="wheel-item"
+            onClick={() => {
+              if (i === current.current && onTapRef.current) onTapRef.current();
+              else ref.current?.scrollTo({ top: i * ITEM, behavior: 'smooth' });
+            }}
+          >
             {v}
           </button>
         ))}
@@ -91,17 +105,29 @@ export const Wheel = memo(function Wheel({
 // Só redesenha se a lista mudar (o onChange fica guardado e a posição inicial só vale ao abrir).
 (a, b) => a.values === b.values && a.unit === b.unit && a.label === b.label);
 
-/** Grupo de roletas com uma faixa de seleção própria e um título em cima (ex.: "Kg", "Reps"). */
-export function WheelGroup({ head, size = 1, children }: { head?: string; size?: number; children: ReactNode }) {
+/**
+ * Grupo de roletas com uma faixa de seleção própria e um título em cima (ex.: "Kg", "Reps").
+ * "typing": os campos para digitar, que ficam sempre montados sobre a faixa (invisíveis fora do
+ * modo digitar), porque o iPhone só abre o teclado se o campo receber o foco dentro do próprio toque.
+ */
+export function WheelGroup({ head, size = 1, typing, children }: { head?: string; size?: number; typing?: ReactNode; children: ReactNode }) {
   return (
     <div className="wheel-group" style={{ flex: size }}>
       {head && <span className="wheel-head">{head}</span>}
       <div className="wheel-row">
         <div className="wheels-band" aria-hidden="true" />
         {children}
+        {typing && <div className="wheel-typing">{typing}</div>}
       </div>
     </div>
   );
+}
+
+/** Coloca o cursor no campo (dentro do toque, para o teclado abrir) com o texto todo selecionado. */
+export function focusField(el: HTMLInputElement | null): void {
+  if (!el) return;
+  el.focus();
+  el.select();
 }
 
 /** Separador entre duas roletas do mesmo grupo (",", "–"). */
@@ -133,22 +159,72 @@ export function DurationSheet({
   const initial = Math.max(0, Math.min(MAX_MIN * 60 + 59, Math.round(start)));
   const min = useRef(Math.floor(initial / 60));
   const sec = useRef(initial % 60);
+  // Onde as roletas começam (muda ao voltar do modo digitar).
+  const [at, setAt] = useState(initial);
+  const [typing, setTyping] = useState(false);
+  const [round, setRound] = useState(0);
+  const minIn = useRef<HTMLInputElement>(null);
+  const secIn = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!open) return;
     min.current = Math.floor(initial / 60);
     sec.current = initial % 60;
+    setAt(initial);
+    setTyping(false);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tocar no número escolhido (com tracejado) passa a digitar minutos e segundos.
+  const startTyping = (target: RefObject<HTMLInputElement | null>) => {
+    if (minIn.current) minIn.current.value = String(min.current);
+    if (secIn.current) secIn.current.value = String(sec.current).padStart(2, '0');
+    focusField(target.current);
+    setTyping(true);
+  };
+  const typed = (): number => {
+    const m = Number.parseInt(minIn.current?.value ?? '', 10);
+    const s = Number.parseInt(secIn.current?.value ?? '', 10);
+    const mm = Number.isFinite(m) ? Math.max(0, Math.min(MAX_MIN, m)) : min.current;
+    const ss = Number.isFinite(s) ? Math.max(0, Math.min(59, s)) : sec.current;
+    return mm * 60 + ss;
+  };
+  const backToWheels = () => {
+    const t = typed();
+    min.current = Math.floor(t / 60);
+    sec.current = t % 60;
+    setAt(t);
+    setRound((r) => r + 1);
+    setTyping(false);
+    (document.activeElement as HTMLElement | null)?.blur?.();
+  };
+  const done = () => onDone((typing ? typed() : min.current * 60 + sec.current) || null);
+  const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') done();
+  };
 
   return (
     <Sheet open={open} onClose={onClose} title={title}>
-      <div className="wheels" aria-label="Escolher minutos e segundos">
-        <WheelGroup>
-          <Wheel values={MINUTES} index={Math.floor(initial / 60)} unit="min" label="Minutos" onChange={(i) => (min.current = MINUTES[i])} />
-          <Wheel values={SECONDS} index={initial % 60} unit="seg" label="Segundos" onChange={(i) => (sec.current = i)} />
+      {typing && (
+        <button type="button" className="text-btn wheel-back" onClick={backToWheels}>
+          ‹ Voltar para a roleta
+        </button>
+      )}
+      <div key={round} className={`wheels ${typing ? 'typing' : ''}`} aria-label="Escolher minutos e segundos">
+        <WheelGroup
+          typing={
+            <>
+              <input ref={minIn} className="wheel-field short" inputMode="numeric" enterKeyHint="done" aria-label="Minutos" onKeyDown={onKey} />
+              <span className="u">min</span>
+              <input ref={secIn} className="wheel-field short" inputMode="numeric" enterKeyHint="done" aria-label="Segundos" onKeyDown={onKey} />
+              <span className="u">seg</span>
+            </>
+          }
+        >
+          <Wheel values={MINUTES} index={Math.floor(at / 60)} unit="min" label="Minutos" onChange={(i) => (min.current = MINUTES[i])} onTapCurrent={() => startTyping(minIn)} />
+          <Wheel values={SECONDS} index={at % 60} unit="seg" label="Segundos" onChange={(i) => (sec.current = i)} onTapCurrent={() => startTyping(secIn)} />
         </WheelGroup>
       </div>
       <div className="stack">
-        <button type="button" className="btn big block primary" onClick={() => onDone(min.current * 60 + sec.current || null)}>
+        <button type="button" className="btn big block primary" onClick={done}>
           Pronto
         </button>
         {canClear && (
