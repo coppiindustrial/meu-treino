@@ -1878,8 +1878,9 @@ button.tile:active,
   background: var(--raised);
 }
 
+/* Kg e reps com a mesma largura, o bastante para "10–12" e "102,25" na letra normal. */
 .set-row {
-  grid-template-columns: 38px minmax(0, 1fr) 62px 56px 40px;
+  grid-template-columns: 38px minmax(0, 1fr) 68px 68px 40px;
   gap: 6px;
   padding: 3px 4px;
   transition: background-color 0.3s ease;
@@ -4129,14 +4130,8 @@ html {
   touch-action: pan-x pan-y;
 }
 
-/* Campos de carga e repetições (botões que abrem a roleta): sempre numa linha só.
-   Texto longo ("10–12", "102,25") ganha letra um pouco menor para caber na coluna estreita. */
+/* Campos de carga e repetições (botões que abrem a roleta): sempre numa linha só. */
 .set-input.dur-input {
   white-space: nowrap;
   overflow: hidden;
-}
-
-.set-input.compact {
-  font-size: 14px;
-  letter-spacing: -0.02em;
 }
