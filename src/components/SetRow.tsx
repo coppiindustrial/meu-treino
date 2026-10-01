@@ -76,6 +76,9 @@ function prevSetText(p: { load?: number | null; reps?: number | null; secs?: num
 
 const loadPlaceholder = (v: number | null | undefined) => (v === null || v === undefined ? '' : num(v, 2));
 
+/** Texto longo no campo estreito ("10–12", "102,25"): letra um pouco menor, numa linha só. */
+const fit = (text: string, max: number) => (text.length > max ? 'compact' : '');
+
 /** Primeiro número das repetições ("8-12" → 8), ou o padrão. */
 const firstReps = (r: string | null | undefined, fallback: number) => Number(String(r ?? '').split('-')[0]) || fallback;
 
@@ -149,15 +152,17 @@ export function SetRow({
   }
 
   // Carga e repetições abrem a mesma janela de roletas (carga à esquerda, repetições à direita).
+  const loadLabel = set.load !== null ? loadText(set.load) : loadPlaceholder(set.prevLoad);
+  const repsLabel = set.reps !== null ? String(set.reps) : repsPlaceholder;
   return (
     <div className={`set-row ${set.done ? 'done' : ''}`}>
       {typeButton}
       <span className="small muted ellipsis">{prevText}</span>
-      <button type="button" className={`set-input dur-input ${set.load === null ? 'blank' : ''}`} aria-label={`Carga da série ${label}`} onClick={() => setWheelOpen(true)}>
-        {set.load !== null ? loadText(set.load) : loadPlaceholder(set.prevLoad)}
+      <button type="button" className={`set-input dur-input ${set.load === null ? 'blank' : ''} ${fit(loadLabel, 5)}`} aria-label={`Carga da série ${label}`} onClick={() => setWheelOpen(true)}>
+        {loadLabel}
       </button>
-      <button type="button" className={`set-input dur-input ${set.reps === null ? 'blank' : ''}`} aria-label={`Repetições da série ${label}`} onClick={() => setWheelOpen(true)}>
-        {set.reps !== null ? set.reps : repsPlaceholder}
+      <button type="button" className={`set-input dur-input ${set.reps === null ? 'blank' : ''} ${fit(repsLabel, 4)}`} aria-label={`Repetições da série ${label}`} onClick={() => setWheelOpen(true)}>
+        {repsLabel}
       </button>
       {check({})}
       {wheelOpen && (
@@ -228,6 +233,7 @@ export function PlannedSetRow({
   const prevCell = <span className="small muted ellipsis set-prev">{prevSetText(prev, unit, logType, distUnit)}</span>;
   const repsShown = min ? (faixa && max ? `${min}–${max}` : min) : null;
   const repsHint = faixa ? `${hMin}–${hMax || hMin}` : hMin;
+  const planLoad = set.load !== null ? loadText(set.load) : loadPlaceholder(hint?.load ?? prev?.load);
 
   if (logType !== 'carga') {
     const withDist = logType !== 'tempo';
@@ -257,8 +263,8 @@ export function PlannedSetRow({
         {label}
       </button>
       {prevCell}
-      <button type="button" className={`set-input dur-input ${set.load === null ? 'blank' : ''}`} aria-label={`Carga da série ${label}`} onClick={() => setWheelOpen(true)}>
-        {set.load !== null ? loadText(set.load) : loadPlaceholder(hint?.load ?? prev?.load)}
+      <button type="button" className={`set-input dur-input ${set.load === null ? 'blank' : ''} ${fit(planLoad, 5)}`} aria-label={`Carga da série ${label}`} onClick={() => setWheelOpen(true)}>
+        {planLoad}
       </button>
       <button
         type="button"

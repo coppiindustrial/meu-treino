@@ -4128,3 +4128,15 @@ html.vt-running .screen > .tab-head {
 html {
   touch-action: pan-x pan-y;
 }
+
+/* Campos de carga e repetições (botões que abrem a roleta): sempre numa linha só.
+   Texto longo ("10–12", "102,25") ganha letra um pouco menor para caber na coluna estreita. */
+.set-input.dur-input {
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.set-input.compact {
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
