@@ -16,6 +16,8 @@ export function withTransition(dir: NavDir, update: () => void): void {
     update();
     return;
   }
+  // Um segundo toque no meio da troca (ex.: tocar duas vezes no voltar) é ignorado: voltaria duas telas.
+  if (sliding) return;
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   if (!doc.startViewTransition || reduce) {
     update();
@@ -25,6 +27,7 @@ export function withTransition(dir: NavDir, update: () => void): void {
   // Durante a animação o vidro fica sem desfoque: nas "fotos" da troca de tela o Safari desenhava
   // o desfoque errado (borrão no lugar do menu ou do botão fixo de baixo).
   const endBlurless = blurless();
+  const endSliding = startSliding();
   // Se o navegador não chegar a desenhar (aba em segundo plano), troca de tela assim mesmo.
   let done = false;
   const run = () => {
@@ -33,18 +36,53 @@ export function withTransition(dir: NavDir, update: () => void): void {
     update();
   };
   const fallback = setTimeout(run, 400);
+  const fromHash = window.location.hash;
   const vt = doc.startViewTransition(async () => {
     clearTimeout(fallback);
     run();
-    // Dá tempo para o React desenhar a tela nova (e buscar os dados no celular).
-    await new Promise((r) => setTimeout(r, 90));
+    await screenReady(fromHash);
   }) as { ready?: Promise<void>; finished?: Promise<void>; updateCallbackDone?: Promise<void> } | undefined;
   // Uma animação cancelada (ex.: outro toque no meio) não é erro: a tela já trocou.
   vt?.ready?.catch(() => undefined);
   vt?.updateCallbackDone?.catch(() => undefined);
-  if (vt?.finished) vt.finished.then(endBlurless, endBlurless);
-  else endBlurless();
-  setTimeout(endBlurless, 1500); // segurança
+  const end = () => {
+    endBlurless();
+    endSliding();
+  };
+  if (vt?.finished) vt.finished.then(end, end);
+  else end();
+  setTimeout(end, 1500); // segurança
+}
+
+/**
+ * Espera a tela nova estar desenhada antes de a animação tirar a "foto" dela: o endereço já mudou
+ * (no voltar, o iPhone troca de página um pouco depois) e a tela tem conteúdo, não está carregando.
+ * Antes eram 90 ms fixos, e no iPhone a foto pegava a tela ainda vazia: a animação mostrava tudo preto.
+ */
+async function screenReady(fromHash: string): Promise<void> {
+  const start = performance.now();
+  for (;;) {
+    const elapsed = performance.now() - start;
+    if (elapsed > 700) return;
+    // Uma troca que não muda o endereço não precisa esperar por isso.
+    const moved = window.location.hash !== fromHash || elapsed > 120;
+    const main = document.querySelector('main');
+    if (moved && main && main.childElementCount > 0 && !main.hasAttribute('data-loading')) return;
+    await new Promise((r) => setTimeout(r, 16));
+  }
+}
+
+let sliding = false;
+
+/** Marca que há uma troca de tela animada em andamento; devolve quem desmarca (uma vez só). */
+function startSliding(): () => void {
+  sliding = true;
+  let ended = false;
+  return () => {
+    if (ended) return;
+    ended = true;
+    sliding = false;
+  };
 }
 
 let blurlessCount = 0;

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
-import { BackButton, TopBar } from '../components/Layout';
+import { BackButton, LoadingScreen, TopBar } from '../components/Layout';
 import { db } from '../lib/db';
 import { exerciseOrMissing, useExercises } from '../lib/exercises';
 import { combineDateTime, duration, timeHM, todayISO } from '../lib/format';
@@ -82,7 +82,7 @@ export function DayEdit() {
     }));
   }, [data]);
 
-  if (!data) return <main className="screen no-tabs" />;
+  if (!data) return <LoadingScreen back="/calendario" />;
   if (!isNew && !data.session) {
     return (
       <main className="screen no-tabs">

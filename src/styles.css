@@ -3825,3 +3825,46 @@ html.vt-running .dock {
   text-transform: uppercase;
   color: #a06cff;
 }
+
+/* ------------------------------------------------------------ Título das abas e cabeçalhos fixos */
+
+/* Título das abas (Treino, Treinos, Calendário, Progresso, Perfil) menor. */
+.tab-head .h1 {
+  font-size: 22px;
+}
+
+/* Os cabeçalhos ficam presos no topo ao rolar (ex.: "Atualizar" no Editar treino sempre à mão).
+   Cobrem a área do relógio e as laterais; a barra do treino em andamento (.sticky-top) já era fixa. */
+.screen > .topbar:not(.sticky-top),
+.screen > .tab-head {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  margin: calc(-1 * var(--safe-top) - 16px) -20px 0;
+  padding: calc(var(--safe-top) + 16px) 20px 6px;
+  background: rgba(0, 0, 0, 0.8);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 0.5px 0 transparent;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Nas abas o conteúdo começa mais perto do topo. */
+.screen:not(.no-tabs) > .tab-head {
+  margin-top: calc(-1 * var(--safe-top) - 8px);
+  padding-top: calc(var(--safe-top) + 8px);
+}
+
+/* A linha fina embaixo só aparece depois de rolar (classe ligada no App). */
+html.rolou .screen > .topbar:not(.sticky-top),
+html.rolou .screen > .tab-head {
+  box-shadow: 0 0.5px 0 var(--border);
+}
+
+/* Na animação de troca de tela, sem desfoque (o Safari deixava borrão nas "fotos" da troca). */
+html.vt-running .screen > .topbar,
+html.vt-running .screen > .tab-head {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: rgba(0, 0, 0, 0.94);
+}

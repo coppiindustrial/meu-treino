@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { LineChart } from '../components/Charts';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
-import { BackButton, EmptyState, TopBar } from '../components/Layout';
+import { BackButton, EmptyState, LoadingScreen, TopBar } from '../components/Layout';
 import { LogTypePicker } from '../components/LogTypePicker';
 import { ExerciseMedia, ExerciseThumb } from '../components/Media';
 import { MuscleFigure } from '../components/MuscleFigure';
@@ -96,7 +96,7 @@ export function ExerciseDetail() {
     setVideo(ex?.custom ? '' : ex?.videoUrl ?? '');
   }, [ex?.id, ex?.note, ex?.videoUrl, ex?.custom]);
 
-  if (!ready) return <main className="screen no-tabs" />;
+  if (!ready) return <LoadingScreen back="/exercicios" />;
   if (!ex) {
     return (
       <main className="screen no-tabs">

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { type NavDir, withTransition } from './lib/nav';
 import { DialogProvider } from './components/Dialogs';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { isTabRoute, TabBar } from './components/Layout';
 import { RestTimerProvider } from './components/RestTimer';
 import { requestPersistentStorage } from './lib/db';
@@ -28,6 +29,10 @@ import { Progress } from './screens/Progress';
 import { Summary } from './screens/Summary';
 import { WorkoutDetail } from './screens/WorkoutDetail';
 
+// O app já volta ao topo a cada troca de tela; sem isto o Safari restaurava a rolagem antiga
+// no meio da animação de voltar.
+if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
+
 function Shell() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -53,9 +58,20 @@ function Shell() {
     document.addEventListener('click', onClick, true);
     return () => document.removeEventListener('click', onClick, true);
   }, [navigate]);
+  // Cabeçalhos fixos: a linha fina embaixo deles só aparece depois de rolar a tela.
+  useEffect(() => {
+    const root = document.documentElement;
+    const onScroll = () => root.classList.toggle('rolou', window.scrollY > 4);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const tabs = isTabRoute(pathname);
   return (
     <>
+      {/* A chave pelo endereço faz a tela de erro sumir ao trocar de tela. */}
+      <ErrorBoundary key={pathname}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/treinos" element={<Programs />} />
@@ -87,6 +103,7 @@ function Shell() {
         <Route path="/perfil/configuracoes" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </ErrorBoundary>
       {tabs && <TabBar pathname={pathname} />}
     </>
   );

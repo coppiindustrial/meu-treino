@@ -71,7 +71,11 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
 
   const adding = mode === 'workout' || mode === 'session';
 
+  // Um segundo toque enquanto troca não substitui de novo nem volta duas telas.
+  const replacingNow = useRef(false);
   const replaceWith = async (exerciseId: string) => {
+    if (replacingNow.current) return;
+    replacingNow.current = true;
     await replaceWorkoutItemExercise(itemId, exerciseId);
     toast('Exercício substituído');
     withTransition('back', () => {

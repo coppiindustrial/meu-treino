@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LineChart } from '../components/Charts';
 import { Icon } from '../components/Icon';
-import { EmptyState } from '../components/Layout';
+import { EmptyState, LoadingScreen } from '../components/Layout';
 import { db } from '../lib/db';
 import { loadText } from '../lib/equipment';
 import { ExerciseThumb } from '../components/Media';
@@ -86,7 +86,7 @@ export function Progress() {
   const selected = chosen ?? used?.[0] ?? null;
   const history = useLiveQuery(async () => (selected ? exerciseHistory(selected) : []), [selected]);
 
-  if (!used) return <main className="screen" />;
+  if (!used) return <LoadingScreen tabs />;
 
   const ex = selected ? exerciseOrMissing(map, selected) : null;
   const days = PERIODS.find((p) => p.id === period)?.days ?? 0;

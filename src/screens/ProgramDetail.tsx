@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ActionMenu } from '../components/ActionMenu';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
-import { BackButton, EmptyState, TopBar } from '../components/Layout';
+import { BackButton, EmptyState, LoadingScreen, TopBar } from '../components/Layout';
 import { LongPressSort } from '../components/LongPressSort';
 import { withTransition } from '../lib/nav';
 import { db } from '../lib/db';
@@ -37,7 +37,7 @@ export function ProgramDetail() {
     return { program, workouts, counts, sessions };
   }, [programId]);
 
-  if (!data) return <main className="screen no-tabs" />;
+  if (!data) return <LoadingScreen back="/treinos" />;
   const { program, workouts, counts, sessions } = data;
   if (!program || program.deleted) {
     return (

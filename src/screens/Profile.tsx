@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
+import { LoadingScreen } from '../components/Layout';
 import { dayMonth, num, parseNum } from '../lib/format';
 import { getProfile, saveProfile } from '../lib/repo';
 import { doneSessions } from '../lib/stats';
@@ -12,7 +13,7 @@ export function Profile() {
   const sessions = useLiveQuery(() => doneSessions(), []);
   const { prompt } = useDialogs();
 
-  if (!profile) return <main className="screen" />;
+  if (!profile) return <LoadingScreen tabs />;
 
   const edit = async (field: 'name' | 'goal' | 'heightCm' | 'weeklyGoal') => {
     const config = {

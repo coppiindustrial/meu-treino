@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
-import { EmptyState } from '../components/Layout';
+import { EmptyState, LoadingScreen } from '../components/Layout';
 import { LongPressSort } from '../components/LongPressSort';
 import { Sheet } from '../components/Sheet';
 import { db } from '../lib/db';
@@ -25,7 +25,7 @@ export function Programs() {
     return { programs, workouts, items, sessions };
   }, []);
 
-  if (!data) return <main className="screen" />;
+  if (!data) return <LoadingScreen tabs />;
   const { programs, workouts, items, sessions } = data;
   const active = programs.find((p) => p.status === 'active');
   const others = programs

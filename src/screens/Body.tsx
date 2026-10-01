@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Sparkline } from '../components/Charts';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
+import { LoadingScreen } from '../components/Layout';
 import { db } from '../lib/db';
 import { dayMonth, fullDate, num } from '../lib/format';
 import { MEASURES } from '../lib/measures';
@@ -22,7 +23,7 @@ export function Body() {
   );
   const [photo, setPhoto] = useState<BodyEntry | null>(null);
 
-  if (!entries) return <main className="screen" />;
+  if (!entries) return <LoadingScreen tabs />;
 
   const weights = entries.filter((e) => e.weight !== null).reverse();
   const latestWeight = weights[weights.length - 1];

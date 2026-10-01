@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ActionMenu } from '../components/ActionMenu';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
-import { BackButton, EmptyState, TopBar } from '../components/Layout';
+import { BackButton, EmptyState, LoadingScreen, TopBar } from '../components/Layout';
 import { ExerciseThumb } from '../components/Media';
 import { IntervalConfigButtons } from '../components/Intervals';
 import { LogTypePicker } from '../components/LogTypePicker';
@@ -141,7 +141,7 @@ export function WorkoutDetail() {
     setParams(next, { replace: true });
   }, [justAdded, data]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!data) return <main className="screen no-tabs" />;
+  if (!data) return <LoadingScreen back="/treinos" />;
   const { workout, program, items } = data;
   if (!workout || workout.deleted) {
     return (

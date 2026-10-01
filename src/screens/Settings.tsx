@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
-import { BackButton, TopBar } from '../components/Layout';
+import { BackButton, LoadingScreen, TopBar } from '../components/Layout';
 import { RestPushSetting } from '../components/RestPushSetting';
 import { Sheet } from '../components/Sheet';
 import { exportBackup, importBackup } from '../lib/backup';
@@ -30,7 +30,7 @@ export function Settings() {
   const [installOpen, setInstallOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  if (!profile) return <main className="screen no-tabs" />;
+  if (!profile) return <LoadingScreen back="/perfil" />;
 
   const editRest = async () => {
     const v = await prompt({ title: 'Descanso padrão (segundos)', initial: String(profile.restSeconds), inputMode: 'numeric' });

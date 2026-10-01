@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
-import { TopBar } from '../components/Layout';
+import { LoadingScreen, TopBar } from '../components/Layout';
 import { MeasureFigure, MeasureGuideSheet } from '../components/MeasureGuide';
 import { db } from '../lib/db';
 import { num, parseNum, todayISO } from '../lib/format';
@@ -44,7 +44,7 @@ export function MeasureForm() {
     setLoaded(true);
   }, [data, loaded]);
 
-  if (!data) return <main className="screen no-tabs" />;
+  if (!data) return <LoadingScreen back="/progresso/corpo" />;
   const all = data.all;
 
   // Valor anterior de cada campo (do registro mais recente antes desta data).

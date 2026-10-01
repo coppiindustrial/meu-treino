@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from '../components/Icon';
-import { BackButton, EmptyState, TopBar } from '../components/Layout';
+import { BackButton, EmptyState, LoadingScreen, TopBar } from '../components/Layout';
 import { db } from '../lib/db';
 import { addDays, dayMonth, duration, sessionMinutes, todayISO, weekdayShort, weekStart } from '../lib/format';
 import { doneSessions } from '../lib/stats';
@@ -19,7 +19,7 @@ export function History() {
     return { sessions, programs, exerciseCount };
   }, []);
 
-  if (!data) return <main className="screen no-tabs tight" />;
+  if (!data) return <LoadingScreen back="/perfil" />;
   const { sessions, programs, exerciseCount } = data;
   const filtered = programFilter === 'todas' ? sessions : sessions.filter((s) => s.programId === programFilter);
 

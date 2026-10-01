@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Duration } from '../components/Duration';
 import { Icon } from '../components/Icon';
-import { BackButton, EmptyState, TopBar } from '../components/Layout';
+import { BackButton, EmptyState, LoadingScreen, TopBar } from '../components/Layout';
 import { db } from '../lib/db';
 import { loadText } from '../lib/equipment';
 import { exerciseOrMissing, useExercises } from '../lib/exercises';
@@ -30,7 +30,7 @@ export function Summary() {
     setNote(data?.session?.note ?? '');
   }, [data?.session?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!data) return <main className="screen no-tabs" />;
+  if (!data) return <LoadingScreen back="/historico" />;
   const { session, items = [], records = [] } = data;
   if (!session) {
     return (

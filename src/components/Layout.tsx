@@ -216,6 +216,18 @@ export function TopBar({ left, title, right }: { left?: ReactNode; title?: React
   );
 }
 
+/**
+ * Tela enquanto os dados vêm do banco do celular. Nas telas internas já mostra o voltar (nunca fica
+ * tudo preto); o data-loading avisa a troca de tela animada para esperar o conteúdo de verdade.
+ */
+export function LoadingScreen({ tabs = false, back }: { tabs?: boolean; back?: string }) {
+  return (
+    <main className={tabs ? 'screen' : 'screen no-tabs'} data-loading="">
+      {!tabs && <TopBar left={<BackButton to={back} />} />}
+    </main>
+  );
+}
+
 /** Cabeçalho das abas: título à esquerda e botões de vidro à direita. */
 export function TabHead({ title, children }: { title: ReactNode; children?: ReactNode }) {
   return (

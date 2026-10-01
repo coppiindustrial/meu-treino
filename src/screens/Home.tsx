@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Duration } from '../components/Duration';
 import { Icon } from '../components/Icon';
+import { LoadingScreen } from '../components/Layout';
 import { db } from '../lib/db';
 import { useExercises } from '../lib/exercises';
 import {
@@ -56,7 +57,7 @@ export function Home() {
     return { program, sessions, active, profile, workouts, itemsByWorkout, weight: bodies[0]?.weight ?? null };
   }, []);
 
-  if (!data) return <main className="screen" />;
+  if (!data) return <LoadingScreen tabs />;
   const { program, sessions, active, profile, workouts, itemsByWorkout, weight } = data;
 
   const today = todayISO();

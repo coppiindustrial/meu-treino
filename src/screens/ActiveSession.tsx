@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
-import { EmptyState } from '../components/Layout';
+import { EmptyState, LoadingScreen } from '../components/Layout';
 import { ExerciseThumb } from '../components/Media';
 import { useRest } from '../components/RestTimer';
 import { IntervalConfigButtons, TirosRunner } from '../components/Intervals';
@@ -66,7 +66,7 @@ export function ActiveSession() {
   }, []);
   useWakeLock(!!data?.session);
 
-  if (!data) return <main className="screen no-tabs" />;
+  if (!data) return <LoadingScreen back="/" />;
   const { session, items, workout, profile } = data;
   if (!session) {
     return (
