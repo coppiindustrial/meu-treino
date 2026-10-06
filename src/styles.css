@@ -1518,29 +1518,34 @@ p {
   color: var(--text-2);
 }
 
-/* Dia tocado no cartão "Sua semana": anel branco em volta. */
-.week-day .dot {
-  transition: box-shadow 0.2s ease;
+/* Dia tocado no cartão "Sua semana": tracinho azul embaixo da bolinha. */
+.week-mark {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 0.2s ease;
 }
 
-.week-day.sel .dot {
-  box-shadow: 0 0 0 2.5px var(--card), 0 0 0 4.5px var(--text);
+.week-day.sel .week-mark {
+  background: var(--accent);
 }
 
 .week-day:disabled {
   opacity: 0.45;
 }
 
+/* 34 px: dentro do cartão cada dia tem uns 39 px; com 40 as bolinhas quase se encostavam. */
 .week-day .dot {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: var(--card);
   color: var(--muted);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -2796,12 +2801,12 @@ body:has(.session-strip) .rest-bar {
   text-overflow: ellipsis;
 }
 
-/* Botão longo e baixo (34 px) para começar o treino. */
+/* Botão longo e baixo (38 px) para começar o treino. */
 .routine-start {
   width: 100%;
-  height: 34px;
+  height: 38px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 11px;
   background: var(--accent);
   color: var(--on-accent);
   font: inherit;
@@ -4828,21 +4833,6 @@ body:has(.rest-bar:not(.cardio-bar)) .cardio-bar {
 
 .chooser-title.open .caret {
   transform: rotate(180deg);
-}
-
-/* Início: link discreto (ex.: "+ Treino vazio" ao lado de "Rotina ativa"). */
-.text-link {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.text-link:active {
-  opacity: 0.6;
 }
 
 /* Início: cartão "Sua semana" com os dias, os números do mês e o último treino. */

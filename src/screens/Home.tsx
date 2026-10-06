@@ -117,36 +117,29 @@ export function Home() {
         </Link>
       </header>
 
-      {!program ? (
+      {/* Com treino em andamento, ele aparece no menu de baixo (sem repetir aqui). */}
+      {!active && (
         <section className="stack">
-          <div className="card stack-lg">
-            <span className="display" style={{ fontSize: 22 }}>
-              Monte sua primeira rotina
-            </span>
-            <p className="small muted" style={{ lineHeight: 1.5 }}>
-              Uma rotina reúne seus treinos (A, B, C…). Depois é só escolher os exercícios de cada um.
-            </p>
-            <button type="button" className="btn primary block" onClick={newProgram}>
-              <Icon name="plus" /> Criar rotina
-            </button>
-          </div>
-          {!active && (
-            <button type="button" className="text-link" style={{ alignSelf: 'center' }} onClick={() => start(null)}>
-              + Treino vazio
-            </button>
-          )}
+          <button type="button" className="btn soft block" onClick={() => start(null)}>
+            <Icon name="plus" /> Iniciar treino vazio
+          </button>
+        </section>
+      )}
+
+      {!program ? (
+        <section className="card stack-lg">
+          <span className="display" style={{ fontSize: 22 }}>
+            Monte sua primeira rotina
+          </span>
+          <p className="small muted" style={{ lineHeight: 1.5 }}>
+            Uma rotina reúne seus treinos (A, B, C…). Depois é só escolher os exercícios de cada um.
+          </p>
+          <button type="button" className="btn primary block" onClick={newProgram}>
+            <Icon name="plus" /> Criar rotina
+          </button>
         </section>
       ) : (
         <section className="stack">
-          {/* Treino vazio como link ao lado do rótulo (com treino em andamento, ele fica no menu de baixo). */}
-          <div className="section-head">
-            <span className="label">Rotina ativa</span>
-            {!active && (
-              <button type="button" className="text-link" onClick={() => start(null)}>
-                + Treino vazio
-              </button>
-            )}
-          </div>
           <div className={`folder ${folderOpen ? '' : 'closed'}`}>
             <button type="button" className="folder-head" aria-expanded={folderOpen} onClick={() => toggleFolder()}>
               <Icon name="folder" size={20} color="var(--muted)" />
@@ -225,8 +218,9 @@ export function Home() {
               >
                 <span style={isToday ? { color: 'var(--text)', fontWeight: 800 } : undefined}>{d.letter}</span>
                 <span className={`dot ${on ? 'on' : isToday ? 'today' : ''}`}>
-                  {on ? <Icon name="check" size={20} stroke={2.5} /> : Number(d.date.slice(8))}
+                  {on ? <Icon name="check" size={17} stroke={2.5} /> : Number(d.date.slice(8))}
                 </span>
+                <span className="week-mark" aria-hidden="true" />
               </button>
             );
           })}
