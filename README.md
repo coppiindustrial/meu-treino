@@ -74,5 +74,5 @@ npm run build
 - Os dados ficam no IndexedDB (Dexie), em `src/lib/db.ts`.
 - A sincronização (`src/lib/sync.ts`) usa uma tabela genérica `records` no Supabase, protegida por RLS.
 - A biblioteca de exercícios fica em `src/data/catalog.ts`. As animações vêm do ExerciseDB; as fotos, do free-exercise-db (domínio público).
-- Os ícones de equipamento (`src/components/EquipmentIcon.tsx`) vêm em parte do Material Design Icons, da Pictogrammers (licença Apache 2.0).
+- Os ícones de equipamento (`src/components/EquipmentIcon.tsx`) e o de mobilidade vêm do Material Design Icons, da Pictogrammers (licença Apache 2.0); o de alongamento, do Tabler Icons (licença MIT).
 - Também dá para configurar o Supabase no build com `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
