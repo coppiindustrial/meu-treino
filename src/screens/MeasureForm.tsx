@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useSlideNavigate } from '../lib/nav';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { LoadingScreen, TopBar } from '../components/Layout';
@@ -13,7 +14,7 @@ import { deleteBodyEntry, saveBodyEntry } from '../lib/repo';
 
 export function MeasureForm() {
   const { entryId } = useParams();
-  const navigate = useNavigate();
+  const go = useSlideNavigate();
   const { confirm, toast } = useDialogs();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -68,7 +69,7 @@ export function MeasureForm() {
       photo,
     });
     toast('Medidas salvas');
-    navigate('/progresso/corpo', { replace: true });
+    go('/progresso/corpo', { dir: 'back', replace: true });
   };
 
   const remove = async () => {
@@ -76,7 +77,7 @@ export function MeasureForm() {
     const ok = await confirm({ title: 'Apagar este registro?', confirmLabel: 'Apagar', danger: true });
     if (!ok) return;
     await deleteBodyEntry(data.entry.id);
-    navigate('/progresso/corpo', { replace: true });
+    go('/progresso/corpo', { dir: 'back', replace: true });
   };
 
   const row = (
@@ -126,7 +127,7 @@ export function MeasureForm() {
     <main className="screen no-tabs">
       <TopBar
         left={
-          <button type="button" className="glass pill accent-text" onClick={() => navigate(-1)}>
+          <button type="button" className="glass pill accent-text" onClick={() => go(-1)}>
             Cancelar
           </button>
         }

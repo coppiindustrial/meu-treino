@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { useSlideNavigate } from '../lib/nav';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { EmptyState, LoadingScreen } from '../components/Layout';
@@ -13,7 +14,7 @@ import { doneSessions } from '../lib/stats';
 import type { Program, Workout } from '../lib/types';
 
 export function Programs() {
-  const navigate = useNavigate();
+  const go = useSlideNavigate();
   const { prompt, confirm, toast } = useDialogs();
   const [newOpen, setNewOpen] = useState(false);
 
@@ -44,14 +45,14 @@ export function Programs() {
     const name = await prompt({ title: 'Nova rotina', label: 'Nome da rotina', placeholder: 'Hipertrofia · outubro' });
     if (name === null) return;
     const id = await createProgram(name);
-    navigate(`/ficha/${id}`);
+    go(`/ficha/${id}`);
   };
 
   const addWorkout = async (programId: string) => {
     const name = await prompt({ title: 'Novo treino', label: 'Nome do treino', placeholder: 'Peito e tríceps' });
     if (name === null) return;
     const id = await createWorkout(programId, name.trim() || 'Novo treino');
-    navigate(`/treino/${id}`);
+    go(`/treino/${id}`);
   };
 
   const activate = async (p: Program) => {
@@ -181,7 +182,7 @@ export function Programs() {
             style={{ minHeight: 64 }}
             onClick={() => {
               setNewOpen(false);
-              navigate('/treinos/colar');
+              go('/treinos/colar');
             }}
           >
             <span className="notice-icon">

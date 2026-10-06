@@ -8,10 +8,10 @@ import { BackButton, EmptyState, LoadingScreen, TopBar } from '../components/Lay
 import { LogTypePicker } from '../components/LogTypePicker';
 import { ExerciseMedia, ExerciseThumb } from '../components/Media';
 import { MuscleFigure } from '../components/MuscleFigure';
-import { cardioSetText, cardioTotals, distText, formatDuration, isCardio, logTypeName } from '../lib/cardio';
+import { cardioTotals, distText, formatDuration, isCardio, logTypeName } from '../lib/cardio';
 import { equipmentName, loadText, setLabels, UNITS } from '../lib/equipment';
 import { useExercises, type ExerciseView } from '../lib/exercises';
-import { dayMonth, fullDate, num } from '../lib/format';
+import { dayMonth, longDate, num, timeHM } from '../lib/format';
 import { muscleName } from '../lib/muscles';
 import { savePref } from '../lib/repo';
 import { exerciseHistory, type HistoryPoint } from '../lib/stats';
@@ -65,13 +65,17 @@ function metricsFor(ex: ExerciseView, cardio: boolean): Metric[] {
     }
     return list;
   }
+  // Em placa, o volume é "nº da placa × reps" (não é peso) e o 1RM não faz sentido.
+  const vol = u === 'placa' ? volText : load;
   return [
     { name: 'Maior peso', value: (p) => p.best, show: load },
-    { name: '1RM estimado', value: (p) => (work(p.sets).length ? Math.max(...work(p.sets).map(oneRm)) : null), show: load },
-    { name: 'Melhor volume de série', value: (p) => (work(p.sets).length ? Math.max(...work(p.sets).map(setVolume)) : null), show: load },
-    { name: 'Volume no treino', value: (p) => work(p.sets).reduce((a, s) => a + setVolume(s), 0) || null, show: load },
+    ...(u === 'placa' ? [] : [{ name: '1RM estimado', value: (p: HistoryPoint) => (work(p.sets).length ? Math.max(...work(p.sets).map(oneRm)) : null), show: load }]),
+    { name: 'Melhor volume de série', value: (p) => (work(p.sets).length ? Math.max(...work(p.sets).map(setVolume)) : null), show: vol },
+    { name: 'Volume no treino', value: (p) => work(p.sets).reduce((a, s) => a + setVolume(s), 0) || null, show: vol },
   ];
 }
+
+const volText = (v: number) => `${num(v, 0)} placas×reps`;
 
 const TABS = ['Resumo', 'Histórico', 'Instruções', 'Ajustes'] as const;
 
@@ -176,20 +180,9 @@ export function ExerciseDetail() {
       {tab === 1 && (
         <div className="stack fade-in" key="hist">
           {all.length === 0 && <EmptyState title="Nenhum treino ainda" text="Os treinos com este exercício aparecem aqui." />}
-          {[...all].reverse().map((p) => (
-            <Link key={p.sessionId} to={`/sessao/${p.sessionId}/resumo`} className="card hist-card">
-              <span className="row between">
-                <span style={{ fontWeight: 600 }}>{fullDate(p.date)}</span>
-                <Icon name="next" size={18} color="var(--muted)" />
-              </span>
-              {p.sets.map((s, i) => (
-                <span key={i} className="hist-set">
-                  <span className="muted">{setLabels(p.sets.map((x) => x.type))[i]}</span>
-                  <span>{isCardio(p.logType) ? cardioSetText(s, p.distUnit) : `${loadText(s.load, p.unit)} × ${s.reps ?? '—'}`}</span>
-                </span>
-              ))}
-            </Link>
-          ))}
+          {all
+            .map((p, i) => <HistoryCard key={p.itemId} p={p} earlier={all.slice(0, i)} />)
+            .reverse()}
         </div>
       )}
 
@@ -284,6 +277,108 @@ export function ExerciseDetail() {
   );
 }
 
+/** Diferença de carga para o texto do selo: "+1 placa", "−2,5 kg". */
+function loadDiffText(diff: number, unit: LoadUnit): string {
+  const sign = diff > 0 ? '+' : '−';
+  const n = num(Math.abs(diff), 2);
+  if (unit === 'placa') return `${sign}${n} ${Math.abs(diff) === 1 ? 'placa' : 'placas'}`;
+  return `${sign}${n} ${unit}`;
+}
+
+/** Um treino no histórico do exercício: tabela de séries, recorde e comparação com o treino anterior. */
+function HistoryCard({ p, earlier }: { p: HistoryPoint; earlier: HistoryPoint[] }) {
+  const cardio = isCardio(p.logType);
+  const labels = setLabels(p.sets.map((x) => x.type));
+  const comparable = earlier.filter((q) => q.unit === p.unit && isCardio(q.logType) === cardio);
+  const prev = comparable[comparable.length - 1];
+
+  // Recorde: a melhor carga deste dia passou de todas as anteriores (na mesma unidade).
+  const priorBests = comparable.map((q) => q.best).filter((v): v is number => v !== null);
+  const record = !cardio && p.best !== null && priorBests.length > 0 && p.best > Math.max(...priorBests);
+  const recordIdx = record ? p.sets.findIndex((s) => s.type !== 'A' && s.load === p.best && s.reps === p.bestReps) : -1;
+
+  let delta: { text: string; tone: 'up' | 'down' | 'same' } | null = null;
+  if (!cardio && prev && p.best !== null && prev.best !== null) {
+    const diff = Math.round((p.best - prev.best) * 100) / 100;
+    if (diff !== 0) {
+      delta = { text: `${diff > 0 ? '↑' : '↓'} ${loadDiffText(diff, p.unit)} vs anterior`, tone: diff > 0 ? 'up' : 'down' };
+    } else {
+      const reps = (p.bestReps ?? 0) - (prev.bestReps ?? 0);
+      delta =
+        reps !== 0
+          ? { text: `${reps > 0 ? '↑' : '↓'} ${reps > 0 ? '+' : '−'}${Math.abs(reps)} reps na melhor série`, tone: reps > 0 ? 'up' : 'down' }
+          : { text: '= igual ao anterior', tone: 'same' };
+    }
+  }
+  const work = p.sets.filter((s) => s.type !== 'A');
+  const totalReps = work.reduce((a, s) => a + (s.reps ?? 0), 0);
+  const withDist = cardio && p.logType !== 'tempo';
+
+  return (
+    <Link to={`/sessao/${p.sessionId}/resumo`} className="card hist-card">
+      <span className="row between" style={{ alignItems: 'flex-start', gap: 8 }}>
+        <span className="col" style={{ gap: 2, minWidth: 0 }}>
+          <span style={{ fontWeight: 700 }}>{longDate(p.date)}</span>
+          <span className="tiny muted ellipsis">
+            {p.title}
+            {p.startedAt ? ` · ${timeHM(p.startedAt)}` : ''}
+          </span>
+        </span>
+        <span className="row" style={{ gap: 6 }}>
+          {p.extra && <span className="chip soft-accent">Extra no treino</span>}
+          <Icon name="next" size={18} color="var(--muted)" />
+        </span>
+      </span>
+      <div className={`hist-table ${cardio && !withDist ? 'c-t' : ''}`}>
+        <div className="hist-row head">
+          <span>Série</span>
+          {cardio ? (
+            <>
+              {withDist && <span>{p.distUnit}</span>}
+              <span>Tempo</span>
+            </>
+          ) : (
+            <>
+              <span>Carga</span>
+              <span>Reps</span>
+            </>
+          )}
+          <span />
+        </div>
+        {p.sets.map((s, i) => {
+          const warm = s.type === 'A';
+          return (
+            <div key={i} className={`hist-row ${warm ? 'warm' : ''} ${i === recordIdx ? 'rec' : ''}`}>
+              <span className={warm ? 'st-a' : 'muted'}>{labels[i]}</span>
+              {cardio ? (
+                <>
+                  {withDist && <span>{s.dist !== null && s.dist !== undefined ? distText(s.dist, p.distUnit).replace(/ (km|m)$/, '') : '—'}</span>}
+                  <span>{formatDuration(s.secs) || '—'}</span>
+                </>
+              ) : (
+                <>
+                  <span>{loadText(s.load, p.unit) || '—'}</span>
+                  <span>{s.reps ?? '—'}</span>
+                </>
+              )}
+              <span className="hist-icon">{i === recordIdx && <Icon name="trophy" size={16} color="var(--record)" />}</span>
+            </div>
+          );
+        })}
+      </div>
+      <span className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+        {delta && <span className={`chip ${delta.tone === 'up' ? 'up' : 'neutral'}`}>{delta.text}</span>}
+        {cardio ? (
+          <span className="chip neutral">{setsSummary(p)}</span>
+        ) : (
+          totalReps > 0 && <span className="chip neutral">{totalReps} reps</span>
+        )}
+        {record && <span className="chip record">Recorde</span>}
+      </span>
+    </Link>
+  );
+}
+
 function Summary({ metric, series }: { metric: Metric; series: { p: HistoryPoint; v: number }[] }) {
   const last = series[series.length - 1].v;
   const first = series[0].v;
@@ -348,10 +443,11 @@ function Records({ ex, cardio, points }: { ex: ExerciseView; cardio: boolean; po
         if (!vol || setVolume(s) > vol.v) vol = { s, v: setVolume(s), p };
       }
     }
-    if (rm) rows.push({ name: 'Melhor 1RM', value: loadText(Math.round(rm.v * 10) / 10, u), note: `${loadText(rm.s.load, u)} × ${rm.s.reps}` });
-    if (vol) rows.push({ name: 'Melhor volume de série', value: loadText(vol.v, u), note: `${loadText(vol.s.load, u)} × ${vol.s.reps}` });
+    const volume = (v: number) => (u === 'placa' ? volText(v) : loadText(v, u));
+    if (rm && u !== 'placa') rows.push({ name: 'Melhor 1RM', value: loadText(Math.round(rm.v * 10) / 10, u), note: `${loadText(rm.s.load, u)} × ${rm.s.reps}` });
+    if (vol) rows.push({ name: 'Melhor volume de série', value: volume(vol.v), note: `${loadText(vol.s.load, u)} × ${vol.s.reps}` });
     const session = bestBy((p) => work(p.sets).reduce((a, s) => a + setVolume(s), 0) || null);
-    if (session) rows.push({ name: 'Melhor volume de treino', value: loadText(session.v, u), note: dayMonth(session.p.date) });
+    if (session) rows.push({ name: 'Melhor volume de treino', value: volume(session.v), note: dayMonth(session.p.date) });
   }
   if (rows.length === 0) return null;
   return (

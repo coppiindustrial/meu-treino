@@ -2104,6 +2104,65 @@ html[data-nav='tab']::view-transition-new(root) {
   animation: 0.2s ease both vt-fade-in;
 }
 
+/* Troca dentro da mesma aba (Cargas | Corpo): título, seletor e menu ficam parados; só o conteúdo desliza. */
+.seg-content {
+  display: flex;
+  flex-direction: column;
+  gap: inherit;
+  view-transition-name: seg-content;
+}
+
+html[data-nav^='side']::view-transition-old(root),
+html[data-nav^='side']::view-transition-new(root),
+html[data-nav^='side']::view-transition-group(seg-content) {
+  animation: none;
+}
+
+/* Sem o esmaecido da tela inteira ao entrar: o título e o seletor não piscam. */
+html.vt-running[data-nav^='side'] main.fade-in {
+  animation: none;
+}
+
+html[data-nav^='side']::view-transition-image-pair(seg-content) {
+  overflow: hidden;
+}
+
+html[data-nav^='side']::view-transition-old(seg-content),
+html[data-nav^='side']::view-transition-new(seg-content) {
+  animation-duration: 0.34s;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-fill-mode: both;
+  height: auto;
+}
+
+html[data-nav='side-forward']::view-transition-old(seg-content) {
+  animation-name: vt-side-out-left;
+}
+
+html[data-nav='side-forward']::view-transition-new(seg-content) {
+  animation-name: vt-in-right;
+}
+
+html[data-nav='side-back']::view-transition-old(seg-content) {
+  animation-name: vt-out-right;
+}
+
+html[data-nav='side-back']::view-transition-new(seg-content) {
+  animation-name: vt-side-in-left;
+}
+
+@keyframes vt-side-out-left {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes vt-side-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
 @keyframes vt-in-right {
   from {
     transform: translateX(100%);
@@ -3260,6 +3319,63 @@ body:has(.session-strip) .rest-bar {
   font-variant-numeric: tabular-nums;
 }
 
+/* Histórico do exercício: tabela de séries com recorde e comparação */
+.hist-table {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+}
+
+.hist-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 56px 24px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  border-top: 1px solid var(--border);
+}
+
+.hist-table.c-t .hist-row {
+  grid-template-columns: 40px 1fr 24px;
+}
+
+.hist-row.head {
+  border-top: 0;
+  padding-top: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hist-row.warm {
+  color: var(--text-2);
+}
+
+.hist-row.rec {
+  background: var(--orange-bg);
+  border-color: transparent;
+  border-radius: 8px;
+}
+
+.hist-row.rec + .hist-row {
+  border-color: transparent;
+}
+
+.hist-icon {
+  display: flex;
+  justify-content: center;
+}
+
+.chip.up {
+  background: var(--done-row);
+  color: var(--success);
+}
+
 /* ------------------------------------------------------------ Página da rotina: números, deslizar e "Iniciar" fixo */
 
 .head-actions {
@@ -4134,4 +4250,286 @@ html {
 .set-input.dur-input {
   white-space: nowrap;
   overflow: hidden;
+}
+
+/* ------------------------------------------------------------ Cronômetro do cardio */
+
+.cardio-start {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+}
+
+.cardio-start:active {
+  opacity: 0.7;
+}
+
+.cardio-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.cardio-busy {
+  margin: 4px 2px 0;
+}
+
+.cardio-run {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--raised);
+}
+
+.cardio-reached {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: stretch;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--done-row);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cardio-time {
+  font-family: var(--display);
+  font-size: 46px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.cardio-track {
+  align-self: stretch;
+  height: 6px;
+  margin: 4px 0;
+  border-radius: 3px;
+  background: var(--card);
+  overflow: hidden;
+}
+
+.cardio-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform 0.25s linear;
+}
+
+.cardio-fill.reached {
+  background: var(--success);
+}
+
+.cardio-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-self: stretch;
+}
+
+.cardio-cancel {
+  border: 0;
+  background: none;
+  padding: 4px;
+  font: inherit;
+  font-size: 12px;
+}
+
+/* A barra do cardio usa o visual da barra do descanso; com as duas na tela, fica logo acima dela. */
+.cardio-bar {
+  padding-right: 10px;
+}
+
+.cardio-bar.reached .rest-progress {
+  background: var(--success);
+}
+
+body:has(.rest-bar:not(.cardio-bar)) .cardio-bar {
+  margin-bottom: 74px;
+}
+
+/* ------------------------------------------------------------ Resumo do treino concluído */
+
+.sum-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.sum-done-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Números em texto, sem caixas: duração grande e o resto em duas colunas. */
+.sum-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sum-hero {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.sum-dur {
+  font-family: var(--display);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.sum-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.sum-grid > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sum-grid .muted {
+  font-weight: 500;
+}
+
+/* O seletor Lista | Detalhado usa botões: ficam por cima da bolha. */
+.seg.sliding > button {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+/* Lista no visual da ficha (linhas de ponta a ponta). */
+.sum-rows {
+  display: flex;
+  flex-direction: column;
+  margin: -4px -20px 0;
+}
+
+.sum-rows .ex-row {
+  padding-right: 16px;
+}
+
+.chip.record-badge {
+  background: var(--orange-bg);
+  color: var(--record);
+}
+
+/* Detalhado: tabela limpa, sem caixas, sem verde e sem check. */
+.sum-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 4px;
+}
+
+.sum-ex-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: inherit;
+}
+
+.sum-ex-thumb .thumb {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 10px;
+}
+
+.sum-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.sum-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 64px 52px;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  border-top: 0.5px solid var(--border);
+}
+
+.sum-row > :nth-child(n + 3) {
+  text-align: center;
+}
+
+.sum-row > :first-child {
+  text-align: center;
+}
+
+.sum-table.c-t .sum-row {
+  grid-template-columns: 38px minmax(0, 1fr) 64px;
+}
+
+.sum-row .muted {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.sum-row.head {
+  border-top: 0;
+  padding: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sum-row.warm {
+  color: var(--text-2);
+}
+
+.sum-none {
+  margin: 0 0 0 46px;
 }

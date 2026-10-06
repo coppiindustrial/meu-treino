@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useSlideNavigate } from '../lib/nav';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { BackButton, TopBar } from '../components/Layout';
@@ -45,7 +45,7 @@ Dia 2: Costas e bíceps
 …`;
 
 export function ImportProgram() {
-  const navigate = useNavigate();
+  const go = useSlideNavigate();
   const { toast } = useDialogs();
   const { list, map, ready } = useExercises();
   const [text, setText] = useState('');
@@ -137,7 +137,7 @@ export function ImportProgram() {
         .filter((d) => d.items.length > 0),
     );
     toast('Rotina criada');
-    navigate(`/ficha/${id}`, { replace: true });
+    go(`/ficha/${id}`, { replace: true });
   };
 
   const editingRow = editing && days ? days[editing.day]?.rows[editing.row] : undefined;

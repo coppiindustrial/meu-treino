@@ -43,13 +43,14 @@ function DurationInput({ value, hint, label, onCommit }: { value: number | null 
 }
 
 /** Campo de distância (km com decimais ou metros inteiros). */
-function DistanceInput({ value, unit, placeholder, label, onCommit }: { value: number | null | undefined; unit: DistUnit; placeholder: string; label: string; onCommit: (dist: number | null) => void }) {
+function DistanceInput({ value, unit, placeholder, label, fieldId, onCommit }: { value: number | null | undefined; unit: DistUnit; placeholder: string; label: string; fieldId?: string; onCommit: (dist: number | null) => void }) {
   const show = (v: number | null | undefined) => (v === null || v === undefined ? '' : unit === 'm' ? String(Math.round(v)) : num(v, 2));
   const [text, setText] = useState(show(value));
   useEffect(() => setText(show(value)), [value, unit]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <input
       className="set-input"
+      data-dist={fieldId}
       inputMode={unit === 'm' ? 'numeric' : 'decimal'}
       enterKeyHint="next"
       value={text}
@@ -67,7 +68,7 @@ function DistanceInput({ value, unit, placeholder, label, onCommit }: { value: n
 const distPlaceholder = (v: number | null | undefined, unit: DistUnit) => (v === null || v === undefined ? '' : distText(v, unit).replace(/ (km|m)$/, ''));
 
 /** "24 kg × 10" (ou "9,4 km · 30:00" no cardio) do que foi feito da última vez. */
-function prevSetText(p: { load?: number | null; reps?: number | null; secs?: number | null; dist?: number | null } | undefined, unit: LoadUnit, logType: LogType, distUnit: DistUnit): string {
+export function prevSetText(p: { load?: number | null; reps?: number | null; secs?: number | null; dist?: number | null } | undefined, unit: LoadUnit, logType: LogType, distUnit: DistUnit): string {
   if (!p) return '—';
   if (logType !== 'carga') return p.secs || p.dist ? cardioSetText({ secs: p.secs, dist: p.dist }, distUnit) : '—';
   if (p.load !== null && p.load !== undefined) return `${num(p.load)}${unit === 'placa' ? '' : ` ${unit}`} × ${p.reps ?? '—'}`;
@@ -87,6 +88,7 @@ export function SetRow({
   name,
   logType = 'carga',
   distUnit = 'km',
+  fieldId,
   onOpenMenu,
   onCommit,
   onToggle,
@@ -96,6 +98,8 @@ export function SetRow({
   unit: LoadUnit;
   /** Nome do exercício (título da roleta). */
   name?: string;
+  /** Identifica o campo de distância (o cronômetro do cardio foca nele ao concluir). */
+  fieldId?: string;
   logType?: LogType;
   distUnit?: DistUnit;
   onOpenMenu: () => void;
@@ -139,6 +143,7 @@ export function SetRow({
             unit={distUnit}
             placeholder={distPlaceholder(set.targetDist ?? set.prevDist, distUnit)}
             label={`Distância da série ${label}`}
+            fieldId={fieldId}
             onCommit={(dist) => onCommit({ dist })}
           />
         )}

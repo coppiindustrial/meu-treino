@@ -10,7 +10,7 @@ import { db } from '../lib/db';
 import { equipmentName } from '../lib/equipment';
 import { exerciseOrMissing, normalize, useExercises } from '../lib/exercises';
 import { muscleName } from '../lib/muscles';
-import { withTransition } from '../lib/nav';
+import { useSlideNavigate, withTransition } from '../lib/nav';
 import { addExercisesToSession, addExercisesToWorkout, getActiveSession, replaceWorkoutItemExercise } from '../lib/repo';
 import type { EquipmentId, MuscleId } from '../lib/types';
 
@@ -20,6 +20,7 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
   const { workoutId = '', itemId = '' } = useParams();
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const go = useSlideNavigate();
   const { toast } = useDialogs();
   const { list, map } = useExercises();
   const [query, setQuery] = useState('');
@@ -90,11 +91,11 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
     if (mode === 'workout') {
       await addExercisesToWorkout(workoutId, selected);
       toast(selected.length === 1 ? 'Exercício adicionado' : `${selected.length} exercícios adicionados`);
-      navigate(`/treino/${workoutId}?editar=1&novo=1`, { replace: true });
+      go(`/treino/${workoutId}?editar=1&novo=1`, { dir: 'back', replace: true });
     } else {
       const s = await getActiveSession();
       if (s) await addExercisesToSession(s.id, selected);
-      navigate('/sessao', { replace: true });
+      go('/sessao', { dir: 'back', replace: true });
     }
   };
 

@@ -614,10 +614,13 @@ export async function startSession(workoutId: string | null): Promise<string> {
 
 export async function addExercisesToSession(sessionId: string, exerciseIds: string[]): Promise<void> {
   const items = await sessionItemsOf(sessionId);
+  // Num treino de ficha, o que entra durante o treino é "extra": aparece no resumo e no histórico, mas a ficha não muda.
+  const fromPlan = !!(await db.sessions.get(sessionId))?.workoutId;
   const created: SessionItem[] = [];
   for (const [i, exId] of exerciseIds.entries()) {
     const log = await exerciseLog(exId);
-    created.push(await sessionItemFrom(sessionId, exId, items.length + i, plannedSetsFor(log.logType), false, ''));
+    const item = await sessionItemFrom(sessionId, exId, items.length + i, plannedSetsFor(log.logType), false, '');
+    created.push(fromPlan ? { ...item, extra: true } : item);
   }
   await putMany('sessionItems', created);
 }
@@ -713,6 +716,7 @@ export async function addSet(itemId: string): Promise<void> {
       dist: null,
       targetSecs: last?.secs ?? last?.targetSecs ?? null,
       targetDist: last?.dist ?? last?.targetDist ?? null,
+      extra: true,
     };
     return { sets: [...item.sets, next], done: false };
   });

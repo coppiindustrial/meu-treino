@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { useSlideNavigate } from '../lib/nav';
 import { useDialogs } from '../components/Dialogs';
 import { Duration } from '../components/Duration';
 import { Icon } from '../components/Icon';
@@ -31,7 +32,7 @@ const FOLDER_KEY = 'mt.homeFolder';
 const WEEK_LETTERS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
 
 export function Home() {
-  const navigate = useNavigate();
+  const go = useSlideNavigate();
   const { prompt } = useDialogs();
   const { map } = useExercises();
   const [folderOpen, setFolderOpen] = useState(() => {
@@ -78,7 +79,7 @@ export function Home() {
     const name = await prompt({ title: 'Nova rotina', label: 'Nome da rotina', placeholder: 'Hipertrofia · outubro' });
     if (name === null) return;
     const id = await createProgram(name);
-    navigate(`/ficha/${id}`);
+    go(`/ficha/${id}`);
   };
 
   const toggleFolder = () => {
@@ -93,7 +94,7 @@ export function Home() {
 
   const start = async (workoutId: string | null) => {
     await startSession(workoutId);
-    navigate('/sessao');
+    go('/sessao');
   };
 
   return (

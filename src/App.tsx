@@ -4,6 +4,7 @@ import { type NavDir, withTransition } from './lib/nav';
 import { DialogProvider } from './components/Dialogs';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { isTabRoute, TabBar } from './components/Layout';
+import { CardioTimerProvider } from './components/CardioTimer';
 import { RestTimerProvider } from './components/RestTimer';
 import { requestPersistentStorage } from './lib/db';
 import { initSync } from './lib/sync';
@@ -118,7 +119,9 @@ export function App() {
     <HashRouter>
       <DialogProvider>
         <RestTimerProvider>
-          <Shell />
+          <CardioTimerProvider>
+            <Shell />
+          </CardioTimerProvider>
         </RestTimerProvider>
       </DialogProvider>
     </HashRouter>

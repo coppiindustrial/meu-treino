@@ -43,6 +43,7 @@ export function Body() {
   return (
     <main className="screen tight fade-in">
       <ProgressHead active="corpo" />
+      <div className="seg-content">
 
       <div className="card flat row between">
         <div className="col" style={{ gap: 2 }}>
@@ -128,6 +129,8 @@ export function Body() {
           </div>
         </section>
       )}
+
+      </div>
 
       <Sheet open={!!photo} onClose={() => setPhoto(null)} title={photo ? fullDate(photo.date) : undefined}>
         {photo?.photo && <img src={photo.photo} alt={`Foto de progresso de ${fullDate(photo.date)}`} style={{ width: '100%', borderRadius: 14 }} />}

@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ActionMenu } from '../components/ActionMenu';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
@@ -39,7 +39,7 @@ import {
   updateWorkoutItem,
 } from '../lib/repo';
 import type { DoneSet, PlannedSet, RepMode, Workout, WorkoutItem } from '../lib/types';
-import { withTransition } from '../lib/nav';
+import { useSlideNavigate } from '../lib/nav';
 import { num } from '../lib/format';
 import { groupSupersets, itemSummary, plannedSetCount, plannedSummary, plannedVolumeKg, restText } from '../lib/workout';
 
@@ -100,7 +100,7 @@ export function WorkoutDetail() {
   const { workoutId = '' } = useParams();
   const [params, setParams] = useSearchParams();
   const editing = params.get('editar') === '1';
-  const navigate = useNavigate();
+  const go = useSlideNavigate();
   const { confirm, toast } = useDialogs();
   const removeItem = useRemoveItem();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -202,7 +202,7 @@ export function WorkoutDetail() {
     if (!ok) return;
     const id = await duplicateWorkout(workout.id);
     toast('Treino duplicado');
-    navigate(`/treino/${id}`);
+    go(`/treino/${id}`);
   };
 
   const start = async () => {
@@ -213,11 +213,11 @@ export function WorkoutDetail() {
         message: `"${active.title}" ainda não foi finalizado. Quer continuar nele?`,
         confirmLabel: 'Continuar esse treino',
       });
-      if (ok) navigate('/sessao');
+      if (ok) go('/sessao');
       return;
     }
     await startSession(workout.id);
-    navigate('/sessao');
+    go('/sessao');
   };
 
   const removeWorkout = async () => {
@@ -229,7 +229,7 @@ export function WorkoutDetail() {
     });
     if (!ok) return;
     await deleteWorkout(workout.id);
-    navigate(program ? `/ficha/${program.id}` : '/treinos', { replace: true });
+    go(program ? `/ficha/${program.id}` : '/treinos', { dir: 'back', replace: true });
   };
 
   const menuItem = itemMenu ? items.find((x) => x.id === itemMenu) : undefined;
@@ -406,7 +406,7 @@ export function WorkoutDetail() {
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         actions={[
-          { icon: 'sort', label: 'Reordenar exercícios', hidden: items.length < 2, onClick: () => withTransition('forward', () => navigate(`/treino/${workout.id}/reordenar`)) },
+          { icon: 'sort', label: 'Reordenar exercícios', hidden: items.length < 2, onClick: () => go(`/treino/${workout.id}/reordenar`) },
           { icon: 'pencil', label: 'Editar treino', onClick: () => setEditing(true) },
           { icon: 'copy', label: 'Duplicar treino', onClick: duplicate },
           { icon: 'x', label: 'Excluir treino', danger: true, onClick: removeWorkout },

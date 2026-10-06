@@ -48,14 +48,14 @@ export function ProgressHead({ active }: { active: 'cargas' | 'corpo' }) {
         {active === 'cargas' ? (
           <span className="on">Cargas</span>
         ) : (
-          <Link to="/progresso" data-nav="none" data-replace="">
+          <Link to="/progresso" data-nav="side-back" data-replace="">
             Cargas
           </Link>
         )}
         {active === 'corpo' ? (
           <span className="on">Corpo</span>
         ) : (
-          <Link to="/progresso/corpo" data-nav="none" data-replace="">
+          <Link to="/progresso/corpo" data-nav="side-forward" data-replace="">
             Corpo
           </Link>
         )}
@@ -100,6 +100,7 @@ export function Progress() {
   return (
     <main className="screen tight fade-in">
       <ProgressHead active="cargas" />
+      <div className="seg-content">
 
       {used.length === 0 || !ex ? (
         <EmptyState title="Ainda sem registros" text="Finalize seu primeiro treino para ver a evolução das cargas aqui." />
@@ -171,6 +172,7 @@ export function Progress() {
           </section>
         </>
       )}
+      </div>
     </main>
   );
 }

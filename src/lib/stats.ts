@@ -1,9 +1,14 @@
-import { cardioTotals } from './cardio';
+import { cardioTotals, isCardio } from './cardio';
 import { db } from './db';
 import type { DistUnit, DoneSet, LoadUnit, LogType, Session, SessionItem } from './types';
 
 export interface HistoryPoint {
   sessionId: string;
+  itemId: string;
+  /** Nome do treino (ex.: "A · Peito e Tríceps"). */
+  title: string;
+  /** O exercício entrou durante o treino, fora da ficha. */
+  extra: boolean;
   date: string;
   startedAt: number | null;
   unit: LoadUnit;
@@ -39,6 +44,12 @@ export function volumeKg(sets: DoneSet[], unit: LoadUnit): number {
     .reduce((sum, s) => sum + (s.load ?? 0) * (s.reps ?? 0) * factor, 0);
 }
 
+/** Volume dos exercícios anotados em placa: nº da placa × repetições, ignorando aquecimento. Não soma com kg. */
+export function volumePlates(sets: DoneSet[], unit: LoadUnit): number {
+  if (unit !== 'placa') return 0;
+  return sets.filter((s) => s.done && s.type !== 'A').reduce((sum, s) => sum + (s.load ?? 0) * (s.reps ?? 0), 0);
+}
+
 function sortKey(s: Pick<Session, 'date' | 'startedAt'>): string {
   return `${s.date}|${String(s.startedAt ?? 0).padStart(15, '0')}`;
 }
@@ -58,6 +69,9 @@ export async function exerciseHistory(exerciseId: string): Promise<HistoryPoint[
     points.push({
       key: sortKey(s),
       sessionId: s.id,
+      itemId: it.id,
+      title: s.title,
+      extra: !!it.extra,
       date: s.date,
       startedAt: s.startedAt,
       unit: it.unit ?? 'kg',
@@ -77,22 +91,62 @@ export async function doneSessions(): Promise<Session[]> {
   return list.sort((a, b) => (sortKey(a) < sortKey(b) ? 1 : -1));
 }
 
-export function summarize(items: SessionItem[]): { exercisesDone: number; setsDone: number; volume: number; km: number; cardioSecs: number } {
-  let setsDone = 0;
-  let volume = 0;
-  let exercisesDone = 0;
-  let km = 0;
-  let cardioSecs = 0;
+export interface SessionStats {
+  exercisesDone: number;
+  /** Exercícios feitos que vieram da ficha e que entraram durante o treino. */
+  planExercises: number;
+  extraExercises: number;
+  /** Séries de trabalho feitas (sem aquecimento). */
+  setsDone: number;
+  warmupsDone: number;
+  /** Volume em kg e quantos exercícios entraram nele. */
+  volume: number;
+  volumeExercises: number;
+  /** Volume em placas (nº da placa × reps) e quantos exercícios entraram nele. */
+  plateVolume: number;
+  plateExercises: number;
+  km: number;
+  cardioSecs: number;
+}
+
+export function summarize(items: SessionItem[]): SessionStats {
+  const st: SessionStats = {
+    exercisesDone: 0,
+    planExercises: 0,
+    extraExercises: 0,
+    setsDone: 0,
+    warmupsDone: 0,
+    volume: 0,
+    volumeExercises: 0,
+    plateVolume: 0,
+    plateExercises: 0,
+    km: 0,
+    cardioSecs: 0,
+  };
   for (const it of items) {
-    const done = it.sets.filter((s) => s.done).length;
-    setsDone += done;
-    volume += volumeKg(it.sets, it.unit ?? 'kg');
+    const done = it.sets.filter((s) => s.done);
+    const warmups = done.filter((s) => s.type === 'A').length;
+    st.setsDone += done.length - warmups;
+    st.warmupsDone += warmups;
+    const unit = it.unit ?? 'kg';
+    const kg = isCardio(it.logType) ? 0 : volumeKg(it.sets, unit);
+    const plates = isCardio(it.logType) ? 0 : volumePlates(it.sets, unit);
+    st.volume += kg;
+    st.plateVolume += plates;
+    if (kg > 0) st.volumeExercises += 1;
+    if (plates > 0) st.plateExercises += 1;
     const c = cardioTotals(it.sets, it.distUnit ?? 'km');
-    km += c.km;
-    cardioSecs += c.secs;
-    if (it.done || done > 0) exercisesDone += 1;
+    st.km += c.km;
+    st.cardioSecs += c.secs;
+    if (it.done || done.length > 0) {
+      st.exercisesDone += 1;
+      if (it.extra) st.extraExercises += 1;
+      else st.planExercises += 1;
+    }
   }
-  return { exercisesDone, setsDone, volume: Math.round(volume), km, cardioSecs };
+  st.volume = Math.round(st.volume);
+  st.plateVolume = Math.round(st.plateVolume);
+  return st;
 }
 
 export interface RecordHit {

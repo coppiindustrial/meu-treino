@@ -1,12 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { ActionMenu } from '../components/ActionMenu';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { BackButton, EmptyState, LoadingScreen, TopBar } from '../components/Layout';
 import { LongPressSort } from '../components/LongPressSort';
-import { withTransition } from '../lib/nav';
+import { useSlideNavigate } from '../lib/nav';
 import { db } from '../lib/db';
 import { dayMonth, fullDate, toISODate } from '../lib/format';
 import {
@@ -22,7 +22,7 @@ import {
 
 export function ProgramDetail() {
   const { programId = '' } = useParams();
-  const navigate = useNavigate();
+  const go = useSlideNavigate();
   const { prompt, confirm, toast } = useDialogs();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -64,7 +64,7 @@ export function ProgramDetail() {
     const name = await prompt({ title: 'Novo treino', label: 'Nome do treino', placeholder: 'Peito e tríceps' });
     if (name === null) return;
     const id = await createWorkout(program.id, name.trim() || 'Novo treino');
-    navigate(`/treino/${id}`);
+    go(`/treino/${id}`);
   };
 
   const activate = async () => {
@@ -96,7 +96,7 @@ export function ProgramDetail() {
     if (!ok) return;
     const id = await duplicateProgram(program.id);
     toast('Cópia criada');
-    navigate(`/ficha/${id}`);
+    go(`/ficha/${id}`);
   };
 
   const remove = async () => {
@@ -108,7 +108,7 @@ export function ProgramDetail() {
     });
     if (!ok) return;
     await deleteProgram(program.id);
-    navigate('/treinos', { replace: true });
+    go('/treinos', { dir: 'back', replace: true });
   };
 
   return (
@@ -164,7 +164,7 @@ export function ProgramDetail() {
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         actions={[
-          { icon: 'sort', label: 'Reordenar treinos', hidden: workouts.length < 2, onClick: () => withTransition('forward', () => navigate(`/ficha/${program.id}/reordenar`)) },
+          { icon: 'sort', label: 'Reordenar treinos', hidden: workouts.length < 2, onClick: () => go(`/ficha/${program.id}/reordenar`) },
           { icon: 'check', label: 'Ativar esta rotina', hidden: program.status === 'active', onClick: activate },
           { icon: 'pencil', label: 'Renomear rotina', onClick: rename },
           { icon: 'copy', label: 'Duplicar rotina', onClick: duplicate },

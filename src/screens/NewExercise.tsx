@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { useSlideNavigate } from '../lib/nav';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { TopBar } from '../components/Layout';
@@ -23,7 +24,7 @@ export function NewExercise() {
   const [params] = useSearchParams();
   const addToWorkout = params.get('treino');
   const addToSession = params.get('sessao') === '1';
-  const navigate = useNavigate();
+  const go = useSlideNavigate();
   const { toast, confirm } = useDialogs();
 
   const existing = useLiveQuery(() => (exerciseId ? db.customExercises.get(exerciseId) : undefined), [exerciseId]);
@@ -94,17 +95,17 @@ export function NewExercise() {
     if (!existing && addNow && addToWorkout) {
       await addExercisesToWorkout(addToWorkout, [id]);
       toast('Exercício criado e adicionado');
-      navigate(`/treino/${addToWorkout}?editar=1&novo=1`, { replace: true });
+      go(`/treino/${addToWorkout}?editar=1&novo=1`, { dir: 'back', replace: true });
       return;
     }
     if (!existing && addNow && addToSession) {
       const s = await getActiveSession();
       if (s) await addExercisesToSession(s.id, [id]);
-      navigate('/sessao', { replace: true });
+      go('/sessao', { dir: 'back', replace: true });
       return;
     }
     toast(existing ? 'Exercício salvo' : 'Exercício criado');
-    navigate(existing ? `/exercicio/${id}` : `/exercicio/${id}`, { replace: true });
+    go(`/exercicio/${id}`, { dir: existing ? 'back' : 'forward', replace: true });
   };
 
   const remove = async () => {
@@ -117,7 +118,7 @@ export function NewExercise() {
     });
     if (!ok) return;
     await deleteCustomExercise(existing.id);
-    navigate('/exercicios', { replace: true });
+    go('/exercicios', { dir: 'back', replace: true });
   };
 
   const canAdd = !existing && (addToWorkout || addToSession);
@@ -126,7 +127,7 @@ export function NewExercise() {
     <main className="screen no-tabs">
       <TopBar
         left={
-          <button type="button" className="glass pill accent-text" onClick={() => navigate(-1)}>
+          <button type="button" className="glass pill accent-text" onClick={() => go(-1)}>
             Cancelar
           </button>
         }

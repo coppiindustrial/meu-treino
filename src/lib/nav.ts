@@ -1,4 +1,27 @@
-export type NavDir = 'forward' | 'back' | 'tab' | 'none';
+import { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+/** `side-*`: troca dentro da mesma aba (ex.: Cargas | Corpo): só o conteúdo desliza para o lado. */
+export type NavDir = 'forward' | 'back' | 'tab' | 'none' | 'side-forward' | 'side-back';
+
+/**
+ * Troca de tela pelo código (depois de salvar, excluir, iniciar...) sempre com a animação de deslizar,
+ * igual aos links. `go(-1)` volta deslizando para a direita; um endereço entra pela direita, a não ser
+ * que `dir: 'back'` diga que é uma volta (ex.: excluir e voltar para a lista).
+ */
+export function useSlideNavigate(): (to: string | number, opts?: { dir?: NavDir; replace?: boolean }) => void {
+  const navigate = useNavigate();
+  return useCallback(
+    (to, opts = {}) => {
+      const dir = opts.dir ?? (typeof to === 'number' && to < 0 ? 'back' : 'forward');
+      withTransition(dir, () => {
+        if (typeof to === 'number') navigate(to);
+        else navigate(to, { replace: opts.replace });
+      });
+    },
+    [navigate],
+  );
+}
 
 type DocWithVT = Document & {
   startViewTransition?: (cb: () => Promise<void> | void) => unknown;
@@ -37,10 +60,11 @@ export function withTransition(dir: NavDir, update: () => void): void {
   };
   const fallback = setTimeout(run, 400);
   const fromHash = window.location.hash;
+  const fromMain = document.querySelector('main');
   const vt = doc.startViewTransition(async () => {
     clearTimeout(fallback);
     run();
-    await screenReady(fromHash);
+    await screenReady(fromHash, fromMain);
   }) as { ready?: Promise<void>; finished?: Promise<void>; updateCallbackDone?: Promise<void> } | undefined;
   // Uma animação cancelada (ex.: outro toque no meio) não é erro: a tela já trocou.
   vt?.ready?.catch(() => undefined);
@@ -58,8 +82,10 @@ export function withTransition(dir: NavDir, update: () => void): void {
  * Espera a tela nova estar desenhada antes de a animação tirar a "foto" dela: o endereço já mudou
  * (no voltar, o iPhone troca de página um pouco depois) e a tela tem conteúdo, não está carregando.
  * Antes eram 90 ms fixos, e no iPhone a foto pegava a tela ainda vazia: a animação mostrava tudo preto.
+ * O endereço muda antes de o React desenhar a tela nova, então também espera o <main> antigo sair;
+ * senão a "foto" da tela nova era a antiga, e a nova só aparecia de repente no fim.
  */
-async function screenReady(fromHash: string): Promise<void> {
+async function screenReady(fromHash: string, fromMain: Element | null): Promise<void> {
   const start = performance.now();
   for (;;) {
     const elapsed = performance.now() - start;
@@ -67,7 +93,9 @@ async function screenReady(fromHash: string): Promise<void> {
     // Uma troca que não muda o endereço não precisa esperar por isso.
     const moved = window.location.hash !== fromHash || elapsed > 120;
     const main = document.querySelector('main');
-    if (moved && main && main.childElementCount > 0 && !main.hasAttribute('data-loading')) return;
+    // A mesma tela com outro conteúdo (ex.: outro exercício) pode reaproveitar o <main>.
+    const replaced = main !== fromMain || elapsed > 150;
+    if (moved && replaced && main && main.childElementCount > 0 && !main.hasAttribute('data-loading')) return;
     await new Promise((r) => setTimeout(r, 16));
   }
 }

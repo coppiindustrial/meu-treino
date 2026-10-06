@@ -1,17 +1,19 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { useSlideNavigate } from '../lib/nav';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { EmptyState, LoadingScreen } from '../components/Layout';
 import { ExerciseThumb } from '../components/Media';
+import { cardioElapsed, useCardio, useCardioNow } from '../components/CardioTimer';
 import { useRest } from '../components/RestTimer';
 import { IntervalConfigButtons, TirosRunner } from '../components/Intervals';
 import { RestSheet, SetRow, SetTypeSheet } from '../components/SetRow';
 import { SwipeRow } from '../components/SwipeRow';
 import { LogTypePicker } from '../components/LogTypePicker';
 import { Sheet } from '../components/Sheet';
-import { isCardio, logTypeName } from '../lib/cardio';
+import { formatDuration, isCardio, logTypeName } from '../lib/cardio';
 import { db } from '../lib/db';
 import { UNITS, setLabels } from '../lib/equipment';
 import { exerciseOrMissing, useExercises } from '../lib/exercises';
@@ -48,9 +50,10 @@ function elapsedText(seconds: number): string {
 }
 
 export function ActiveSession() {
-  const navigate = useNavigate();
+  const go = useSlideNavigate();
   const { confirm, toast } = useDialogs();
   const rest = useRest();
+  const cardioTimer = useCardio();
   const { map } = useExercises();
   const now = useNow(1000);
   const [typeMenu, setTypeMenu] = useState<{ itemId: string; index: number } | null>(null);
@@ -96,6 +99,26 @@ export function ActiveSession() {
     if (seconds > 0) rest.start(seconds, nextText(it, index));
   };
 
+  /** Cronômetro do cardio concluído: grava o tempo na série, marca como feita e abre o km para digitar. */
+  const finishCardio = (it: SessionItem, withDist: boolean) => {
+    const r = cardioTimer.finish();
+    if (!r) return;
+    const s = it.sets[r.setIndex];
+    if (!s) return;
+    // Foca ainda dentro do toque: só assim o iPhone abre o teclado.
+    const input = withDist ? document.querySelector<HTMLInputElement>(`[data-dist="${it.id}:${r.setIndex}"]`) : null;
+    input?.focus();
+    const save = s.done ? updateSet(it.id, r.setIndex, { secs: r.secs }) : onToggleSet(it, r.setIndex, s, { secs: r.secs });
+    void save.then(() => {
+      if (input && document.activeElement === input) setTimeout(() => input.select(), 50);
+    });
+  };
+
+  const deleteSet = (itemId: string, index: number) => {
+    cardioTimer.setRemoved(itemId, index);
+    return removeSet(itemId, index);
+  };
+
   /** Texto do aviso de fim do descanso: a próxima série deste exercício ou o próximo exercício. */
   const nextText = (it: SessionItem, index: number): string => {
     if (it.sets.some((x, j) => j !== index && !x.done)) return `Próxima série: ${exerciseOrMissing(map, it.exerciseId).name}`;
@@ -118,7 +141,8 @@ export function ActiveSession() {
     }
     await finishSession(session.id);
     rest.stop();
-    navigate(`/sessao/${session.id}/resumo`, { replace: true });
+    cardioTimer.cancel();
+    go(`/sessao/${session.id}/resumo`, { replace: true });
   };
 
   const discard = async () => {
@@ -131,7 +155,8 @@ export function ActiveSession() {
     if (!ok) return;
     await deleteSession(session.id);
     rest.stop();
-    navigate('/', { replace: true });
+    cardioTimer.cancel();
+    go('/', { dir: 'back', replace: true });
   };
 
   const menuItem = items.find((i) => i.id === menuFor);
@@ -199,7 +224,7 @@ export function ActiveSession() {
             </div>
           )}
           {it.sets.map((s, i) => (
-            <SwipeRow key={i} onDelete={() => removeSet(it.id, i)}>
+            <SwipeRow key={i} onDelete={() => deleteSet(it.id, i)}>
               <SetRow
                 label={labels[i]}
                 set={s}
@@ -207,12 +232,16 @@ export function ActiveSession() {
                 name={ex.name}
                 logType={logType}
                 distUnit={distUnit}
+                fieldId={`${it.id}:${i}`}
                 onOpenMenu={() => setTypeMenu({ itemId: it.id, index: i })}
                 onCommit={(changes) => updateSet(it.id, i, changes)}
                 onToggle={(values) => onToggleSet(it, i, s, values)}
               />
             </SwipeRow>
           ))}
+          {(logType === 'tempo' || logType === 'tempo_km') && (
+            <CardioPanel item={it} label={ex.name} onFinish={() => finishCardio(it, logType === 'tempo_km')} />
+          )}
           {logType !== 'tiros' && (
             <button type="button" className="btn soft small block" onClick={() => addSet(it.id)}>
               <Icon name="plus" /> Adicionar série
@@ -293,7 +322,7 @@ export function ActiveSession() {
           setTypeMenu(null);
         }}
         onRemove={async () => {
-          if (typeMenu) await removeSet(typeMenu.itemId, typeMenu.index);
+          if (typeMenu) await deleteSet(typeMenu.itemId, typeMenu.index);
           setTypeMenu(null);
         }}
       />
@@ -371,6 +400,7 @@ export function ActiveSession() {
                 onClick={async () => {
                   const ok = await confirm({ title: 'Tirar este exercício do treino?', confirmLabel: 'Tirar', danger: true });
                   if (!ok) return;
+                  if (cardioTimer.state?.itemId === menuItem.id) cardioTimer.cancel();
                   await removeSessionItem(menuItem.id);
                   setMenuFor(null);
                 }}
@@ -383,6 +413,75 @@ export function ActiveSession() {
         )}
       </Sheet>
     </main>
+  );
+}
+
+/** Cronômetro do cardio dentro do card: iniciar na próxima série, ver o tempo, pausar e concluir. */
+function CardioPanel({ item, label, onFinish }: { item: SessionItem; label: string; onFinish: () => void }) {
+  const timer = useCardio();
+  const st = timer.state;
+  const mine = st?.itemId === item.id;
+  const now = useCardioNow(mine && st?.startedAt !== null);
+
+  if (!mine) {
+    const index = item.sets.findIndex((s) => !s.done);
+    if (index < 0) return null;
+    const s = item.sets[index];
+    const target = s.targetSecs ?? s.prevSecs ?? null;
+    if (st) {
+      return <p className="tiny muted cardio-busy">O cronômetro está contando em {st.label}.</p>;
+    }
+    return (
+      <button type="button" className="cardio-start" onClick={() => timer.start(item.id, index, label, target)}>
+        <span className="cardio-play" aria-hidden="true">
+          <Icon name="play" size={20} />
+        </span>
+        <span className="col" style={{ gap: 1, alignItems: 'flex-start' }}>
+          <span style={{ fontWeight: 700 }}>Iniciar cronômetro</span>
+          <span className="tiny muted">
+            {item.sets.length > 1 ? `Série ${index + 1}` : 'Conta o tempo da série'}
+            {target ? ` · meta ${formatDuration(target)}, avisa ao chegar` : ''}
+          </span>
+        </span>
+      </button>
+    );
+  }
+
+  const running = st.startedAt !== null;
+  const secs = Math.floor(cardioElapsed(st, now) / 1000);
+  const target = st.targetSecs;
+  const frac = target ? Math.min(1, secs / target) : 0;
+  return (
+    <div className="cardio-run" role="timer" aria-live="off">
+      {st.alerted && target && (
+        <div className="cardio-reached">
+          <Icon name="bell" size={18} color="var(--success)" />
+          <span>{formatDuration(target)} atingido. Continua contando até você concluir.</span>
+        </div>
+      )}
+      <span className="cardio-time">{formatDuration(secs) || '0:00'}</span>
+      <span className="tiny muted">
+        {item.sets.length > 1 ? `Série ${st.setIndex + 1}` : 'Série'}
+        {target ? (secs < target ? ` · meta ${formatDuration(target)} · faltam ${formatDuration(target - secs)}` : ` · meta ${formatDuration(target)}`) : ''}
+        {running ? '' : ' · pausado'}
+      </span>
+      {target ? (
+        <span className="cardio-track" aria-hidden="true">
+          <span className={`cardio-fill ${st.alerted ? 'reached' : ''}`} style={{ transform: `scaleX(${frac})` }} />
+        </span>
+      ) : null}
+      <div className="cardio-actions">
+        <button type="button" className="btn soft" onClick={running ? timer.pause : timer.resume}>
+          <Icon name={running ? 'pause' : 'play'} size={18} /> {running ? 'Pausar' : 'Continuar'}
+        </button>
+        <button type="button" className="btn primary" onClick={onFinish}>
+          <Icon name="check" size={18} stroke={3} /> Concluir
+        </button>
+      </div>
+      <button type="button" className="cardio-cancel tiny muted" onClick={timer.cancel}>
+        Cancelar sem salvar
+      </button>
+    </div>
   );
 }
 

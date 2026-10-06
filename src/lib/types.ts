@@ -175,6 +175,8 @@ export interface DoneSet {
   /** Meta de tempo e distância vinda da rotina. */
   targetSecs?: number | null;
   targetDist?: number | null;
+  /** Série incluída durante o treino, além das planejadas na ficha. */
+  extra?: boolean;
 }
 
 export interface SessionItem extends Synced {
@@ -192,6 +194,8 @@ export interface SessionItem extends Synced {
   logType?: LogType;
   distUnit?: DistUnit;
   interval?: IntervalConfig;
+  /** Exercício incluído durante o treino, fora da ficha (a ficha não muda). */
+  extra?: boolean;
 }
 
 export interface BodyEntry extends Synced {

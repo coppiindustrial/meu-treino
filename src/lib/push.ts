@@ -10,6 +10,7 @@ export type PushStatus = 'unsupported' | 'install' | 'cloud' | 'denied' | 'off' 
 
 const LS_ON = 'mt.push';
 const LS_JOB = 'mt.push.job';
+const LS_JOB_CARDIO = 'mt.push.cardio';
 
 const read = (k: string): string | null => {
   try {
@@ -118,10 +119,10 @@ async function insertJob(sendAt: number, title: string, body: string): Promise<s
   return error ? null : id;
 }
 
-async function deleteJob(): Promise<void> {
-  const id = read(LS_JOB);
+async function deleteJob(key = LS_JOB): Promise<void> {
+  const id = read(key);
   if (!id) return;
-  write(LS_JOB, null);
+  write(key, null);
   const client = await session();
   await client?.from('push_jobs').delete().eq('id', id);
 }
@@ -149,7 +150,23 @@ export function moveRestPush(endsAt: number): void {
 /** Descanso pulado ou encerrado com o app aberto: o aviso não precisa mais sair. */
 export function cancelRestPush(): void {
   if (!read(LS_JOB)) return;
-  queue(deleteJob);
+  queue(() => deleteJob());
+}
+
+/** Marca o aviso da meta do cronômetro do cardio (substitui o anterior). */
+export function scheduleCardioPush(sendAt: number, body: string): void {
+  if (!pushOn()) return;
+  queue(async () => {
+    await deleteJob(LS_JOB_CARDIO);
+    const id = await insertJob(sendAt, 'Meta do cardio', body);
+    if (id) write(LS_JOB_CARDIO, id);
+  });
+}
+
+/** Cronômetro do cardio pausado, concluído ou cancelado: o aviso não precisa mais sair. */
+export function cancelCardioPush(): void {
+  if (!read(LS_JOB_CARDIO)) return;
+  queue(() => deleteJob(LS_JOB_CARDIO));
 }
 
 /** Manda um aviso de teste daqui a alguns segundos (dá tempo de bloquear a tela). */

@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { useSlideNavigate } from '../lib/nav';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { BackButton, LoadingScreen, TopBar } from '../components/Layout';
@@ -21,7 +22,7 @@ const OTHER = '__outro__';
 export function DayEdit() {
   const { sessionId } = useParams();
   const [params] = useSearchParams();
-  const navigate = useNavigate();
+  const go = useSlideNavigate();
   const { confirm, toast } = useDialogs();
   const { map } = useExercises();
   const isNew = !sessionId;
@@ -115,7 +116,7 @@ export function DayEdit() {
         doneExerciseIds: doneIds,
       });
       toast('Treino adicionado');
-      navigate(-1);
+      go(-1);
       return;
     }
     const s = data.session!;
@@ -131,7 +132,7 @@ export function DayEdit() {
       if (done[it.id] !== undefined && done[it.id] !== wasDone) await setSessionItemDoneFlag(it.id, done[it.id]);
     }
     toast('Dia atualizado');
-    navigate(-1);
+    go(-1);
   };
 
   const remove = async () => {
@@ -144,7 +145,7 @@ export function DayEdit() {
     });
     if (!ok) return;
     await deleteSession(data.session.id);
-    navigate('/calendario', { replace: true });
+    go('/calendario', { dir: 'back', replace: true });
   };
 
   const checklist = isNew
@@ -155,7 +156,7 @@ export function DayEdit() {
     <main className="screen no-tabs">
       <TopBar
         left={
-          <button type="button" className="glass pill accent-text" onClick={() => navigate(-1)}>
+          <button type="button" className="glass pill accent-text" onClick={() => go(-1)}>
             Cancelar
           </button>
         }
