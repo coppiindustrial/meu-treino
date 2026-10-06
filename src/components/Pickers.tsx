@@ -2,6 +2,7 @@ import { EQUIPMENT } from '../lib/equipment';
 import { isGroup, MUSCLE_BY_ID, MUSCLE_SECTIONS } from '../lib/muscles';
 import type { EquipmentId, MuscleId } from '../lib/types';
 import { Icon } from './Icon';
+import { EquipmentIcon } from './EquipmentIcon';
 import { MuscleFigure } from './MuscleFigure';
 import { Sheet } from './Sheet';
 
@@ -139,29 +140,33 @@ export function EquipmentPicker({ open, onClose, value, onSelect, allowAll }: Eq
     ...(allowAll ? [{ id: null, name: 'Todos os equipamentos' }] : []),
     ...EQUIPMENT,
   ];
+  // Cartões como os de músculo: ícone do equipamento num círculo, nome e o check no escolhido.
+  const card = (o: { id: EquipmentId | null; name: string }) => (
+    <button
+      type="button"
+      key={o.id ?? 'todos'}
+      className={`muscle-card ${value === o.id ? 'on' : ''}`}
+      aria-pressed={value === o.id}
+      onClick={() => {
+        onSelect(o.id);
+        onClose();
+      }}
+    >
+      <span className="figure-wrap">
+        <EquipmentIcon id={o.id ?? 'todos'} size={26} color="var(--accent)" />
+      </span>
+      <span className="grow">{o.name}</span>
+      {value === o.id && (
+        <span className="check-dot">
+          <Icon name="check" size={14} stroke={3} />
+        </span>
+      )}
+    </button>
+  );
   return (
     <Sheet open={open} onClose={onClose} title="Equipamento">
-      <div className="list-group">
-        {options.map((o) => (
-          <button
-            type="button"
-            key={o.id ?? 'todos'}
-            className="list-item"
-            aria-pressed={value === o.id}
-            onClick={() => {
-              onSelect(o.id);
-              onClose();
-            }}
-          >
-            <span className="grow">{o.name}</span>
-            {value === o.id && (
-              <span className="check-dot">
-                <Icon name="check" size={14} stroke={3} />
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      {allowAll && card(options[0])}
+      <div className="muscle-grid">{options.filter((o) => o.id !== null).map(card)}</div>
     </Sheet>
   );
 }

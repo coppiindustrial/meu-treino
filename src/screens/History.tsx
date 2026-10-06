@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { BackButton, EmptyState, LoadingScreen, TopBar } from '../components/Layout';
+import { Sheet } from '../components/Sheet';
 import { db } from '../lib/db';
 import { addDays, dayMonth, duration, sessionMinutes, todayISO, weekdayShort, weekStart } from '../lib/format';
 import { doneSessions } from '../lib/stats';
@@ -10,6 +11,7 @@ import type { Session } from '../lib/types';
 
 export function History() {
   const [programFilter, setProgramFilter] = useState('todas');
+  const [filterOpen, setFilterOpen] = useState(false);
   const data = useLiveQuery(async () => {
     const sessions = await doneSessions();
     const programs = (await db.programs.filter((p) => !p.deleted).toArray()).sort((a, b) => b.createdAt - a.createdAt);
@@ -22,6 +24,19 @@ export function History() {
   if (!data) return <LoadingScreen back="/perfil" />;
   const { sessions, programs, exerciseCount } = data;
   const filtered = programFilter === 'todas' ? sessions : sessions.filter((s) => s.programId === programFilter);
+  // Quantos treinos e o último de cada rotina (para o menu do filtro).
+  const perProgram = new Map<string, { count: number; last: string }>();
+  for (const s of sessions) {
+    if (!s.programId) continue;
+    const cur = perProgram.get(s.programId);
+    perProgram.set(s.programId, { count: (cur?.count ?? 0) + 1, last: cur && cur.last > s.date ? cur.last : s.date });
+  }
+  const filterName = programFilter === 'todas' ? 'Todas as rotinas' : programs.find((p) => p.id === programFilter)?.name ?? 'Rotina';
+  const treinos = (n: number) => `${n} ${n === 1 ? 'treino' : 'treinos'}`;
+  const pickFilter = (id: string) => {
+    setProgramFilter(id);
+    setFilterOpen(false);
+  };
 
   const thisWeek = weekStart(todayISO());
   const groups: { key: string; title: string; list: Session[] }[] = [];
@@ -45,16 +60,55 @@ export function History() {
     <main className="screen no-tabs tight">
       <TopBar left={<BackButton to="/perfil" />} title="Histórico" />
 
+      {/* Filtro de rotina no padrão do Progresso: nome com triângulo e menu de baixo (no lugar da roleta do sistema). */}
       {programs.length > 1 && (
-        <select className="select" aria-label="Filtrar por rotina" value={programFilter} onChange={(e) => setProgramFilter(e.target.value)}>
-          <option value="todas">Todas as rotinas</option>
-          {programs.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <div className="col" style={{ gap: 1 }}>
+          <button
+            type="button"
+            className={`chooser-title ${filterOpen ? 'open' : ''}`}
+            aria-expanded={filterOpen}
+            aria-label={`Filtro: ${filterName}. Trocar`}
+            onClick={() => setFilterOpen(true)}
+          >
+            <span className="ellipsis">{filterName}</span>
+            <span className="caret">
+              <Icon name="caret" size={13} stroke={2.5} color="var(--accent)" />
+            </span>
+          </button>
+          <span className="tiny muted">{treinos(filtered.length)}</span>
+        </div>
       )}
+
+      <Sheet open={filterOpen} onClose={() => setFilterOpen(false)} title="Filtrar por rotina">
+        <div className="chooser-list">
+          <div className="chooser-group">
+            <button type="button" className="chooser-row" onClick={() => pickFilter('todas')}>
+              <span className="col grow" style={{ gap: 1, minWidth: 0 }}>
+                <span style={{ fontWeight: 600 }}>Todas as rotinas</span>
+                <span className="tiny muted">{treinos(sessions.length)}</span>
+              </span>
+              {programFilter === 'todas' && <Icon name="check" size={18} stroke={3} color="var(--accent)" />}
+            </button>
+            {programs.map((p) => {
+              const info = perProgram.get(p.id);
+              return (
+                <button key={p.id} type="button" className="chooser-row" onClick={() => pickFilter(p.id)}>
+                  <span className="col grow" style={{ gap: 1, minWidth: 0 }}>
+                    <span className="row" style={{ gap: 6 }}>
+                      <span className="ellipsis" style={{ fontWeight: 600 }}>
+                        {p.name}
+                      </span>
+                      {p.status === 'active' && <span className="chip soft-accent">ativa</span>}
+                    </span>
+                    <span className="tiny muted">{info ? `${treinos(info.count)} · último ${dayMonth(info.last)}` : 'Nenhum treino ainda'}</span>
+                  </span>
+                  {programFilter === p.id && <Icon name="check" size={18} stroke={3} color="var(--accent)" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </Sheet>
 
       {filtered.length === 0 && (
         <EmptyState title="Nenhum treino registrado" text="Os treinos que você finalizar ou adicionar à mão aparecem aqui." action={{ label: 'Adicionar treino à mão', to: '/dia/novo' }} />
