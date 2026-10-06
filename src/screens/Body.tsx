@@ -80,9 +80,11 @@ export function BodyPanel() {
         </p>
       ) : (
         <>
-          <button type="button" className="chooser-title" onClick={() => setPickerOpen(true)} aria-label={`Medida: ${metric.name}. Trocar`}>
+          <button type="button" className={`chooser-title ${pickerOpen ? 'open' : ''}`} aria-expanded={pickerOpen} onClick={() => setPickerOpen(true)} aria-label={`Medida: ${metric.name}. Trocar`}>
             <span className="ellipsis">{metric.name}</span>
-            <Icon name="down" size={18} color="var(--accent)" />
+            <span className="caret">
+              <Icon name="caret" size={13} stroke={2.5} color="var(--accent)" />
+            </span>
           </button>
 
           <div className="col" style={{ gap: 2 }}>

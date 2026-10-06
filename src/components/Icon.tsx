@@ -129,6 +129,8 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M4.5 12.5h4l1.6-2.6 2.6 5 1.6-2.4h5" />
     </>
   ),
+  // Triângulo cheio de cantos arredondados (abre um menu; gira 180° quando ele está aberto).
+  caret: <path d="M5 8.5h14L12 16.5z" fill="currentColor" />,
   // Pessoa alongando: braço estendido para cima e tronco inclinado para o lado.
   stretch: (
     <>

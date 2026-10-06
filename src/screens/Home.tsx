@@ -154,21 +154,21 @@ export function Home() {
                 {workouts.map((w, i) => {
                   const items = itemsByWorkout[i];
                   return (
-                    <div key={w.id} className="card routine-card">
-                      <Link to={`/treino/${w.id}`} className="row between" style={{ gap: 8 }}>
+                    // Treino em linha livre: tocar no nome abre o treino; o play começa.
+                    <div key={w.id} className="routine-line">
+                      <Link to={`/treino/${w.id}`} className="routine-line-main">
                         <span className="routine-title ellipsis">
                           {w.letter} · {w.name}
                         </span>
-                        <Icon name="next" size={18} color="var(--muted)" />
+                        <span className="routine-line-list">
+                          {items.length === 0
+                            ? 'Nenhum exercício ainda'
+                            : items.map((it) => map.get(it.exerciseId)?.name ?? 'Exercício').join(', ')}
+                        </span>
                       </Link>
-                      <p className="routine-list">
-                        {items.length === 0
-                          ? 'Nenhum exercício ainda'
-                          : items.map((it) => map.get(it.exerciseId)?.name ?? 'Exercício').join(', ')}
-                      </p>
                       {!active && items.length > 0 && (
-                        <button type="button" className="btn primary block" onClick={() => start(w.id)}>
-                          Iniciar treino
+                        <button type="button" className="routine-play" aria-label={`Iniciar ${w.letter} · ${w.name}`} onClick={() => start(w.id)}>
+                          <Icon name="play" size={18} />
                         </button>
                       )}
                     </div>

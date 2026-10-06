@@ -910,7 +910,7 @@ p {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(0, 0, 0, 0.62);
+  background: rgba(0, 0, 0, calc(0.62 * var(--dim, 1)));
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -931,6 +931,25 @@ p {
   flex-direction: column;
   gap: 12px;
   animation: slide-up 0.2s ease-out;
+}
+
+/* Faixa + título: área de arrastar para fechar. */
+.sheet-grab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: -8px -16px 0;
+  padding: 8px 16px 0;
+  touch-action: none;
+  cursor: grab;
+}
+
+.sheet {
+  transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sheet.dragging {
+  transition: none;
 }
 
 .sheet.kb-open {
@@ -2724,6 +2743,58 @@ body:has(.session-strip) .rest-bar {
 
 .folder .routine-card {
   background: var(--raised);
+}
+
+/* Início: treinos da rotina em linhas livres (sem cartão), com play redondo à direita. */
+.folder-body > div:has(.routine-line) {
+  gap: 0;
+}
+
+.routine-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 4px;
+  border-top: 0.5px solid var(--border-2);
+}
+
+.routine-line-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+}
+
+.routine-line-main:active {
+  opacity: 0.6;
+}
+
+.routine-line-list {
+  font-size: 13px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.routine-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0 0 0 2px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.routine-play:active {
+  transform: scale(0.94);
 }
 
 /* ------------------------------------------------------------ Calendário: número limpo, ponto azul e bolha de vidro */
@@ -4730,4 +4801,14 @@ body:has(.rest-bar:not(.cardio-bar)) .cardio-bar {
   font-weight: 600;
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
+}
+
+/* Triângulo do "trocar": gira 180° enquanto o menu está aberto. */
+.chooser-title .caret {
+  display: inline-flex;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.chooser-title.open .caret {
+  transform: rotate(180deg);
 }

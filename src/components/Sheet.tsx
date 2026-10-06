@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useKeyboardInset } from '../lib/hooks';
 import { Icon } from './Icon';
@@ -29,6 +29,46 @@ function unlockScroll(): void {
 export function Sheet({ open, onClose, title, subtitle, children, hideClose }: Props) {
   const { inset, viewportHeight } = useKeyboardInset(open);
   const sheetRef = useRef<HTMLDivElement>(null);
+
+  // Arrastar a faixa (ou o título) para baixo fecha, como no iPhone: o menu segue o dedo e,
+  // solto longe o bastante (ou com um puxão rápido), desce e fecha; senão volta para o lugar.
+  const [drag, setDrag] = useState(0);
+  const [closing, setClosing] = useState(false);
+  const grab = useRef<{ y: number; t: number; id: number; active: boolean } | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    setDrag(0);
+    setClosing(false);
+  }, [open]);
+  const onGrabDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    grab.current = { y: e.clientY, t: performance.now(), id: e.pointerId, active: false };
+  };
+  const onGrabMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const g = grab.current;
+    if (!g || g.id !== e.pointerId) return;
+    const dy = e.clientY - g.y;
+    if (!g.active) {
+      if (Math.abs(dy) < 6) return;
+      g.active = true;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    }
+    setDrag(dy > 0 ? dy : dy / 4);
+  };
+  const onGrabUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const g = grab.current;
+    grab.current = null;
+    if (!g || !g.active) return;
+    const dy = e.clientY - g.y;
+    const speed = dy / Math.max(1, performance.now() - g.t);
+    if (dy > 110 || (dy > 30 && speed > 0.6)) {
+      setClosing(true);
+      setTimeout(onClose, 220);
+    } else setDrag(0);
+  };
+  const onGrabCancel = () => {
+    grab.current = null;
+    setDrag(0);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -65,31 +105,39 @@ export function Sheet({ open, onClose, title, subtitle, children, hideClose }: P
 
   if (!open) return null;
   const keyboardOpen = inset > 0;
+  const dragging = grab.current?.active ?? false;
+  // O fundo clareia conforme o menu desce.
+  const dim = closing ? 0 : Math.max(0, 1 - Math.max(0, drag) / 400);
   return createPortal(
-    <div className="sheet-backdrop" style={{ paddingBottom: inset }} onClick={onClose}>
+    <div className="sheet-backdrop" style={{ paddingBottom: inset, ['--dim' as string]: dim }} onClick={onClose}>
       <div
         ref={sheetRef}
-        className={`sheet ${keyboardOpen ? 'kb-open' : ''}`}
-        style={keyboardOpen ? { maxHeight: Math.max(200, viewportHeight - 16) } : undefined}
+        className={`sheet ${keyboardOpen ? 'kb-open' : ''} ${dragging ? 'dragging' : ''}`}
+        style={{
+          ...(keyboardOpen ? { maxHeight: Math.max(200, viewportHeight - 16) } : {}),
+          ...(closing ? { transform: 'translateY(100%)' } : drag ? { transform: `translateY(${drag}px)` } : {}),
+        }}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sheet-handle" aria-hidden="true" />
-        {(title || !hideClose) && (
-          <div className="row between">
-            <div className="col">
-              {title && <span className="sheet-title">{title}</span>}
-              {subtitle && <span className="small muted">{subtitle}</span>}
+        <div className="sheet-grab" onPointerDown={onGrabDown} onPointerMove={onGrabMove} onPointerUp={onGrabUp} onPointerCancel={onGrabCancel}>
+          <div className="sheet-handle" aria-hidden="true" />
+          {(title || !hideClose) && (
+            <div className="row between">
+              <div className="col">
+                {title && <span className="sheet-title">{title}</span>}
+                {subtitle && <span className="small muted">{subtitle}</span>}
+              </div>
+              {!hideClose && (
+                <button type="button" className="icon-btn ghost" aria-label="Fechar" onClick={onClose}>
+                  <Icon name="x" />
+                </button>
+              )}
             </div>
-            {!hideClose && (
-              <button type="button" className="icon-btn ghost" aria-label="Fechar" onClick={onClose}>
-                <Icon name="x" />
-              </button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
         {children}
       </div>
     </div>,

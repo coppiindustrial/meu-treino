@@ -246,12 +246,14 @@ function ExerciseChooser({ ex, used, last, onPick }: { ex: ExerciseView; used: E
 
   return (
     <>
-      <button type="button" className="chooser-title" onClick={() => setOpen(true)} aria-label={`Exercício: ${ex.name}. Trocar`}>
+      <button type="button" className={`chooser-title ${open ? 'open' : ''}`} aria-expanded={open} onClick={() => setOpen(true)} aria-label={`Exercício: ${ex.name}. Trocar`}>
         <span className="ex-avatar mini">
           <ExerciseThumb exercise={ex} />
         </span>
         <span className="ellipsis">{ex.name}</span>
-        <Icon name="down" size={18} color="var(--accent)" />
+        <span className="caret">
+          <Icon name="caret" size={13} stroke={2.5} color="var(--accent)" />
+        </span>
       </button>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="Escolher exercício" subtitle="Só aparecem os que você já fez">
