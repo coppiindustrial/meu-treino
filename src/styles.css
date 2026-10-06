@@ -1510,8 +1510,25 @@ p {
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   font-size: 12px;
   color: var(--text-2);
+}
+
+/* Dia tocado no cartão "Sua semana": anel branco em volta. */
+.week-day .dot {
+  transition: box-shadow 0.2s ease;
+}
+
+.week-day.sel .dot {
+  box-shadow: 0 0 0 2.5px var(--card), 0 0 0 4.5px var(--text);
+}
+
+.week-day:disabled {
+  opacity: 0.45;
 }
 
 .week-day .dot {
@@ -4811,4 +4828,53 @@ body:has(.rest-bar:not(.cardio-bar)) .cardio-bar {
 
 .chooser-title.open .caret {
   transform: rotate(180deg);
+}
+
+/* Início: link discreto (ex.: "+ Treino vazio" ao lado de "Rotina ativa"). */
+.text-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.text-link:active {
+  opacity: 0.6;
+}
+
+/* Início: cartão "Sua semana" com os dias, os números do mês e o último treino. */
+.week-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.week-card-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 11px;
+  border-top: 0.5px solid var(--border-2);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.week-card-row .muted {
+  font-weight: 500;
+}
+
+.week-card-stats {
+  justify-content: space-between;
+}
+
+.week-card-stats a {
+  color: var(--text);
+}
+
+.week-card-last:active {
+  opacity: 0.6;
 }

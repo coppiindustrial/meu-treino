@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Duration } from '../components/Duration';
 import { Icon } from '../components/Icon';
 import { duration, monthName, num, pad2, relativeDay, sessionMinutes, timeHM, todayISO } from '../lib/format';
@@ -29,8 +29,12 @@ export function SessionRow({ s }: { s: Session }) {
 
 export function Calendar() {
   const today = todayISO();
-  const [month, setMonth] = useState(() => ({ y: Number(today.slice(0, 4)), m: Number(today.slice(5, 7)) - 1 }));
-  const [selected, setSelected] = useState(today);
+  // ?data=AAAA-MM-DD abre o calendário já no dia (ex.: um dia com mais de um treino, tocado no Início).
+  const [params] = useSearchParams();
+  const asked = params.get('data');
+  const start = asked && /^\d{4}-\d{2}-\d{2}$/.test(asked) ? asked : today;
+  const [month, setMonth] = useState(() => ({ y: Number(start.slice(0, 4)), m: Number(start.slice(5, 7)) - 1 }));
+  const [selected, setSelected] = useState(start);
   const sessions = useLiveQuery(() => doneSessions(), []);
 
   const prefix = `${month.y}-${pad2(month.m + 1)}`;

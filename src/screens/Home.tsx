@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSlideNavigate } from '../lib/nav';
 import { useDialogs } from '../components/Dialogs';
-import { Duration } from '../components/Duration';
 import { Icon } from '../components/Icon';
 import { LoadingScreen } from '../components/Layout';
 import { db } from '../lib/db';
@@ -27,14 +26,18 @@ import {
   workoutsOf,
 } from '../lib/repo';
 import { doneSessions } from '../lib/stats';
+import type { Session } from '../lib/types';
 
 const FOLDER_KEY = 'mt.homeFolder';
 const WEEK_LETTERS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+const DAY_NAMES = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
 export function Home() {
   const go = useSlideNavigate();
   const { prompt } = useDialogs();
   const { map } = useExercises();
+  // Dia tocado no cartão "Sua semana" (null: mostra o último treino).
+  const [pickedDay, setPickedDay] = useState<string | null>(null);
   const [folderOpen, setFolderOpen] = useState(() => {
     try {
       return localStorage.getItem(FOLDER_KEY) !== 'closed';
@@ -74,6 +77,14 @@ export function Home() {
     .filter((m): m is number => m !== null);
   const avg = recentDurations.length ? recentDurations.reduce((a, b) => a + b, 0) / recentDurations.length : null;
   const lastSession = sessions[0];
+  // Dia marcado na semana: o tocado ou, sem toque, o do último treino (se for desta semana).
+  const shownDay = pickedDay ?? (lastSession && week.some((d) => d.date === lastSession.date) ? lastSession.date : null);
+  const daySessions = pickedDay ? sessions.filter((s) => s.date === pickedDay) : [];
+  const dayLabel = pickedDay === today ? 'Hoje' : pickedDay ? DAY_NAMES[week.findIndex((d) => d.date === pickedDay)] ?? '' : '';
+  const minutesText = (s: Session) => {
+    const m = sessionMinutes(s.startedAt, s.endedAt);
+    return m !== null ? ` · ${duration(m)}` : '';
+  };
 
   const newProgram = async () => {
     const name = await prompt({ title: 'Nova rotina', label: 'Nome da rotina', placeholder: 'Hipertrofia · outubro' });
@@ -106,31 +117,36 @@ export function Home() {
         </Link>
       </header>
 
-      {/* Com treino em andamento, ele aparece no menu de baixo (sem repetir aqui). */}
-      {!active && (
-        <section className="stack">
-          <span className="label">Início rápido</span>
-          <button type="button" className="btn soft block" onClick={() => start(null)}>
-            <Icon name="plus" /> Iniciar treino vazio
-          </button>
-        </section>
-      )}
-
       {!program ? (
-        <section className="card stack-lg">
-          <span className="display" style={{ fontSize: 22 }}>
-            Monte sua primeira rotina
-          </span>
-          <p className="small muted" style={{ lineHeight: 1.5 }}>
-            Uma rotina reúne seus treinos (A, B, C…). Depois é só escolher os exercícios de cada um.
-          </p>
-          <button type="button" className="btn primary block" onClick={newProgram}>
-            <Icon name="plus" /> Criar rotina
-          </button>
+        <section className="stack">
+          <div className="card stack-lg">
+            <span className="display" style={{ fontSize: 22 }}>
+              Monte sua primeira rotina
+            </span>
+            <p className="small muted" style={{ lineHeight: 1.5 }}>
+              Uma rotina reúne seus treinos (A, B, C…). Depois é só escolher os exercícios de cada um.
+            </p>
+            <button type="button" className="btn primary block" onClick={newProgram}>
+              <Icon name="plus" /> Criar rotina
+            </button>
+          </div>
+          {!active && (
+            <button type="button" className="text-link" style={{ alignSelf: 'center' }} onClick={() => start(null)}>
+              + Treino vazio
+            </button>
+          )}
         </section>
       ) : (
         <section className="stack">
-          <span className="label">Rotina ativa</span>
+          {/* Treino vazio como link ao lado do rótulo (com treino em andamento, ele fica no menu de baixo). */}
+          <div className="section-head">
+            <span className="label">Rotina ativa</span>
+            {!active && (
+              <button type="button" className="text-link" onClick={() => start(null)}>
+                + Treino vazio
+              </button>
+            )}
+          </div>
           <div className={`folder ${folderOpen ? '' : 'closed'}`}>
             <button type="button" className="folder-head" aria-expanded={folderOpen} onClick={() => toggleFolder()}>
               <Icon name="folder" size={20} color="var(--muted)" />
@@ -183,59 +199,88 @@ export function Home() {
         </section>
       )}
 
-      <section className="stack">
+      {/* Sua semana: dias, meta, números do mês e o último treino num cartão só. */}
+      <section className="card week-card">
         <div className="section-head">
-          <h2 className="h2">Esta semana</h2>
+          <h2 className="h2">Sua semana</h2>
           <span className="small muted">
-            {weekCount} de {profile.weeklyGoal} treinos da meta
+            {weekCount} de {profile.weeklyGoal} da meta
           </span>
         </div>
+        {/* Tocar num dia mostra embaixo o que foi feito nele; dias que ainda não chegaram não respondem. */}
         <div className="week-strip">
-          {week.map((d) => {
+          {week.map((d, i) => {
             const on = trainedDates.has(d.date);
             const isToday = d.date === today;
+            const future = d.date > today;
             return (
-              <div key={d.date} className="week-day">
+              <button
+                type="button"
+                key={d.date}
+                className={`week-day ${d.date === shownDay ? 'sel' : ''}`}
+                disabled={future}
+                aria-pressed={d.date === shownDay}
+                aria-label={`${DAY_NAMES[i]}${on ? ', com treino' : ''}`}
+                onClick={() => setPickedDay(d.date)}
+              >
                 <span style={isToday ? { color: 'var(--text)', fontWeight: 800 } : undefined}>{d.letter}</span>
                 <span className={`dot ${on ? 'on' : isToday ? 'today' : ''}`}>
                   {on ? <Icon name="check" size={20} stroke={2.5} /> : Number(d.date.slice(8))}
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>
-      </section>
-
-      <div className="grid-3">
-        <div className="tile">
-          <span className="tiny muted">Este mês</span>
-          <span className="tile-value">{monthCount}</span>
+        <div className="week-card-row week-card-stats">
+          <span>
+            <span className="muted">Mês</span> {monthCount}
+          </span>
+          <span>
+            <span className="muted">Média</span> {avg !== null ? duration(avg) : '—'}
+          </span>
+          <Link to="/progresso?aba=corpo">
+            <span className="muted">Peso</span> {weight !== null ? `${num(weight)} kg` : '—'}
+          </Link>
         </div>
-        <div className="tile">
-          <span className="tiny muted">Tempo médio</span>
-          <span className="tile-value">{avg !== null ? <Duration minutes={avg} /> : '—'}</span>
-        </div>
-        <Link to="/progresso?aba=corpo" className="tile" style={{ color: 'var(--text)' }}>
-          <span className="tiny muted">Peso atual</span>
-          <span className="tile-value">{weight !== null ? `${num(weight)} kg` : '—'}</span>
-        </Link>
-      </div>
-
-      {lastSession && (
-        <Link to={`/sessao/${lastSession.id}/resumo`} className="list-row">
-          <div className="letter">{lastSession.title.charAt(0)}</div>
-          <div className="col grow">
-            <span className="tiny muted">Último treino</span>
-            <span className="ellipsis" style={{ fontWeight: 600 }}>
-              {lastSession.title} · {relativeDay(lastSession.date)}
-              {sessionMinutes(lastSession.startedAt, lastSession.endedAt) !== null
-                ? ` · ${duration(sessionMinutes(lastSession.startedAt, lastSession.endedAt)!)}`
-                : ''}
+        {pickedDay === null ? (
+          lastSession && (
+            <Link to={`/sessao/${lastSession.id}/resumo`} className="week-card-row week-card-last">
+              <span className="muted">Último</span>
+              <span className="grow ellipsis">
+                {lastSession.title} · {relativeDay(lastSession.date)}
+                {minutesText(lastSession)}
+              </span>
+              <Icon name="next" size={16} color="var(--muted)" />
+            </Link>
+          )
+        ) : daySessions.length === 1 ? (
+          <Link to={`/sessao/${daySessions[0].id}/resumo`} className="week-card-row week-card-last">
+            <span className="muted">{dayLabel}</span>
+            <span className="grow ellipsis">
+              {daySessions[0].title}
+              {minutesText(daySessions[0])}
             </span>
-          </div>
-          <Icon name="next" size={20} color="var(--muted)" />
-        </Link>
-      )}
+            <Icon name="next" size={16} color="var(--muted)" />
+          </Link>
+        ) : daySessions.length > 1 ? (
+          <Link to={`/calendario?data=${pickedDay}`} className="week-card-row week-card-last">
+            <span className="muted">{dayLabel}</span>
+            <span className="grow ellipsis">
+              {daySessions[0].title} + {daySessions.length - 1} {daySessions.length - 1 === 1 ? 'treino' : 'treinos'}
+            </span>
+            <Icon name="next" size={16} color="var(--muted)" />
+          </Link>
+        ) : (
+          <Link to={`/dia/novo?data=${pickedDay}`} className="week-card-row week-card-last">
+            <span className="muted">{dayLabel}</span>
+            <span className="grow muted">Sem treino neste dia</span>
+            <span className="accent-text" style={{ fontWeight: 700 }}>
+              Registrar
+            </span>
+            <Icon name="next" size={16} color="var(--accent)" />
+          </Link>
+        )}
+      </section>
     </main>
   );
 }
