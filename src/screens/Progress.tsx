@@ -1,9 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { TrendChart } from '../components/Charts';
 import { Icon } from '../components/Icon';
-import { EmptyState, LoadingScreen } from '../components/Layout';
+import { EmptyState } from '../components/Layout';
 import { db } from '../lib/db';
 import { loadText } from '../lib/equipment';
 import { ExerciseThumb } from '../components/Media';
@@ -14,58 +14,62 @@ import { addDays, dayMonth, num, shortDate, todayISO } from '../lib/format';
 import { cardioTotals, formatDuration, isCardio } from '../lib/cardio';
 import { exerciseHistory, type HistoryPoint } from '../lib/stats';
 import { setsSummary } from './ExerciseDetail';
+import { BodyPanel } from './Body';
+import { PERIODS } from '../lib/periods';
 
-export const PERIODS = [
-  { id: '1M', days: 31, text: 'em 1 mês' },
-  { id: '3M', days: 92, text: 'em 3 meses' },
-  { id: '6M', days: 183, text: 'em 6 meses' },
-  { id: '1A', days: 366, text: 'em 1 ano' },
-  { id: 'Tudo', days: 0, text: 'no total' },
-];
+type ProgressTab = 'cargas' | 'corpo';
 
-// Onde a bolha do seletor estava: ao trocar de Cargas para Corpo ela desliza a partir dali.
-let lastTab: 'cargas' | 'corpo' = 'cargas';
+/**
+ * Aba Progresso: Cargas e Corpo numa tela só. O título e o seletor ficam parados e as duas partes
+ * ficam montadas (com os dados já carregados); trocar só desliza o conteúdo. Antes eram duas telas
+ * e cada troca remontava tudo do zero: o topo sumia enquanto os dados carregavam ("pisca e volta").
+ */
+export function Progress() {
+  const [params, setParams] = useSearchParams();
+  const tab: ProgressTab = params.get('aba') === 'corpo' ? 'corpo' : 'cargas';
+  // Direção da entrada do conteúdo: vazio na primeira abertura (sem animação).
+  const [enter, setEnter] = useState('');
 
-/** Título "Progresso" e o seletor Cargas | Corpo, que troca sem parecer mudança de página. */
-export function ProgressHead({ active }: { active: 'cargas' | 'corpo' }) {
-  const [shown, setShown] = useState(lastTab);
-  useEffect(() => {
-    lastTab = active;
-    const raf = requestAnimationFrame(() => setShown(active));
-    return () => cancelAnimationFrame(raf);
-  }, [active]);
+  const pick = (next: ProgressTab) => {
+    if (next === tab) return;
+    setEnter(next === 'corpo' ? 'from-right' : 'from-left');
+    const p = new URLSearchParams(params);
+    if (next === 'corpo') p.set('aba', 'corpo');
+    else p.delete('aba');
+    setParams(p, { replace: true });
+    window.scrollTo(0, 0);
+  };
+
   return (
-    <>
+    <main className="screen tight fade-in">
       <header className="tab-head">
         <h1 className="h1">Progresso</h1>
-        {active === 'corpo' && (
+        {tab === 'corpo' && (
           <Link to="/progresso/medidas/nova" className="glass circle" aria-label="Registrar medidas">
             <Icon name="plus" size={22} stroke={2.4} />
           </Link>
         )}
       </header>
-      <div className="seg sliding">
-        <span className="seg-bubble" aria-hidden="true" style={{ transform: shown === 'corpo' ? 'translateX(calc(100% + 4px))' : 'none' }} />
-        {active === 'cargas' ? (
-          <span className="on">Cargas</span>
-        ) : (
-          <Link to="/progresso" data-nav="side-back" data-replace="">
-            Cargas
-          </Link>
-        )}
-        {active === 'corpo' ? (
-          <span className="on">Corpo</span>
-        ) : (
-          <Link to="/progresso/corpo" data-nav="side-forward" data-replace="">
-            Corpo
-          </Link>
-        )}
+      <div className="seg sliding" role="tablist" aria-label="Progresso">
+        <span className="seg-bubble" aria-hidden="true" style={{ transform: tab === 'corpo' ? 'translateX(calc(100% + 4px))' : 'none' }} />
+        <button type="button" role="tab" aria-selected={tab === 'cargas'} className={tab === 'cargas' ? 'on' : ''} onClick={() => pick('cargas')}>
+          Cargas
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'corpo'} className={tab === 'corpo' ? 'on' : ''} onClick={() => pick('corpo')}>
+          Corpo
+        </button>
       </div>
-    </>
+      <div className={`seg-panel ${tab === 'cargas' ? enter : ''}`} hidden={tab !== 'cargas'}>
+        <LoadsPanel />
+      </div>
+      <div className={`seg-panel ${tab === 'corpo' ? enter : ''}`} hidden={tab !== 'corpo'}>
+        <BodyPanel />
+      </div>
+    </main>
   );
 }
 
-export function Progress() {
+function LoadsPanel() {
   const { map } = useExercises();
   const [chosen, setChosen] = useState<string | null>(null);
   const [period, setPeriod] = useState('3M');
@@ -90,7 +94,7 @@ export function Progress() {
   const selected = chosen ?? used?.ids[0] ?? null;
   const history = useLiveQuery(async () => (selected ? exerciseHistory(selected) : []), [selected]);
 
-  if (!used) return <LoadingScreen tabs />;
+  if (!used) return null;
 
   const ex = selected ? exerciseOrMissing(map, selected) : null;
   const cardio = ex ? isCardio(ex.logType) : false;
@@ -110,10 +114,7 @@ export function Progress() {
   const recent = [...(history ?? [])].reverse().slice(0, 4);
 
   return (
-    <main className="screen tight fade-in">
-      <ProgressHead active="cargas" />
-      <div className="seg-content">
-
+    <>
       {used.ids.length === 0 || !ex ? (
         <EmptyState title="Ainda sem registros" text="Finalize seu primeiro treino para ver a evolução das cargas aqui." />
       ) : (
@@ -203,8 +204,7 @@ export function Progress() {
           </section>
         </>
       )}
-      </div>
-    </main>
+    </>
   );
 }
 

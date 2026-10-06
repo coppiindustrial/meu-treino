@@ -39,8 +39,7 @@ export function historyDepth(): number {
   return typeof idx === 'number' ? idx : 0;
 }
 
-/** `side-*`: troca dentro da mesma aba (ex.: Cargas | Corpo): só o conteúdo desliza para o lado. */
-export type NavDir = 'forward' | 'back' | 'tab' | 'none' | 'side-forward' | 'side-back';
+export type NavDir = 'forward' | 'back' | 'tab' | 'none';
 
 /**
  * Troca de tela pelo código (depois de salvar, excluir, iniciar...) sempre com a animação de deslizar,

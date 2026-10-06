@@ -212,7 +212,7 @@ export function Home() {
           <span className="tiny muted">Tempo médio</span>
           <span className="tile-value">{avg !== null ? <Duration minutes={avg} /> : '—'}</span>
         </div>
-        <Link to="/progresso/corpo" className="tile" style={{ color: 'var(--text)' }}>
+        <Link to="/progresso?aba=corpo" className="tile" style={{ color: 'var(--text)' }}>
           <span className="tiny muted">Peso atual</span>
           <span className="tile-value">{weight !== null ? `${num(weight)} kg` : '—'}</span>
         </Link>

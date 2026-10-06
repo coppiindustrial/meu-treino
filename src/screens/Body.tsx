@@ -4,12 +4,11 @@ import { Link } from 'react-router-dom';
 import { TrendChart } from '../components/Charts';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
-import { LoadingScreen } from '../components/Layout';
 import { db } from '../lib/db';
 import { addDays, dayMonth, fullDate, num, shortDate, todayISO } from '../lib/format';
 import { MEASURES } from '../lib/measures';
 import type { BodyEntry } from '../lib/types';
-import { PERIODS, ProgressHead } from './Progress';
+import { PERIODS } from '../lib/periods';
 
 function signed(n: number): string {
   if (Math.abs(n) < 0.05) return '=';
@@ -32,7 +31,8 @@ const METRICS: Metric[] = [
 
 const valueText = (v: number, unit: string) => (unit === '%' ? `${num(v)}%` : `${num(v)} ${unit}`);
 
-export function Body() {
+/** Parte Corpo da aba Progresso (o título e o seletor ficam em Progress). */
+export function BodyPanel() {
   const entries = useLiveQuery(
     async () => (await db.bodyEntries.filter((b) => !b.deleted).toArray()).sort((a, b) => (a.date < b.date ? 1 : -1)),
     [],
@@ -43,7 +43,7 @@ export function Body() {
   const [picked, setPicked] = useState<number | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  if (!entries) return <LoadingScreen tabs />;
+  if (!entries) return null;
 
   // Cada métrica com os valores em ordem de data (só as que têm pelo menos um registro).
   const ascending = [...entries].reverse();
@@ -72,9 +72,7 @@ export function Body() {
   const photos = entries.filter((e) => e.photo).slice(0, 7);
 
   return (
-    <main className="screen tight fade-in">
-      <ProgressHead active="corpo" />
-      <div className="seg-content">
+    <>
 
       {!metric ? (
         <p className="small muted" style={{ padding: '16px 0' }}>
@@ -190,7 +188,6 @@ export function Body() {
         </section>
       )}
 
-      </div>
 
       <Sheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="Escolher medida" subtitle="Só aparecem as que você já registrou">
         <div className="chooser-list">
@@ -213,6 +210,6 @@ export function Body() {
       <Sheet open={!!photo} onClose={() => setPhoto(null)} title={photo ? fullDate(photo.date) : undefined}>
         {photo?.photo && <img src={photo.photo} alt={`Foto de progresso de ${fullDate(photo.date)}`} style={{ width: '100%', borderRadius: 14 }} />}
       </Sheet>
-    </main>
+    </>
   );
 }

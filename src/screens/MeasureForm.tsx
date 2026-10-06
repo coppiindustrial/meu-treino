@@ -45,7 +45,7 @@ export function MeasureForm() {
     setLoaded(true);
   }, [data, loaded]);
 
-  if (!data) return <LoadingScreen back="/progresso/corpo" />;
+  if (!data) return <LoadingScreen back="/progresso?aba=corpo" />;
   const all = data.all;
 
   // Valor anterior de cada campo (do registro mais recente antes desta data).
@@ -69,7 +69,7 @@ export function MeasureForm() {
       photo,
     });
     toast('Medidas salvas');
-    go('/progresso/corpo', { dir: 'back', replace: true });
+    go('/progresso?aba=corpo', { dir: 'back', replace: true });
   };
 
   const remove = async () => {
@@ -77,7 +77,7 @@ export function MeasureForm() {
     const ok = await confirm({ title: 'Apagar este registro?', confirmLabel: 'Apagar', danger: true });
     if (!ok) return;
     await deleteBodyEntry(data.entry.id);
-    go('/progresso/corpo', { dir: 'back', replace: true });
+    go('/progresso?aba=corpo', { dir: 'back', replace: true });
   };
 
   const row = (

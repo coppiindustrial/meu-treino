@@ -2168,68 +2168,36 @@ html[data-nav='tab']::view-transition-new(root) {
   animation: 0.2s ease both vt-fade-in;
 }
 
-/* Troca dentro da mesma aba (Cargas | Corpo): título, seletor e menu ficam parados; só o conteúdo desliza. */
-.seg-content {
+/* Cargas | Corpo: as duas partes ficam montadas; a que entra desliza do lado do botão tocado. */
+.seg-panel {
   display: flex;
   flex-direction: column;
   gap: inherit;
-  view-transition-name: seg-content;
 }
 
-html[data-nav^='side']::view-transition-new(root),
-html[data-nav^='side']::view-transition-group(seg-content) {
-  animation: none;
-}
-
-/* A "piscada": a foto da tela velha ficava por cima da nova e o navegador somava as cores das duas
-   (mix-blend-mode: plus-lighter), clareando título, seletor e conteúdo. Só a nova (ao vivo) aparece. */
-html[data-nav^='side']::view-transition-old(root) {
+.seg-panel[hidden] {
   display: none;
 }
 
-/* Sem o esmaecido da tela inteira ao entrar: o título e o seletor não piscam. */
-html.vt-running[data-nav^='side'] main.fade-in {
-  animation: none;
+.seg-panel.from-right {
+  animation: seg-in-right 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-html[data-nav^='side']::view-transition-image-pair(seg-content) {
-  overflow: hidden;
+.seg-panel.from-left {
+  animation: seg-in-left 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-html[data-nav^='side']::view-transition-old(seg-content),
-html[data-nav^='side']::view-transition-new(seg-content) {
-  animation-duration: 0.34s;
-  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
-  animation-fill-mode: both;
-  height: auto;
-  mix-blend-mode: normal;
-}
-
-html[data-nav='side-forward']::view-transition-old(seg-content) {
-  animation-name: vt-side-out-left;
-}
-
-html[data-nav='side-forward']::view-transition-new(seg-content) {
-  animation-name: vt-in-right;
-}
-
-html[data-nav='side-back']::view-transition-old(seg-content) {
-  animation-name: vt-out-right;
-}
-
-html[data-nav='side-back']::view-transition-new(seg-content) {
-  animation-name: vt-side-in-left;
-}
-
-@keyframes vt-side-out-left {
-  to {
-    transform: translateX(-100%);
+@keyframes seg-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
   }
 }
 
-@keyframes vt-side-in-left {
+@keyframes seg-in-left {
   from {
-    transform: translateX(-100%);
+    opacity: 0;
+    transform: translateX(-28px);
   }
 }
 

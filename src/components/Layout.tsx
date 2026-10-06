@@ -183,7 +183,7 @@ function SessionStrip() {
 }
 
 export function isTabRoute(pathname: string): boolean {
-  return ['/', '/treinos', '/calendario', '/progresso', '/progresso/corpo', '/perfil'].includes(pathname);
+  return ['/', '/treinos', '/calendario', '/progresso', '/perfil'].includes(pathname);
 }
 
 /** Botão redondo de vidro para voltar: volta no histórico ou vai para um endereço padrão. */

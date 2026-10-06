@@ -9,7 +9,6 @@ import { RestTimerProvider } from './components/RestTimer';
 import { requestPersistentStorage } from './lib/db';
 import { initSync } from './lib/sync';
 import { ActiveSession } from './screens/ActiveSession';
-import { Body } from './screens/Body';
 import { Calendar } from './screens/Calendar';
 import { Cloud } from './screens/Cloud';
 import { DayEdit } from './screens/DayEdit';
@@ -96,7 +95,7 @@ function Shell() {
         <Route path="/dia/novo" element={<DayEdit />} />
         <Route path="/dia/:sessionId" element={<DayEdit />} />
         <Route path="/progresso" element={<Progress />} />
-        <Route path="/progresso/corpo" element={<Body />} />
+        <Route path="/progresso/corpo" element={<Navigate to="/progresso?aba=corpo" replace />} />
         <Route path="/progresso/medidas/nova" element={<MeasureForm />} />
         <Route path="/progresso/medidas/:entryId" element={<MeasureForm />} />
         <Route path="/perfil" element={<Profile />} />
