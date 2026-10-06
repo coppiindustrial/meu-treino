@@ -111,12 +111,12 @@ export async function exerciseUnit(id: string): Promise<LoadUnit> {
 }
 
 /** Tipo de registro e unidade de distância de um exercício (preferência do usuário ou padrão). */
-export async function exerciseLog(id: string): Promise<{ logType: LogType; distUnit: DistUnit }> {
+export async function exerciseLog(id: string): Promise<{ logType: LogType; distUnit: DistUnit; primary: MuscleId }> {
   const pref = await db.exercisePrefs.get(id);
   const live = pref && !pref.deleted ? pref : undefined;
   const custom = await db.customExercises.get(id);
   const primary = custom && !custom.deleted ? custom.primary : CATALOG_MAP.get(id)?.primary ?? 'corpo';
-  return { logType: live?.logType ?? defaultLogType(id, primary), distUnit: live?.distUnit ?? 'km' };
+  return { logType: live?.logType ?? defaultLogType(id, primary), distUnit: live?.distUnit ?? 'km', primary };
 }
 
 export function thumbOf(ex: ExerciseView): string | undefined {

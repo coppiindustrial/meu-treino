@@ -12,6 +12,7 @@ import type {
   ExercisePref,
   LoadUnit,
   LogType,
+  MuscleId,
   PlannedSet,
   Profile,
   Program,
@@ -316,7 +317,11 @@ export function defaultPlannedSets(): PlannedSet[] {
 }
 
 /** Séries iniciais conforme o tipo de registro (cardio começa sem as 3 × 8–12). */
-export function plannedSetsFor(logType: LogType): PlannedSet[] {
+export function plannedSetsFor(logType: LogType, primary?: MuscleId): PlannedSet[] {
+  // Alongamento e mobilidade começam com uma série só, de 30 s segurando (a meta do cronômetro).
+  if (primary === 'alongamento' || primary === 'mobilidade') {
+    return [logType === 'carga' ? { type: 'N', reps: '10', load: null } : { type: 'N', reps: '', load: null, secs: 30 }];
+  }
   if (logType === 'tempo') return [0, 1, 2].map(() => ({ type: 'N' as SetType, reps: '', load: null, secs: 60 }));
   if (logType === 'tempo_km') return [{ type: 'N', reps: '', load: null, secs: null, dist: null }];
   if (logType === 'tiros') return [];
@@ -345,7 +350,7 @@ export async function addExercisesToWorkout(workoutId: string, exerciseIds: stri
       exerciseId,
       position: items.length + i,
       supersetNext: false,
-      sets: plannedSetsFor(log.logType),
+      sets: plannedSetsFor(log.logType, log.primary),
       note: '',
       repMode: 'faixa',
       ...cardioFields(log.logType, log.distUnit),
@@ -452,7 +457,7 @@ export async function replaceWorkoutItemExercise(itemId: string, exerciseId: str
     await patch('workoutItems', itemId, { exerciseId });
     return;
   }
-  await patch('workoutItems', itemId, { exerciseId, sets: plannedSetsFor(log.logType), ...cardioFields(log.logType, log.distUnit) });
+  await patch('workoutItems', itemId, { exerciseId, sets: plannedSetsFor(log.logType, log.primary), ...cardioFields(log.logType, log.distUnit) });
 }
 
 export async function toggleSuperset(itemId: string): Promise<void> {
@@ -619,7 +624,7 @@ export async function addExercisesToSession(sessionId: string, exerciseIds: stri
   const created: SessionItem[] = [];
   for (const [i, exId] of exerciseIds.entries()) {
     const log = await exerciseLog(exId);
-    const item = await sessionItemFrom(sessionId, exId, items.length + i, plannedSetsFor(log.logType), false, '');
+    const item = await sessionItemFrom(sessionId, exId, items.length + i, plannedSetsFor(log.logType, log.primary), false, '');
     created.push(fromPlan ? { ...item, extra: true } : item);
   }
   await putMany('sessionItems', created);
