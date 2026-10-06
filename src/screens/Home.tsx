@@ -130,14 +130,14 @@ export function Home() {
         </section>
       ) : (
         <section className="stack">
-          <span className="label">Treinos</span>
+          <span className="label">Rotina ativa</span>
           <div className={`folder ${folderOpen ? '' : 'closed'}`}>
             <button type="button" className="folder-head" aria-expanded={folderOpen} onClick={() => toggleFolder()}>
               <Icon name="folder" size={20} color="var(--muted)" />
               <span className="col grow" style={{ gap: 0 }}>
                 <span style={{ fontSize: 16, fontWeight: 600 }}>{program.name}</span>
                 <span className="tiny muted">
-                  Rotina ativa · {workouts.length} {workouts.length === 1 ? 'treino' : 'treinos'}
+                  {workouts.length} {workouts.length === 1 ? 'treino' : 'treinos'}
                 </span>
               </span>
               <span className="chev">
