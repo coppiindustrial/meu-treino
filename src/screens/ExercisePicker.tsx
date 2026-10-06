@@ -10,7 +10,7 @@ import { db } from '../lib/db';
 import { equipmentName } from '../lib/equipment';
 import { exerciseOrMissing, normalize, useExercises } from '../lib/exercises';
 import { muscleName } from '../lib/muscles';
-import { useSlideNavigate, withTransition } from '../lib/nav';
+import { historyDepth, markAdded, useSlideNavigate, withTransition } from '../lib/nav';
 import { addExercisesToSession, addExercisesToWorkout, getActiveSession, replaceWorkoutItemExercise } from '../lib/repo';
 import type { EquipmentId, MuscleId } from '../lib/types';
 
@@ -91,11 +91,15 @@ export function ExercisePicker({ mode }: { mode: Mode }) {
     if (mode === 'workout') {
       await addExercisesToWorkout(workoutId, selected);
       toast(selected.length === 1 ? 'Exercício adicionado' : `${selected.length} exercícios adicionados`);
-      go(`/treino/${workoutId}?editar=1&novo=1`, { dir: 'back', replace: true });
+      // Volta pelo histórico (sem abrir outra cópia do treino); o treino abre em edição pelo aviso.
+      markAdded(workoutId);
+      if (historyDepth() > 0) go(-1);
+      else go(`/treino/${workoutId}?editar=1&novo=1`, { dir: 'back', replace: true });
     } else {
       const s = await getActiveSession();
       if (s) await addExercisesToSession(s.id, selected);
-      go('/sessao', { dir: 'back', replace: true });
+      if (historyDepth() > 0) go(-1);
+      else go('/sessao', { dir: 'back', replace: true });
     }
   };
 

@@ -2176,10 +2176,15 @@ html[data-nav='tab']::view-transition-new(root) {
   view-transition-name: seg-content;
 }
 
-html[data-nav^='side']::view-transition-old(root),
 html[data-nav^='side']::view-transition-new(root),
 html[data-nav^='side']::view-transition-group(seg-content) {
   animation: none;
+}
+
+/* A "piscada": a foto da tela velha ficava por cima da nova e o navegador somava as cores das duas
+   (mix-blend-mode: plus-lighter), clareando título, seletor e conteúdo. Só a nova (ao vivo) aparece. */
+html[data-nav^='side']::view-transition-old(root) {
+  display: none;
 }
 
 /* Sem o esmaecido da tela inteira ao entrar: o título e o seletor não piscam. */
@@ -2197,6 +2202,7 @@ html[data-nav^='side']::view-transition-new(seg-content) {
   animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
   animation-fill-mode: both;
   height: auto;
+  mix-blend-mode: normal;
 }
 
 html[data-nav='side-forward']::view-transition-old(seg-content) {
@@ -2973,12 +2979,6 @@ body:has(.session-strip) .rest-bar {
 
 /* ------------------------------------------------------------ Progresso: escolher o exercício */
 
-.chooser-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-}
 
 .chips-scroll {
   display: flex;
@@ -3044,17 +3044,7 @@ body:has(.session-strip) .rest-bar {
   margin-top: 6px;
 }
 
-.chooser-label {
-  display: block;
-  margin: 14px 0 2px;
-}
 
-.chooser-row {
-  width: 100%;
-  border: 0;
-  background: none;
-  text-align: left;
-}
 
 /* Película invisível da vibração (iPhone): cobre o botão e repassa o toque. */
 .hap-film {
@@ -3364,8 +3354,44 @@ body:has(.session-strip) .rest-bar {
   border-radius: 50%;
 }
 
+/* Pílulas das métricas (Maior peso, 1RM...): menores que os atalhos com foto. */
 .ex-chip.metric {
-  padding: 0 14px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 14px;
+  font-size: 12px;
+}
+
+/* Aba Resumo do exercício: valor do ponto escolhido e período do gráfico. */
+.sum-metric-value {
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.accent-text {
+  color: var(--accent);
+}
+
+/* Texto com ⌄ que abre a lista nativa do iPhone (o select fica invisível por cima). */
+.period-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.period-select select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  font-size: 16px;
 }
 
 .hist-card {
@@ -4596,4 +4622,144 @@ body:has(.rest-bar:not(.cardio-bar)) .cardio-bar {
 
 .sum-none {
   margin: 0 0 0 46px;
+}
+
+/* ------------------------------------------------------------ Progresso › Cargas (um exercício, limpo) */
+
+/* Nome do exercício com ⌄: abre a janela de trocar. */
+.chooser-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.chooser-title:active {
+  opacity: 0.6;
+}
+
+/* Período em texto pequeno (1M 3M 6M 1A Tudo). */
+.period-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.period-tabs button {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.period-tabs button.on {
+  background: var(--raised);
+  color: var(--text);
+}
+
+/* Histórico: linhas finas, sem caixa. */
+.progress-hist-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  color: var(--text);
+  border-bottom: 0.5px solid var(--border);
+}
+
+.progress-hist-row:last-child {
+  border-bottom: 0;
+}
+
+/* Janela de trocar: foto, nome, grupo e data do último treino, com linha fina entre eles. */
+.chooser-label {
+  display: block;
+  margin: 16px 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.chooser-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 0;
+  border: 0;
+  border-bottom: 0.5px solid var(--border-2, var(--border));
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.chooser-group > .chooser-row:last-child {
+  border-bottom: 0;
+}
+
+.chooser-row:active {
+  opacity: 0.6;
+}
+
+.chooser-thumb .thumb {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 11px;
+}
+
+/* Progresso › Corpo: tudo que você mede, em linhas finas (tocar leva para o gráfico). */
+.measure-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 0;
+  border: 0;
+  border-bottom: 0.5px solid var(--border);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+}
+
+.measure-row:last-child {
+  border-bottom: 0;
+}
+
+.measure-row.on {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.measure-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.measure-diff {
+  width: 44px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
 }

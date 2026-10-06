@@ -1,20 +1,36 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkline } from '../components/Charts';
+import { TrendChart } from '../components/Charts';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { LoadingScreen } from '../components/Layout';
 import { db } from '../lib/db';
-import { dayMonth, fullDate, num } from '../lib/format';
+import { addDays, dayMonth, fullDate, num, shortDate, todayISO } from '../lib/format';
 import { MEASURES } from '../lib/measures';
 import type { BodyEntry } from '../lib/types';
-import { ProgressHead } from './Progress';
+import { PERIODS, ProgressHead } from './Progress';
 
 function signed(n: number): string {
-  if (Math.abs(n) < 0.05) return 'igual';
+  if (Math.abs(n) < 0.05) return '=';
   return `${n > 0 ? '+' : '−'}${num(Math.abs(n))}`;
 }
+
+interface Metric {
+  key: string;
+  name: string;
+  unit: string;
+  value: (e: BodyEntry) => number | null | undefined;
+}
+
+/** Tudo que dá para acompanhar na aba Corpo: peso, gordura e as medidas. */
+const METRICS: Metric[] = [
+  { key: 'peso', name: 'Peso', unit: 'kg', value: (e) => e.weight },
+  { key: 'gordura', name: 'Gordura corporal', unit: '%', value: (e) => e.bodyFat },
+  ...MEASURES.map((m) => ({ key: m.key, name: m.name, unit: 'cm', value: (e: BodyEntry) => e.measures?.[m.key] })),
+];
+
+const valueText = (v: number, unit: string) => (unit === '%' ? `${num(v)}%` : `${num(v)} ${unit}`);
 
 export function Body() {
   const entries = useLiveQuery(
@@ -22,22 +38,37 @@ export function Body() {
     [],
   );
   const [photo, setPhoto] = useState<BodyEntry | null>(null);
+  const [chosen, setChosen] = useState<string | null>(null);
+  const [period, setPeriod] = useState('3M');
+  const [picked, setPicked] = useState<number | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   if (!entries) return <LoadingScreen tabs />;
 
-  const weights = entries.filter((e) => e.weight !== null).reverse();
-  const latestWeight = weights[weights.length - 1];
-  const firstWeight = weights[0];
+  // Cada métrica com os valores em ordem de data (só as que têm pelo menos um registro).
+  const ascending = [...entries].reverse();
+  const available = METRICS.map((m) => ({
+    ...m,
+    series: ascending.flatMap((e) => {
+      const v = m.value(e);
+      return v === null || v === undefined ? [] : [{ date: e.date, value: v }];
+    }),
+  })).filter((m) => m.series.length > 0);
+  const metric = available.find((m) => m.key === chosen) ?? available[0];
 
-  const measureRows = MEASURES.map((m) => {
-    const withValue = entries.filter((e) => e.measures?.[m.key] !== undefined);
-    if (withValue.length === 0) return null;
-    const current = withValue[0].measures[m.key];
-    const previous = withValue[1]?.measures[m.key];
-    return { ...m, current, diff: previous !== undefined ? current - previous : null };
-  }).filter((x): x is NonNullable<typeof x> => x !== null);
+  const range = PERIODS.find((p) => p.id === period) ?? PERIODS[1];
+  const cutoff = range.days ? addDays(todayISO(), -range.days) : '';
+  const points = metric ? metric.series.filter((p) => p.date >= cutoff) : [];
+  const sel = picked === null ? points.length - 1 : Math.min(picked, points.length - 1);
+  const current = points[sel];
+  const change = points.length > 1 ? points[points.length - 1].value - points[0].value : null;
 
-  const lastMeasureDate = entries.find((e) => Object.keys(e.measures ?? {}).length > 0)?.date;
+  const choose = (key: string) => {
+    setChosen(key);
+    setPicked(null);
+    setPickerOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const photos = entries.filter((e) => e.photo).slice(0, 7);
 
   return (
@@ -45,46 +76,76 @@ export function Body() {
       <ProgressHead active="corpo" />
       <div className="seg-content">
 
-      <div className="card flat row between">
-        <div className="col" style={{ gap: 2 }}>
-          <span className="small muted">Peso</span>
-          <span className="display" style={{ fontSize: 40 }}>
-            {latestWeight ? `${num(latestWeight.weight)} kg` : '—'}
-          </span>
-          <span className="small muted">
-            {latestWeight && firstWeight && firstWeight !== latestWeight
-              ? `${signed((latestWeight.weight ?? 0) - (firstWeight.weight ?? 0))} kg desde ${dayMonth(firstWeight.date)}`
-              : latestWeight
-                ? `Registrado em ${dayMonth(latestWeight.date)}`
-                : 'Registre seu peso para acompanhar'}
-          </span>
-        </div>
-        <Sparkline values={weights.slice(-12).map((w) => w.weight as number)} width={120} height={56} />
-      </div>
+      {!metric ? (
+        <p className="small muted" style={{ padding: '16px 0' }}>
+          Registre seu peso ou suas medidas no + lá em cima para acompanhar a evolução aqui.
+        </p>
+      ) : (
+        <>
+          <button type="button" className="chooser-title" onClick={() => setPickerOpen(true)} aria-label={`Medida: ${metric.name}. Trocar`}>
+            <span className="ellipsis">{metric.name}</span>
+            <Icon name="down" size={18} color="var(--accent)" />
+          </button>
 
-      <section className="stack">
-        <div className="section-head">
-          <h2 className="h2">Medidas</h2>
-          {lastMeasureDate && <span className="small muted">Última: {dayMonth(lastMeasureDate)}</span>}
-        </div>
-        {measureRows.length === 0 ? (
-          <div className="empty" style={{ padding: 18 }}>
-            <span className="small">Nenhuma medida ainda. Toque no + lá em cima para registrar.</span>
+          <div className="col" style={{ gap: 2 }}>
+            <span className="row" style={{ alignItems: 'baseline', gap: 8 }}>
+              <span className="display" style={{ fontSize: 40 }}>
+                {current ? valueText(current.value, metric.unit) : '—'}
+              </span>
+              {current && <span className="small accent-text">{shortDate(current.date)}</span>}
+            </span>
+            {/* Sem verde ou vermelho: o app não sabe se a meta é ganhar ou perder. */}
+            {change !== null && (
+              <span className="small" style={{ color: 'var(--text-2)', fontWeight: 700 }}>
+                {Math.abs(change) < 0.05 ? '=' : `${change > 0 ? '↑' : '↓'} ${signed(change)} ${metric.unit === '%' ? 'pontos' : metric.unit}`} {range.text}
+              </span>
+            )}
           </div>
-        ) : (
-          <div className="grid-2" style={{ gap: 8 }}>
-            {measureRows.map((m) => (
-              <div key={m.key} className="tile">
-                <span className="tiny muted">{m.name}</span>
-                <div className="row between" style={{ alignItems: 'baseline' }}>
-                  <span style={{ fontSize: 17, fontWeight: 800 }}>{num(m.current)} cm</span>
-                  {m.diff !== null && <span className="tiny muted" style={{ fontWeight: 700 }}>{signed(m.diff)}</span>}
-                </div>
-              </div>
+
+          <div className="period-tabs" role="tablist" aria-label="Período">
+            {PERIODS.map((p) => (
+              <button
+                type="button"
+                key={p.id}
+                role="tab"
+                className={period === p.id ? 'on' : ''}
+                aria-selected={period === p.id}
+                onClick={() => {
+                  setPeriod(p.id);
+                  setPicked(null);
+                }}
+              >
+                {p.id}
+              </button>
             ))}
           </div>
-        )}
-      </section>
+
+          {points.length > 0 ? (
+            <TrendChart points={points} selected={sel} onSelect={setPicked} axis={(v) => num(v, 1)} />
+          ) : (
+            <p className="small muted" style={{ padding: '24px 0', textAlign: 'center' }}>
+              Sem registros neste período.
+            </p>
+          )}
+
+          <section className="stack" style={{ gap: 0 }}>
+            <h2 className="h2" style={{ marginBottom: 4 }}>
+              Tudo que você mede
+            </h2>
+            {available.map((m) => {
+              const last = m.series[m.series.length - 1];
+              const prev = m.series[m.series.length - 2];
+              return (
+                <button key={m.key} type="button" className={`measure-row ${m.key === metric.key ? 'on' : ''}`} aria-pressed={m.key === metric.key} onClick={() => choose(m.key)}>
+                  <span className="grow">{m.name}</span>
+                  <span className="measure-value">{valueText(last.value, m.unit)}</span>
+                  <span className="measure-diff">{prev ? signed(last.value - prev.value) : ''}</span>
+                </button>
+              );
+            })}
+          </section>
+        </>
+      )}
 
       <section className="stack">
         <div className="section-head">
@@ -105,32 +166,49 @@ export function Body() {
         </div>
       </section>
 
-
       {entries.length > 0 && (
-        <section className="stack">
-          <h2 className="h2">Registros</h2>
-          <div className="list-group">
-            {entries.map((e) => {
-              const count = Object.keys(e.measures ?? {}).length;
-              return (
-                <Link key={e.id} to={`/progresso/medidas/${e.id}`} className="list-item">
-                  <span className="small muted" style={{ width: 84 }}>
-                    {fullDate(e.date)}
-                  </span>
-                  <span className="grow" style={{ fontSize: 14 }}>
-                    {[e.weight !== null ? `${num(e.weight)} kg` : null, count ? `${count} ${count === 1 ? 'medida' : 'medidas'}` : null, e.photo ? 'foto' : null]
-                      .filter(Boolean)
-                      .join(' · ') || 'Sem dados'}
-                  </span>
-                  <Icon name="next" size={18} color="var(--muted)" />
-                </Link>
-              );
-            })}
-          </div>
+        <section className="stack" style={{ gap: 0 }}>
+          <h2 className="h2" style={{ marginBottom: 4 }}>
+            Registros
+          </h2>
+          {entries.map((e) => {
+            const count = Object.keys(e.measures ?? {}).length;
+            return (
+              <Link key={e.id} to={`/progresso/medidas/${e.id}`} className="progress-hist-row">
+                <span className="small muted" style={{ width: 44, flex: 'none' }}>
+                  {dayMonth(e.date)}
+                </span>
+                <span className="grow" style={{ fontSize: 14, fontWeight: 600 }}>
+                  {[e.weight !== null ? `${num(e.weight)} kg` : null, count ? `${count} ${count === 1 ? 'medida' : 'medidas'}` : null, e.photo ? 'foto' : null]
+                    .filter(Boolean)
+                    .join(' · ') || 'Sem dados'}
+                </span>
+                <Icon name="next" size={16} color="var(--muted)" />
+              </Link>
+            );
+          })}
         </section>
       )}
 
       </div>
+
+      <Sheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="Escolher medida" subtitle="Só aparecem as que você já registrou">
+        <div className="chooser-list">
+          <div className="chooser-group">
+            {available.map((m) => (
+              <button key={m.key} type="button" className="chooser-row" onClick={() => choose(m.key)}>
+                <span className="col grow" style={{ gap: 1, minWidth: 0 }}>
+                  <span style={{ fontWeight: 600 }}>{m.name}</span>
+                  <span className="tiny muted">
+                    {valueText(m.series[m.series.length - 1].value, m.unit)} · {dayMonth(m.series[m.series.length - 1].date)}
+                  </span>
+                </span>
+                {metric && m.key === metric.key && <Icon name="check" size={18} stroke={3} color="var(--accent)" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Sheet>
 
       <Sheet open={!!photo} onClose={() => setPhoto(null)} title={photo ? fullDate(photo.date) : undefined}>
         {photo?.photo && <img src={photo.photo} alt={`Foto de progresso de ${fullDate(photo.date)}`} style={{ width: '100%', borderRadius: 14 }} />}

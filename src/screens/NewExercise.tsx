@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { useSlideNavigate } from '../lib/nav';
+import { historyDepth, markAdded, useSlideNavigate } from '../lib/nav';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { TopBar } from '../components/Layout';
@@ -95,13 +95,17 @@ export function NewExercise() {
     if (!existing && addNow && addToWorkout) {
       await addExercisesToWorkout(addToWorkout, [id]);
       toast('Exercício criado e adicionado');
-      go(`/treino/${addToWorkout}?editar=1&novo=1`, { dir: 'back', replace: true });
+      // Veio pelo seletor: volta duas telas (sem deixar o seletor nem uma cópia do treino no histórico).
+      markAdded(addToWorkout);
+      if (historyDepth() >= 2) go(-2);
+      else go(`/treino/${addToWorkout}?editar=1&novo=1`, { dir: 'back', replace: true });
       return;
     }
     if (!existing && addNow && addToSession) {
       const s = await getActiveSession();
       if (s) await addExercisesToSession(s.id, [id]);
-      go('/sessao', { dir: 'back', replace: true });
+      if (historyDepth() >= 2) go(-2);
+      else go('/sessao', { dir: 'back', replace: true });
       return;
     }
     toast(existing ? 'Exercício salvo' : 'Exercício criado');

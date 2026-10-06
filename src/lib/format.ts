@@ -60,6 +60,12 @@ export function monthName(monthIndex: number): string {
   return MONTHS[monthIndex];
 }
 
+/** 5 out */
+export function shortDate(iso: string): string {
+  const d = fromISODate(iso);
+  return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`;
+}
+
 /** 27/09 */
 export function dayMonth(iso: string): string {
   const d = fromISODate(iso);

@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { LineChart } from '../components/Charts';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { TrendChart } from '../components/Charts';
 import { useDialogs } from '../components/Dialogs';
 import { Icon } from '../components/Icon';
 import { BackButton, EmptyState, LoadingScreen, TopBar } from '../components/Layout';
@@ -11,7 +11,7 @@ import { MuscleFigure } from '../components/MuscleFigure';
 import { cardioTotals, distText, formatDuration, isCardio, logTypeName } from '../lib/cardio';
 import { equipmentName, loadText, setLabels, UNITS } from '../lib/equipment';
 import { useExercises, type ExerciseView } from '../lib/exercises';
-import { dayMonth, longDate, num, timeHM } from '../lib/format';
+import { addDays, dayMonth, longDate, num, shortDate, timeHM, todayISO } from '../lib/format';
 import { isGroup, muscleName } from '../lib/muscles';
 import { savePref } from '../lib/repo';
 import { exerciseHistory, type HistoryPoint } from '../lib/stats';
@@ -78,17 +78,25 @@ function metricsFor(ex: ExerciseView, cardio: boolean): Metric[] {
 const volText = (v: number) => `${num(v, 0)} placas×reps`;
 
 const TABS = ['Resumo', 'Histórico', 'Instruções', 'Ajustes'] as const;
+const TAB_SLUGS = ['resumo', 'historico', 'instrucoes', 'ajustes'];
 
 export function ExerciseDetail() {
   const { exerciseId = '' } = useParams();
   const { map, ready } = useExercises();
   const { toast } = useDialogs();
-  const [tab, setTab] = useState(0);
+  // A aba fica no endereço (?aba=historico): ao voltar de um treino aberto pelo Histórico, ela reabre ali.
+  const [params, setParams] = useSearchParams();
+  const tab = Math.max(0, TAB_SLUGS.indexOf(params.get('aba') ?? 'resumo'));
+  const setTab = (i: number) => {
+    const next = new URLSearchParams(params);
+    if (i === 0) next.delete('aba');
+    else next.set('aba', TAB_SLUGS[i]);
+    setParams(next, { replace: true });
+  };
   const [metricIdx, setMetricIdx] = useState(0);
   const history = useLiveQuery(() => exerciseHistory(exerciseId), [exerciseId]);
-  // Outro exercício: volta para o Resumo e a primeira métrica.
+  // Outro exercício: volta para a primeira métrica (a aba vem do endereço, que é outro).
   useEffect(() => {
-    setTab(0);
     setMetricIdx(0);
   }, [exerciseId]);
   const ex = map.get(exerciseId);
@@ -164,7 +172,7 @@ export function ExerciseDetail() {
           {series.length === 0 ? (
             <EmptyState title="Ainda sem dados" text="Depois que você fizer este exercício num treino, a evolução aparece aqui." />
           ) : (
-            <Summary metric={metric} series={series} />
+            <Summary key={metric.name} metric={metric} series={series} />
           )}
           <div className="chips-scroll">
             {metrics.map((m, i) => (
@@ -389,28 +397,66 @@ function HistoryCard({ p, earlier }: { p: HistoryPoint; earlier: HistoryPoint[] 
   );
 }
 
+const SUMMARY_PERIODS = [
+  { id: '1m', name: 'Último mês', days: 31 },
+  { id: '3m', name: 'Últimos 3 meses', days: 92 },
+  { id: '6m', name: 'Últimos 6 meses', days: 183 },
+  { id: '1a', name: 'Último ano', days: 366 },
+  { id: 'tudo', name: 'Tudo', days: 0 },
+];
+
+/** Valor do ponto escolhido no gráfico (o último, se nenhum), período e a evolução no período. */
 function Summary({ metric, series }: { metric: Metric; series: { p: HistoryPoint; v: number }[] }) {
-  const last = series[series.length - 1].v;
-  const first = series[0].v;
-  const diff = last - first;
+  const [period, setPeriod] = useState('3m');
+  const [picked, setPicked] = useState<number | null>(null);
+  const days = SUMMARY_PERIODS.find((p) => p.id === period)?.days ?? 0;
+  const cutoff = days ? addDays(todayISO(), -days) : '';
+  const points = series.filter((x) => x.p.date >= cutoff).map((x) => ({ date: x.p.date, value: x.v }));
+  const sel = picked === null ? points.length - 1 : Math.min(picked, points.length - 1);
+  const current = points[sel];
+  const diff = points.length > 1 ? points[points.length - 1].value - points[0].value : 0;
   const better = metric.lowerIsBetter ? diff < 0 : diff > 0;
+  // Eixo: tempo e ritmo em minutos:segundos; o resto em número (sem a unidade, para caber).
+  const timeAxis = metric.lowerIsBetter || metric.name === 'Tempo';
+  const axis = (v: number) => (timeAxis ? formatDuration(Math.max(0, Math.round(v))) || '0:00' : num(v, 1));
   return (
-    <div className="stack" style={{ gap: 6 }}>
-      <span className="small muted">{metric.name}</span>
-      <span style={{ fontSize: 28, fontWeight: 700 }}>{metric.show(last)}</span>
-      {series.length > 1 && diff !== 0 && (
+    <div className="stack" style={{ gap: 4 }}>
+      <div className="row between" style={{ alignItems: 'baseline', gap: 8 }}>
+        <span className="row" style={{ alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+          <span className="sum-metric-value">{current ? metric.show(current.value) : '—'}</span>
+          {current && <span className="small accent-text">{shortDate(current.date)}</span>}
+        </span>
+        <label className="period-select small accent-text">
+          {SUMMARY_PERIODS.find((p) => p.id === period)?.name}
+          <Icon name="down" size={16} />
+          <select
+            value={period}
+            aria-label="Período do gráfico"
+            onChange={(e) => {
+              setPeriod(e.target.value);
+              setPicked(null);
+            }}
+          >
+            {SUMMARY_PERIODS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {diff !== 0 && (
         <span className="small" style={{ color: better ? 'var(--success)' : 'var(--text-2)', fontWeight: 600 }}>
-          {better ? (metric.lowerIsBetter ? 'Mais rápido' : 'Subiu') : metric.lowerIsBetter ? 'Mais lento' : 'Caiu'} desde {dayMonth(series[0].p.date)}:{' '}
-          {metric.show(Math.abs(diff)).replace(/^-/, '')}
+          {better ? '↑' : '↓'} {better ? (metric.lowerIsBetter ? 'Mais rápido' : 'Subiu') : metric.lowerIsBetter ? 'Mais lento' : 'Caiu'}{' '}
+          {metric.show(Math.abs(diff)).replace(/^-/, '')} desde {shortDate(points[0].date)}
         </span>
       )}
-      {series.length >= 2 ? (
-        <LineChart
-          points={series.slice(-20).map((x) => ({ label: dayMonth(x.p.date), value: metric.lowerIsBetter || metric.name === 'Tempo' ? Math.round((x.v / 60) * 10) / 10 : Math.round(x.v * 10) / 10 }))}
-          height={150}
-        />
+      {points.length > 0 ? (
+        <TrendChart points={points} selected={sel} onSelect={setPicked} axis={axis} unit={timeAxis ? 60 : 0} />
       ) : (
-        <p className="small muted">Faça este exercício mais vezes para ver o gráfico.</p>
+        <p className="small muted" style={{ padding: '24px 0', textAlign: 'center' }}>
+          Sem treinos neste período.
+        </p>
       )}
     </div>
   );

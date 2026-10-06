@@ -1,6 +1,44 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const LS_ADDED = 'mt.added';
+
+/**
+ * Exercícios entraram no treino pelo seletor: em vez de abrir uma cópia nova da tela do treino
+ * (o "voltar" depois caía nessa cópia, ainda em edição), o app volta pelo histórico e deixa este
+ * aviso para o treino abrir em edição e rolar até os novos.
+ */
+export function markAdded(workoutId: string): void {
+  try {
+    sessionStorage.setItem(LS_ADDED, workoutId);
+  } catch {
+    // sem armazenamento
+  }
+}
+
+/** O aviso é deste treino? (Só lê; quem trata o aviso apaga com clearAdded.) */
+export function wasAdded(workoutId: string): boolean {
+  try {
+    return sessionStorage.getItem(LS_ADDED) === workoutId;
+  } catch {
+    return false;
+  }
+}
+
+export function clearAdded(): void {
+  try {
+    sessionStorage.removeItem(LS_ADDED);
+  } catch {
+    // sem armazenamento
+  }
+}
+
+/** Quantas telas dá para voltar no histórico do app. */
+export function historyDepth(): number {
+  const idx = (window.history.state as { idx?: number } | null)?.idx;
+  return typeof idx === 'number' ? idx : 0;
+}
+
 /** `side-*`: troca dentro da mesma aba (ex.: Cargas | Corpo): só o conteúdo desliza para o lado. */
 export type NavDir = 'forward' | 'back' | 'tab' | 'none' | 'side-forward' | 'side-back';
 

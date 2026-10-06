@@ -39,7 +39,7 @@ import {
   updateWorkoutItem,
 } from '../lib/repo';
 import type { DoneSet, PlannedSet, RepMode, Workout, WorkoutItem } from '../lib/types';
-import { useSlideNavigate } from '../lib/nav';
+import { clearAdded, useSlideNavigate, wasAdded } from '../lib/nav';
 import { num } from '../lib/format';
 import { groupSupersets, itemSummary, plannedSetCount, plannedSummary, plannedVolumeKg, restText } from '../lib/workout';
 
@@ -133,13 +133,19 @@ export function WorkoutDetail() {
     void snapshotWorkout(workoutId).then((snap) => snap && writeSnap(workoutId, snap));
   }, [editing, workoutId]);
 
-  // Depois de adicionar exercícios, rola até o fim para mostrar os novos.
-  const justAdded = params.get('novo') === '1';
+  // Depois de adicionar exercícios (volta do seletor com o aviso, ou ?novo=1), abre em edição e
+  // rola até o fim para mostrar os novos.
+  const [cameBack] = useState(() => wasAdded(workoutId));
+  const justAdded = params.get('novo') === '1' || cameBack;
+  const addHandled = useRef(false);
   useEffect(() => {
-    if (!justAdded || !data) return;
+    if (!justAdded || !data || addHandled.current) return;
+    addHandled.current = true;
+    clearAdded();
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 250);
     const next = new URLSearchParams(params);
     next.delete('novo');
+    next.set('editar', '1');
     setParams(next, { replace: true });
   }, [justAdded, data]); // eslint-disable-line react-hooks/exhaustive-deps
 

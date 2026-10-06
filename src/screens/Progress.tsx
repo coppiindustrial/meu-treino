@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LineChart } from '../components/Charts';
+import { TrendChart } from '../components/Charts';
 import { Icon } from '../components/Icon';
 import { EmptyState, LoadingScreen } from '../components/Layout';
 import { db } from '../lib/db';
@@ -10,16 +10,17 @@ import { ExerciseThumb } from '../components/Media';
 import { Sheet } from '../components/Sheet';
 import { exerciseOrMissing, normalize, useExercises, type ExerciseView } from '../lib/exercises';
 import { muscleName } from '../lib/muscles';
-import { addDays, dayMonth, fromISODate, monthName, num, todayISO } from '../lib/format';
-import { exerciseHistory } from '../lib/stats';
+import { addDays, dayMonth, num, shortDate, todayISO } from '../lib/format';
+import { cardioTotals, formatDuration, isCardio } from '../lib/cardio';
+import { exerciseHistory, type HistoryPoint } from '../lib/stats';
 import { setsSummary } from './ExerciseDetail';
 
-const PERIODS = [
-  { id: '1M', days: 31 },
-  { id: '3M', days: 92 },
-  { id: '6M', days: 183 },
-  { id: '1A', days: 366 },
-  { id: 'Tudo', days: 0 },
+export const PERIODS = [
+  { id: '1M', days: 31, text: 'em 1 mês' },
+  { id: '3M', days: 92, text: 'em 3 meses' },
+  { id: '6M', days: 183, text: 'em 6 meses' },
+  { id: '1A', days: 366, text: 'em 1 ano' },
+  { id: 'Tudo', days: 0, text: 'no total' },
 ];
 
 // Onde a bolha do seletor estava: ao trocar de Cargas para Corpo ela desliza a partir dali.
@@ -68,7 +69,9 @@ export function Progress() {
   const { map } = useExercises();
   const [chosen, setChosen] = useState<string | null>(null);
   const [period, setPeriod] = useState('3M');
+  const [picked, setPicked] = useState<number | null>(null);
 
+  // Exercícios já feitos (do mais recente para o mais antigo) e a data do último treino de cada um.
   const used = useLiveQuery(async () => {
     const sessions = await db.sessions.filter((s) => !s.deleted && s.status === 'done').toArray();
     const dates = new Map(sessions.map((s) => [s.id, s.date]));
@@ -78,23 +81,32 @@ export function Progress() {
       const d = dates.get(it.sessionId)!;
       if (!last[it.exerciseId] || d > last[it.exerciseId]) last[it.exerciseId] = d;
     }
-    return Object.entries(last)
+    const ids = Object.entries(last)
       .sort((a, b) => (a[1] < b[1] ? 1 : -1))
       .map(([id]) => id);
+    return { ids, last };
   }, []);
 
-  const selected = chosen ?? used?.[0] ?? null;
+  const selected = chosen ?? used?.ids[0] ?? null;
   const history = useLiveQuery(async () => (selected ? exerciseHistory(selected) : []), [selected]);
 
   if (!used) return <LoadingScreen tabs />;
 
   const ex = selected ? exerciseOrMissing(map, selected) : null;
-  const days = PERIODS.find((p) => p.id === period)?.days ?? 0;
-  const cutoff = days ? addDays(todayISO(), -days) : '0000-00-00';
-  const points = (history ?? []).filter((p) => p.date >= cutoff && ex && p.unit === ex.unit && p.best !== null);
-  const best = points.reduce<number | null>((m, p) => (m === null || (p.best ?? 0) > m ? p.best : m), null);
-  const first = points[0];
-  const change = first && points.length > 1 ? (points[points.length - 1].best ?? 0) - (first.best ?? 0) : null;
+  const cardio = ex ? isCardio(ex.logType) : false;
+  const range = PERIODS.find((p) => p.id === period) ?? PERIODS[1];
+  const cutoff = range.days ? addDays(todayISO(), -range.days) : '';
+  // Carga: maior carga de cada treino (na unidade do exercício). Cardio: tempo total de cada treino.
+  const valueOf = (p: HistoryPoint): number | null =>
+    cardio ? cardioTotals(p.sets, p.distUnit).secs || null : ex && p.unit === ex.unit && !isCardio(p.logType) ? p.best : null;
+  const show = (v: number) => (cardio ? formatDuration(v) : ex ? loadText(v, ex.unit) : '');
+  const points = (history ?? [])
+    .filter((p) => p.date >= cutoff)
+    .map((p) => ({ date: p.date, value: valueOf(p) }))
+    .filter((p): p is { date: string; value: number } => p.value !== null);
+  const best = points.reduce<number | null>((m, p) => (m === null || p.value > m ? p.value : m), null);
+  const sel = picked === null ? points.length - 1 : Math.min(picked, points.length - 1);
+  const change = points.length > 1 ? points[points.length - 1].value - points[0].value : null;
   const recent = [...(history ?? [])].reverse().slice(0, 4);
 
   return (
@@ -102,73 +114,92 @@ export function Progress() {
       <ProgressHead active="cargas" />
       <div className="seg-content">
 
-      {used.length === 0 || !ex ? (
+      {used.ids.length === 0 || !ex ? (
         <EmptyState title="Ainda sem registros" text="Finalize seu primeiro treino para ver a evolução das cargas aqui." />
       ) : (
         <>
-          <ExerciseChooser ex={ex} used={used.map((id) => exerciseOrMissing(map, id))} onPick={setChosen} />
-
-          <div className="row between" style={{ alignItems: 'flex-end' }}>
-            <div className="col" style={{ gap: 2 }}>
-              <span className="small muted">Maior carga no período</span>
-              <span className="display" style={{ fontSize: 46 }}>
-                {best !== null ? loadText(best, ex.unit) : '—'}
-              </span>
-              {change !== null && first && (
-                <span className="row small" style={{ gap: 6, color: change >= 0 ? 'var(--accent)' : 'var(--text-2)', fontWeight: 700 }}>
-                  <Icon name="chart" size={16} />
-                  {change >= 0 ? '+' : ''}
-                  {num(change)} desde {monthName(fromISODate(first.date).getMonth())}
-                </span>
-              )}
-            </div>
-            <Link to={`/exercicio/${ex.id}`} className="text-btn" style={{ display: 'flex', alignItems: 'center' }}>
+          <div className="row between" style={{ gap: 8 }}>
+            <ExerciseChooser
+              ex={ex}
+              used={used.ids.map((id) => exerciseOrMissing(map, id))}
+              last={used.last}
+              onPick={(id) => {
+                setChosen(id);
+                setPicked(null);
+              }}
+            />
+            <Link to={`/exercicio/${ex.id}`} className="small accent-text" style={{ fontWeight: 600, flex: 'none' }}>
               Ver exercício
             </Link>
           </div>
 
-          <div className="row" style={{ gap: 6 }}>
+          <div className="col" style={{ gap: 2 }}>
+            <span className="small muted">{cardio ? 'Maior tempo no período' : 'Maior carga no período'}</span>
+            <span className="display" style={{ fontSize: 40 }}>
+              {best !== null ? show(best) : '—'}
+            </span>
+            {change !== null && (
+              <span className="small" style={{ color: change > 0 ? 'var(--success)' : 'var(--text-2)', fontWeight: 700 }}>
+                {change > 0 ? `↑ +${show(change)}` : change < 0 ? `↓ −${show(-change)}` : '='} {range.text}
+              </span>
+            )}
+          </div>
+
+          <div className="period-tabs" role="tablist" aria-label="Período">
             {PERIODS.map((p) => (
               <button
                 type="button"
                 key={p.id}
-                className={`pill ${period === p.id ? 'on' : ''}`}
-                style={{ flex: 1, padding: 0, borderRadius: 10 }}
-                aria-pressed={period === p.id}
-                onClick={() => setPeriod(p.id)}
+                role="tab"
+                className={period === p.id ? 'on' : ''}
+                aria-selected={period === p.id}
+                onClick={() => {
+                  setPeriod(p.id);
+                  setPicked(null);
+                }}
               >
                 {p.id}
               </button>
             ))}
           </div>
 
-          {points.length >= 2 ? (
-            <LineChart points={points.map((p) => ({ label: dayMonth(p.date), value: p.best as number }))} height={170} />
+          {points.length > 0 ? (
+            <>
+              <TrendChart
+                points={points}
+                selected={sel}
+                onSelect={setPicked}
+                axis={(v) => (cardio ? formatDuration(Math.max(0, Math.round(v))) || '0:00' : num(v, 1))}
+                unit={cardio ? 60 : 0}
+              />
+              {points[sel] && (
+                <span className="small muted" style={{ textAlign: 'center' }}>
+                  {shortDate(points[sel].date)}: <b style={{ color: 'var(--text)' }}>{show(points[sel].value)}</b>
+                </span>
+              )}
+            </>
           ) : (
-            <div className="empty" style={{ padding: 18 }}>
-              <span className="small">Faça esse exercício mais vezes para ver o gráfico.</span>
-            </div>
+            <p className="small muted" style={{ padding: '24px 0', textAlign: 'center' }}>
+              Sem treinos neste período.
+            </p>
           )}
 
-          <section className="stack">
-            <h2 className="h2">Histórico</h2>
-            <div className="list-group">
-              {recent.map((p) => (
-                <Link key={p.sessionId} to={`/sessao/${p.sessionId}/resumo`} className="list-item" style={{ minHeight: 44 }}>
-                  <span className="small muted" style={{ width: 44 }}>
-                    {dayMonth(p.date)}
-                  </span>
-                  <span className="grow" style={{ fontSize: 14, fontWeight: 700 }}>
-                    {setsSummary(p)}
-                  </span>
-                  {best !== null && p.best === best && p.unit === ex.unit && (
-                    <span className="chip record">
-                      <Icon name="trophy" size={14} /> Recorde
-                    </span>
-                  )}
-                </Link>
-              ))}
-            </div>
+          <section className="stack" style={{ gap: 0 }}>
+            <h2 className="h2" style={{ marginBottom: 4 }}>
+              Histórico
+            </h2>
+            {recent.map((p) => (
+              <Link key={p.itemId} to={`/sessao/${p.sessionId}/resumo`} className="progress-hist-row">
+                <span className="small muted" style={{ width: 44, flex: 'none' }}>
+                  {dayMonth(p.date)}
+                </span>
+                <span className="grow" style={{ fontSize: 14, fontWeight: 600 }}>
+                  {setsSummary(p)}
+                </span>
+                {best !== null && valueOf(p) === best && <Icon name="trophy" size={16} color="var(--record)" />}
+                <Icon name="next" size={16} color="var(--muted)" />
+              </Link>
+            ))}
           </section>
         </>
       )}
@@ -177,8 +208,8 @@ export function Progress() {
   );
 }
 
-/** Cartão do exercício escolhido, atalhos dos recentes e janela com busca para trocar. */
-function ExerciseChooser({ ex, used, onPick }: { ex: ExerciseView; used: ExerciseView[]; onPick: (id: string) => void }) {
+/** Nome do exercício com ⌄ (abre a janela) e a janela com busca, recentes e grupos para trocar. */
+function ExerciseChooser({ ex, used, last, onPick }: { ex: ExerciseView; used: ExerciseView[]; last: Record<string, string>; onPick: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const recent = used.slice(0, 5);
@@ -196,13 +227,18 @@ function ExerciseChooser({ ex, used, onPick }: { ex: ExerciseView; used: Exercis
     setQuery('');
   };
   const row = (e: ExerciseView) => (
-    <button key={e.id} type="button" className="routine-row chooser-row" onClick={() => pick(e.id)}>
-      <span className="ex-avatar">
+    <button key={e.id} type="button" className="chooser-row" onClick={() => pick(e.id)}>
+      <span className="chooser-thumb">
         <ExerciseThumb exercise={e} />
       </span>
-      <span className="col grow" style={{ gap: 1 }}>
-        <span style={{ fontWeight: 600 }}>{e.name}</span>
-        <span className="tiny muted">{muscleName(e.primary)}</span>
+      <span className="col grow" style={{ gap: 1, minWidth: 0 }}>
+        <span className="ellipsis" style={{ fontWeight: 600 }}>
+          {e.name}
+        </span>
+        <span className="tiny muted">
+          {muscleName(e.primary)}
+          {last[e.id] ? ` · ${dayMonth(last[e.id])}` : ''}
+        </span>
       </span>
       {e.id === ex.id && <Icon name="check" size={18} stroke={3} color="var(--accent)" />}
     </button>
@@ -210,33 +246,13 @@ function ExerciseChooser({ ex, used, onPick }: { ex: ExerciseView; used: Exercis
 
   return (
     <>
-      <div className="card chooser-card">
-        <span className="ex-avatar">
+      <button type="button" className="chooser-title" onClick={() => setOpen(true)} aria-label={`Exercício: ${ex.name}. Trocar`}>
+        <span className="ex-avatar mini">
           <ExerciseThumb exercise={ex} />
         </span>
-        <span className="col grow" style={{ gap: 1, minWidth: 0 }}>
-          <span className="ellipsis" style={{ fontWeight: 600, fontSize: 16 }}>
-            {ex.name}
-          </span>
-          <span className="tiny muted">{muscleName(ex.primary)}</span>
-        </span>
-        <button type="button" className="glass pill" onClick={() => setOpen(true)}>
-          Trocar
-        </button>
-      </div>
-
-      {recent.length > 1 && (
-        <div className="chips-scroll" role="list" aria-label="Exercícios recentes">
-          {recent.map((e) => (
-            <button key={e.id} type="button" role="listitem" className={`ex-chip ${e.id === ex.id ? 'on' : ''}`} onClick={() => onPick(e.id)}>
-              <span className="ex-avatar mini">
-                <ExerciseThumb exercise={e} />
-              </span>
-              <span>{e.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
+        <span className="ellipsis">{ex.name}</span>
+        <Icon name="down" size={18} color="var(--accent)" />
+      </button>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="Escolher exercício" subtitle="Só aparecem os que você já fez">
         <label className="search">
@@ -246,7 +262,7 @@ function ExerciseChooser({ ex, used, onPick }: { ex: ExerciseView; used: Exercis
         <div className="chooser-list">
           {q ? (
             found.length ? (
-              found.map(row)
+              <div className="chooser-group">{found.map(row)}</div>
             ) : (
               <p className="small muted" style={{ padding: '12px 4px' }}>
                 Nenhum exercício feito com esse nome.
@@ -254,12 +270,12 @@ function ExerciseChooser({ ex, used, onPick }: { ex: ExerciseView; used: Exercis
             )
           ) : (
             <>
-              <span className="label chooser-label">Recentes</span>
-              {recent.map(row)}
+              <span className="chooser-label">Recentes</span>
+              <div className="chooser-group">{recent.map(row)}</div>
               {[...groups.entries()].map(([name, list]) => (
                 <div key={name}>
-                  <span className="label chooser-label">{name}</span>
-                  {list.map(row)}
+                  <span className="chooser-label">{name}</span>
+                  <div className="chooser-group">{list.map(row)}</div>
                 </div>
               ))}
             </>

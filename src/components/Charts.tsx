@@ -1,28 +1,54 @@
+import { useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { THEME } from '../lib/theme';
-import { num } from '../lib/format';
+import { shortDate } from '../lib/format';
 
-export interface ChartPoint {
-  label: string;
+export interface TrendPoint {
+  /** Data AAAA-MM-DD. */
+  date: string;
   value: number;
 }
 
 function niceStep(range: number): number {
-  const raw = range / 3;
+  const raw = range / 2;
   const mag = 10 ** Math.floor(Math.log10(raw || 1));
   const norm = raw / mag;
   const step = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10;
   return step * mag;
 }
 
-/** Gráfico de linha simples (carga ao longo do tempo). */
-export function LineChart({ points, height = 150 }: { points: ChartPoint[]; height?: number }) {
+/**
+ * Evolução ao longo do tempo: eixo com 3 valores, linha e o ponto escolhido destacado (com halo e
+ * linha vertical). Tocar ou arrastar escolhe o ponto mais perto; com 1 treino só, o ponto fica no meio.
+ */
+export function TrendChart({
+  points,
+  selected,
+  onSelect,
+  axis,
+  unit = 0,
+  height = 170,
+}: {
+  points: TrendPoint[];
+  selected: number;
+  onSelect: (index: number) => void;
+  /** Texto dos valores do eixo (ex.: "36" ou "10:00"). */
+  axis: (v: number) => string;
+  /** Passo mínimo do eixo (ex.: 60 para o tempo andar em minutos cheios). */
+  unit?: number;
+  height?: number;
+}) {
+  const ref = useRef<SVGSVGElement>(null);
+  const dragging = useRef(false);
+  if (points.length === 0) return null;
+
   const W = 350;
   const H = height;
-  const left = 36;
-  const right = 12;
-  const top = 18;
+  const left = 40;
+  const right = 14;
+  const top = 12;
   const bottom = 24;
-  if (points.length === 0) return null;
+  const plotW = W - left - right;
+  const plotH = H - top - bottom;
 
   const values = points.map((p) => p.value);
   let min = Math.min(...values);
@@ -31,56 +57,71 @@ export function LineChart({ points, height = 150 }: { points: ChartPoint[]; heig
     min -= 1;
     max += 1;
   }
-  const step = niceStep(max - min);
+  const base = unit || 1;
+  const step = Math.max(unit, niceStep((max - min) / base) * base);
   const lo = Math.floor(min / step) * step;
-  const hi = Math.ceil(max / step) * step;
-  const ticks: number[] = [];
-  for (let t = lo; t <= hi + step / 2; t += step) ticks.push(Number(t.toFixed(4)));
+  const hi = Math.max(Math.ceil(max / step) * step, lo + step * 2);
+  const ticks = [hi, (hi + lo) / 2, lo];
 
-  const plotW = W - left - right;
-  const plotH = H - top - bottom;
   const x = (i: number) => (points.length === 1 ? left + plotW / 2 : left + (i / (points.length - 1)) * plotW);
   const y = (v: number) => top + plotH - ((v - lo) / (hi - lo || 1)) * plotH;
   const line = points.map((p, i) => `${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(' ');
-  const area = `${line} ${x(points.length - 1).toFixed(1)},${top + plotH} ${x(0).toFixed(1)},${top + plotH}`;
-  const last = points[points.length - 1];
+  const sel = Math.min(Math.max(selected, 0), points.length - 1);
 
-  const labelIdx = new Set<number>([0, points.length - 1]);
-  if (points.length > 4) labelIdx.add(Math.floor((points.length - 1) / 2));
+  // Datas embaixo: primeira, última e a escolhida (sem encavalar).
+  const labels = new Set<number>([0, points.length - 1, sel]);
+  const shown = [...labels].sort((a, b) => a - b).filter((i, k, arr) => k === 0 || x(i) - x(arr[k - 1]) > 48 || i === sel);
+
+  const pick = (e: ReactPointerEvent<SVGSVGElement>) => {
+    const svg = ref.current;
+    if (!svg || points.length < 2) return;
+    const box = svg.getBoundingClientRect();
+    const vx = ((e.clientX - box.left) / box.width) * W;
+    let best = 0;
+    for (let i = 1; i < points.length; i++) if (Math.abs(x(i) - vx) < Math.abs(x(best) - vx)) best = i;
+    if (best !== sel) onSelect(best);
+  };
 
   return (
     <div className="chart-wrap">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Gráfico com ${points.length} registros, último ${num(last.value)}`}>
-        {ticks.map((t) => (
-          <g key={t}>
-            <line x1={left} y1={y(t)} x2={W - right} y2={y(t)} stroke={THEME.grid} strokeDasharray="3 4" />
-            <text x={left - 6} y={y(t) + 4} textAnchor="end" fontSize="11" fill={THEME.muted}>
-              {num(t)}
+      <svg
+        ref={ref}
+        viewBox={`0 0 ${W} ${H}`}
+        role="img"
+        aria-label={`Gráfico com ${points.length} ${points.length === 1 ? 'treino' : 'treinos'}; escolhido ${axis(points[sel].value)} em ${shortDate(points[sel].date)}`}
+        style={{ touchAction: 'pan-y' }}
+        onPointerDown={(e) => {
+          dragging.current = true;
+          pick(e);
+        }}
+        onPointerMove={(e) => dragging.current && pick(e)}
+        onPointerUp={() => (dragging.current = false)}
+        onPointerCancel={() => (dragging.current = false)}
+        onPointerLeave={() => (dragging.current = false)}
+      >
+        {ticks.map((t, i) => (
+          <g key={i}>
+            <line x1={left} y1={y(t)} x2={W - right} y2={y(t)} stroke={THEME.grid} />
+            <text x={left - 8} y={y(t) + 4} textAnchor="end" fontSize="11" fill={THEME.muted}>
+              {axis(t)}
             </text>
           </g>
         ))}
-        <polygon points={area} fill={THEME.accent} fillOpacity={0.1} />
-        <polyline points={line} fill="none" stroke={THEME.accent} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
-        {points.map((p, i) =>
-          i === points.length - 1 ? (
-            <circle key={i} cx={x(i)} cy={y(p.value)} r={6} fill={THEME.accent} />
-          ) : (
-            <circle key={i} cx={x(i)} cy={y(p.value)} r={3.5} fill={THEME.bg} stroke={THEME.accent} strokeWidth={2} />
-          ),
-        )}
-        <text
-          x={Math.min(x(points.length - 1), W - right)}
-          y={Math.max(y(last.value) - 12, 11)}
-          textAnchor="end"
-          fontSize="12"
-          fontWeight="800"
-          fill={THEME.text}
-        >
-          {num(last.value)}
-        </text>
-        {[...labelIdx].map((i) => (
-          <text key={`l${i}`} x={x(i)} y={H - 6} textAnchor={i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'} fontSize="11" fill={THEME.muted}>
-            {points[i].label}
+        <line x1={x(sel)} y1={top} x2={x(sel)} y2={top + plotH} stroke={THEME.accent} strokeOpacity={0.55} strokeWidth={1.5} />
+        {points.length > 1 && <polyline points={line} fill="none" stroke={THEME.accent} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />}
+        {points.map((p, i) => (i === sel ? null : <circle key={i} cx={x(i)} cy={y(p.value)} r={3.5} fill={THEME.accent} />))}
+        <circle cx={x(sel)} cy={y(points[sel].value)} r={11} fill={THEME.accent} fillOpacity={0.25} />
+        <circle cx={x(sel)} cy={y(points[sel].value)} r={6} fill={THEME.accent} />
+        {shown.map((i) => (
+          <text
+            key={`d${i}`}
+            x={Math.min(Math.max(x(i), left + 16), W - right - 16)}
+            y={H - 6}
+            textAnchor="middle"
+            fontSize="11"
+            fill={i === sel ? THEME.text : THEME.muted}
+          >
+            {shortDate(points[i].date)}
           </text>
         ))}
       </svg>
