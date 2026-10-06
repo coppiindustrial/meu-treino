@@ -1,5 +1,5 @@
 import { EQUIPMENT } from '../lib/equipment';
-import { MUSCLE_BY_ID, MUSCLE_SECTIONS } from '../lib/muscles';
+import { isGroup, MUSCLE_BY_ID, MUSCLE_SECTIONS } from '../lib/muscles';
 import type { EquipmentId, MuscleId } from '../lib/types';
 import { Icon } from './Icon';
 import { MuscleFigure } from './MuscleFigure';
@@ -87,12 +87,13 @@ export function MuscleMultiPicker({ open, onClose, values, onChange, exclude }: 
   };
   return (
     <Sheet open={open} onClose={onClose} title="Outros músculos" subtitle="Escolha quantos quiser">
-      {MUSCLE_SECTIONS.map((sec) => (
+      {MUSCLE_SECTIONS.map((sec) => ({ ...sec, ids: sec.ids.filter((id) => id !== exclude && id !== 'corpo' && !isGroup(id)) }))
+        .filter((sec) => sec.ids.length > 0)
+        .map((sec) => (
         <div key={sec.title} className="stack">
           <span className="label">{sec.title}</span>
           <div className="muscle-grid">
             {sec.ids
-              .filter((id) => id !== exclude && id !== 'cardio' && id !== 'corpo')
               .map((id) => {
                 const on = values.includes(id);
                 return (

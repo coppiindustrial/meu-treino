@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { bodyParts, muscleTest, muscleView, muscleViewBox, NON_MUSCLE, useBodyGender } from '../lib/body';
-import { MUSCLE_BY_ID } from '../lib/muscles';
+import { GROUP_ICON, MUSCLE_BY_ID } from '../lib/muscles';
 import { THEME } from '../lib/theme';
 import type { MuscleId } from '../lib/types';
 import { Icon } from './Icon';
@@ -22,7 +22,7 @@ export function MuscleFigure({ muscle, size = 46 }: { muscle: MuscleId | 'todos'
   }, [gender, muscle, info]);
 
   if (muscle === 'todos') return <Icon name="grid" size={Math.round(size * 0.45)} color={THEME.accent} />;
-  if (!drawing) return <Icon name="heart" size={Math.round(size * 0.55)} color={THEME.accent} />;
+  if (!drawing) return <Icon name={GROUP_ICON[muscle] ?? 'heart'} size={Math.round(size * 0.55)} color={THEME.accent} />;
   return (
     <svg width={size} height={size} viewBox={drawing.viewBox} aria-hidden="true">
       {drawing.paths.map((p, i) => (

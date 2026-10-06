@@ -58,7 +58,22 @@ export const MUSCLES: MuscleInfo[] = [
   { id: 'abdutores', name: 'Abdutores', view: 'b', parts: ['abductors'] },
   { id: 'corpo', name: 'Corpo inteiro', view: 'f', parts: FRONT_PARTS },
   { id: 'cardio', name: 'Cardio', view: 'i', parts: [] },
+  // Grupos próprios (como o Cardio): o músculo que trabalha fica nos secundários.
+  { id: 'alongamento', name: 'Alongamento', view: 'i', parts: [] },
+  { id: 'mobilidade', name: 'Mobilidade', view: 'i', parts: [] },
 ];
+
+/** Ícone dos grupos que não são um músculo (sem desenho do corpo). */
+export const GROUP_ICON: Partial<Record<MuscleId, string>> = {
+  cardio: 'heart',
+  alongamento: 'stretch',
+  mobilidade: 'mobility',
+};
+
+/** Grupo que não é um músculo (Cardio, Alongamento, Mobilidade): o desenho usa o primeiro músculo secundário. */
+export function isGroup(id: MuscleId): boolean {
+  return MUSCLE_BY_ID[id]?.view === 'i';
+}
 
 export const MUSCLE_BY_ID = Object.fromEntries(MUSCLES.map((m) => [m.id, m])) as Record<
   MuscleId,
@@ -75,6 +90,7 @@ export const MUSCLE_SECTIONS: { title: string; ids: MuscleId[] }[] = [
     ids: ['quadriceps', 'posterior', 'gluteos', 'panturrilha', 'adutores', 'abdutores'],
   },
   { title: 'Outros', ids: ['corpo', 'cardio'] },
+  { title: 'Alongamento e mobilidade', ids: ['alongamento', 'mobilidade'] },
 ];
 
 export function muscleName(id: MuscleId): string {

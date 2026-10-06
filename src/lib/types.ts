@@ -16,7 +16,9 @@ export type MuscleId =
   | 'adutores'
   | 'abdutores'
   | 'corpo'
-  | 'cardio';
+  | 'cardio'
+  | 'alongamento'
+  | 'mobilidade';
 
 export type EquipmentId =
   | 'barra'

@@ -129,6 +129,20 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M4.5 12.5h4l1.6-2.6 2.6 5 1.6-2.4h5" />
     </>
   ),
+  // Pessoa alongando: braço estendido para cima e tronco inclinado para o lado.
+  stretch: (
+    <>
+      <circle cx="10" cy="4.5" r="2" />
+      <path d="M9.5 8.5 11 14l-3 7M11 14l4 2.5 1 4.5M10 9l6-4.5 2-2" />
+    </>
+  ),
+  // Setas girando: amplitude e rotação das articulações.
+  mobility: (
+    <>
+      <path d="M19.5 12a7.5 7.5 0 0 1-12.8 5.3M4.5 12a7.5 7.5 0 0 1 12.8-5.3" />
+      <path d="M17.3 3v3.7h-3.7M6.7 21v-3.7h3.7" />
+    </>
+  ),
   info: (
     <>
       <circle cx="12" cy="12" r="9" />

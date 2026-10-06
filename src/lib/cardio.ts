@@ -8,6 +8,8 @@ const TIME_ONLY = new Set(['pular-corda', 'polichinelo', 'escalador', 'prancha',
 export function defaultLogType(exerciseId: string, primary: MuscleId): LogType {
   if (TIME_ONLY.has(exerciseId)) return 'tempo';
   if (primary === 'cardio') return 'tempo_km';
+  // Alongamento e mobilidade: tempo segurando a posição (ex.: 30 s).
+  if (primary === 'alongamento' || primary === 'mobilidade') return 'tempo';
   return 'carga';
 }
 

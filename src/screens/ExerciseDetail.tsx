@@ -12,7 +12,7 @@ import { cardioTotals, distText, formatDuration, isCardio, logTypeName } from '.
 import { equipmentName, loadText, setLabels, UNITS } from '../lib/equipment';
 import { useExercises, type ExerciseView } from '../lib/exercises';
 import { dayMonth, longDate, num, timeHM } from '../lib/format';
-import { muscleName } from '../lib/muscles';
+import { isGroup, muscleName } from '../lib/muscles';
 import { savePref } from '../lib/repo';
 import { exerciseHistory, type HistoryPoint } from '../lib/stats';
 import type { DoneSet, LoadUnit } from '../lib/types';
@@ -212,11 +212,21 @@ export function ExerciseDetail() {
             <span className="label">Músculos</span>
             <div className="card row" style={{ gap: 14 }}>
               <span className="figure-wrap" style={{ width: 72, height: 72, minWidth: 72 }}>
-                <MuscleFigure muscle={ex.primary} size={72} />
+                {/* Cardio, alongamento e mobilidade não são um músculo: o desenho mostra o primeiro que trabalha. */}
+                <MuscleFigure muscle={isGroup(ex.primary) && ex.secondary[0] ? ex.secondary[0] : ex.primary} size={72} />
               </span>
               <span className="col" style={{ gap: 3 }}>
-                <span style={{ fontWeight: 600 }}>Principal: {muscleName(ex.primary)}</span>
-                {ex.secondary.length > 0 && <span className="small muted">Também trabalha: {ex.secondary.map(muscleName).join(', ')}</span>}
+                {isGroup(ex.primary) ? (
+                  <>
+                    <span style={{ fontWeight: 600 }}>{muscleName(ex.primary)}</span>
+                    {ex.secondary.length > 0 && <span className="small muted">Trabalha: {ex.secondary.map(muscleName).join(', ')}</span>}
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontWeight: 600 }}>Principal: {muscleName(ex.primary)}</span>
+                    {ex.secondary.length > 0 && <span className="small muted">Também trabalha: {ex.secondary.map(muscleName).join(', ')}</span>}
+                  </>
+                )}
                 <span className="small muted">Equipamento: {equipmentName(ex.equipment)}</span>
               </span>
             </div>

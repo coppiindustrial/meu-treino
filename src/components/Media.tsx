@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { ExerciseView } from '../lib/exercises';
 import { thumbOf } from '../lib/exercises';
 import { youtubeId } from '../lib/images';
@@ -86,31 +86,97 @@ export function ExerciseMedia({ exercise, height = 200 }: { exercise: ExerciseVi
   const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState<Record<string, boolean>>({});
   const [videoOpen, setVideoOpen] = useState(false);
+  const [drag, setDrag] = useState(0);
   const visible = frames.filter((f) => !failed[f]);
-  const current = visible[index % Math.max(visible.length, 1)];
+  const n = visible.length;
+  const at = n > 0 ? index % n : 0;
   const video = exercise.videoUrl;
   const ytId = youtubeId(video);
 
+  // Em ciclo: da última vai para a primeira e, voltando, da primeira para a última.
+  const prev = () => setIndex((i) => (((i % n) - 1 + n) % n));
+  const next = () => setIndex((i) => (i % n) + 1);
+
+  // Deslizar com o dedo troca de imagem; um toque no terço esquerdo volta e no resto avança.
+  const gesture = useRef<{ x: number; y: number; t: number; dir: 'x' | 'y' | null; id: number } | null>(null);
+  const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (n < 2) return;
+    gesture.current = { x: e.clientX, y: e.clientY, t: performance.now(), dir: null, id: e.pointerId };
+  };
+  const onMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const g = gesture.current;
+    if (!g || g.id !== e.pointerId) return;
+    const dx = e.clientX - g.x;
+    const dy = e.clientY - g.y;
+    if (!g.dir && Math.max(Math.abs(dx), Math.abs(dy)) > 8) {
+      g.dir = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      if (g.dir === 'x') e.currentTarget.setPointerCapture?.(e.pointerId);
+    }
+    if (g.dir === 'x') setDrag(dx);
+  };
+  const onUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const g = gesture.current;
+    gesture.current = null;
+    if (!g || g.id !== e.pointerId) return;
+    const dx = e.clientX - g.x;
+    setDrag(0);
+    if (g.dir === 'y') return;
+    if (g.dir === 'x') {
+      const fast = Math.abs(dx) > 20 && performance.now() - g.t < 250;
+      if (Math.abs(dx) > 40 || fast) (dx < 0 ? next : prev)();
+      return;
+    }
+    // Mede pela moldura: o trilho está deslocado para o lado da imagem atual.
+    const box = (e.currentTarget.parentElement ?? e.currentTarget).getBoundingClientRect();
+    if (e.clientX - box.left < box.width / 3) prev();
+    else next();
+  };
+  const onCancel = () => {
+    gesture.current = null;
+    setDrag(0);
+  };
+
   return (
     <>
-      {current ? (
+      {n > 0 ? (
+        <div className="stack" style={{ gap: 8 }}>
         <div className="media" style={{ height }}>
-          <button
-            type="button"
-            aria-label={visible.length > 1 ? 'Ver próxima imagem' : 'Imagem do exercício'}
-            onClick={() => setIndex((i) => i + 1)}
-            style={{ border: 0, padding: 0, background: 'none', width: '100%', height: '100%' }}
+          <div
+            className={`media-track ${drag ? 'dragging' : ''}`}
+            style={{ transform: `translateX(calc(${-at * 100}% + ${drag}px))` }}
+            onPointerDown={onDown}
+            onPointerMove={onMove}
+            onPointerUp={onUp}
+            onPointerCancel={onCancel}
           >
-            <img
-              src={current}
-              alt={`Execução: ${exercise.name}`}
-              onError={() => setFailed((f) => ({ ...f, [current]: true }))}
-            />
-          </button>
-          {visible.length > 1 && (
-            <span className="media-count">
-              {(index % visible.length) + 1} / {visible.length}
-            </span>
+            {visible.map((src, i) => (
+              <img
+                key={src}
+                src={src}
+                alt={`Execução: ${exercise.name}${n > 1 ? ` (imagem ${i + 1} de ${n})` : ''}`}
+                draggable={false}
+                aria-hidden={i !== at}
+                onError={() => setFailed((f) => ({ ...f, [src]: true }))}
+              />
+            ))}
+          </div>
+          {n > 1 && (
+            <>
+              <span className="media-hint" aria-hidden="true">
+                <span>
+                  <Icon name="back" size={18} />
+                </span>
+                <span>
+                  <Icon name="next" size={18} />
+                </span>
+              </span>
+              <button type="button" className="sr-only" onClick={prev}>
+                Imagem anterior
+              </button>
+              <button type="button" className="sr-only" onClick={next}>
+                Próxima imagem
+              </button>
+            </>
           )}
           {video && (
             <div className="media-actions">
@@ -120,6 +186,14 @@ export function ExerciseMedia({ exercise, height = 200 }: { exercise: ExerciseVi
               </button>
             </div>
           )}
+        </div>
+        {n > 1 && (
+          <div className="media-dots" aria-live="polite" aria-label={`Imagem ${at + 1} de ${n}`}>
+            {visible.map((src, i) => (
+              <span key={src} className={i === at ? 'on' : ''} />
+            ))}
+          </div>
+        )}
         </div>
       ) : (
         <div className="media empty" style={{ height: Math.min(height, 140) }}>
