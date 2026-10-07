@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { type NavDir, withTransition } from './lib/nav';
 import { DialogProvider } from './components/Dialogs';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -29,16 +29,64 @@ import { Progress } from './screens/Progress';
 import { Summary } from './screens/Summary';
 import { WorkoutDetail } from './screens/WorkoutDetail';
 
-// O app já volta ao topo a cada troca de tela; sem isto o Safari restaurava a rolagem antiga
-// no meio da animação de voltar.
+// O próprio app cuida da rolagem (topo nas telas novas, mesmo ponto ao voltar); sem isto o Safari
+// restaurava a rolagem antiga no meio da animação de voltar.
 if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
 
+/** Onde cada tela do histórico estava rolada (pela chave da entrada), para voltar no mesmo ponto. */
+const scrollPositions = new Map<string, number>();
+
+/** Volta a rolagem para `y`. A tela carrega os dados depois, então espera ela crescer (até ~1 s). */
+function restoreScroll(y: number): () => void {
+  let frame = 0;
+  const start = performance.now();
+  const tick = () => {
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    if (max >= y - 1 || performance.now() - start > 1000) {
+      window.scrollTo(0, Math.min(y, Math.max(0, max)));
+      return;
+    }
+    frame = requestAnimationFrame(tick);
+  };
+  tick();
+  return () => cancelAnimationFrame(frame);
+}
+
 function Shell() {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
+  const navType = useNavigationType();
   const navigate = useNavigate();
+
+  // Guarda a rolagem da tela atual enquanto ela rola.
+  const scrollKey = useRef(location.key);
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        scrollPositions.set(scrollKey.current, window.scrollY);
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  // Voltar (ex.: da tela do exercício para a lista) reabre no mesmo ponto; tela nova abre no topo.
+  // Trocas dentro da mesma tela (abas no endereço, editar) não mexem na rolagem.
+  const lastPath = useRef(pathname);
+  useLayoutEffect(() => {
+    const samePath = lastPath.current === pathname;
+    lastPath.current = pathname;
+    scrollKey.current = location.key;
+    const saved = scrollPositions.get(location.key);
+    if (navType === 'POP' && saved !== undefined) return restoreScroll(saved);
+    if (!samePath) window.scrollTo(0, 0);
+  }, [location.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Todos os links internos trocam de tela com animação (deslizar ou fade nas abas).
   useEffect(() => {

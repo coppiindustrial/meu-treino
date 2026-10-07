@@ -4,6 +4,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useNow } from '../lib/hooks';
 import { deleteSession, getActiveSession } from '../lib/repo';
 import { useDialogs } from './Dialogs';
+import { useCardio } from './CardioTimer';
 import { useRest } from './RestTimer';
 import { withTransition } from '../lib/nav';
 import { Icon, type IconName } from './Icon';
@@ -151,6 +152,7 @@ function SessionStrip() {
   const now = useNow(1000);
   const { confirm, toast } = useDialogs();
   const rest = useRest();
+  const cardio = useCardio();
   if (!session) return null;
   const elapsed = session.startedAt ? (now - session.startedAt) / 1000 : 0;
   const discard = async () => {
@@ -163,6 +165,7 @@ function SessionStrip() {
     if (!ok) return;
     await deleteSession(session.id);
     rest.stop();
+    cardio.cancel();
     toast('Treino descartado');
   };
   return (

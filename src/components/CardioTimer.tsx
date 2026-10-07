@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { formatDuration } from '../lib/cardio';
+import { db } from '../lib/db';
 import { cancelCardioPush, scheduleCardioPush } from '../lib/push';
 import { beep, unlockAudio } from '../lib/sound';
 import { Icon } from './Icon';
@@ -131,6 +133,20 @@ export function CardioTimerProvider({ children }: { children: ReactNode }) {
     },
     [cancel, persist],
   );
+
+  // Cronômetro "órfão": o exercício ou o treino dele não existe mais, ou o treino já foi concluído/descartado
+  // (por qualquer caminho: faixa do treino, Calendário, outro aparelho). Aí ele some sozinho.
+  const itemId = state?.itemId ?? null;
+  const alive = useLiveQuery(async () => {
+    if (!itemId) return null;
+    const item = await db.sessionItems.get(itemId);
+    if (!item || item.deleted) return false;
+    const session = await db.sessions.get(item.sessionId);
+    return !!session && !session.deleted && session.status === 'active';
+  }, [itemId]);
+  useEffect(() => {
+    if (alive === false) cancel();
+  }, [alive, cancel]);
 
   // Aviso da meta com o app aberto: apita e vibra uma vez. Com o app fechado, quem avisa é a notificação.
   useEffect(() => {

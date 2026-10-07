@@ -4527,7 +4527,6 @@ body:has(.rest-bar:not(.cardio-bar)) .cardio-bar {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 4px;
   font-size: 13px;
   font-weight: 700;
   color: var(--accent);
@@ -4866,5 +4865,20 @@ body:has(.rest-bar:not(.cardio-bar)) .cardio-bar {
 }
 
 .week-card-last:active {
+  opacity: 0.6;
+}
+
+/* Resumo: "Reabrir" ao lado de "Treino concluído" (concluído sem querer). */
+.sum-reopen {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sum-reopen:active {
   opacity: 0.6;
 }

@@ -21,6 +21,17 @@ document.addEventListener(
   { passive: false },
 );
 
+// Ao sair do app, nenhum campo fica ativo: o iPhone só oferece "Desfazer digitação" (ao sacudir) quando
+// há um campo com foco, inclusive o campo escondido que as roletas usam para o teclado.
+const releaseFocus = () => {
+  const el = document.activeElement;
+  if (el instanceof HTMLElement && el.matches('input, textarea, select, [contenteditable]')) el.blur();
+};
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') releaseFocus();
+});
+window.addEventListener('pagehide', releaseFocus);
+
 // Procura versão nova ao abrir, ao voltar para o app e a cada hora.
 registerSW({
   immediate: true,

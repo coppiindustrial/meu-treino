@@ -784,6 +784,14 @@ export async function finishSession(id: string): Promise<void> {
   await patch('sessions', id, { status: 'done', endedAt: Date.now() });
 }
 
+/** Volta um treino concluído para o andamento (concluído sem querer). Não reabre se já houver outro em andamento. */
+export async function reopenSession(id: string): Promise<boolean> {
+  const active = await getActiveSession();
+  if (active && active.id !== id) return false;
+  await patch('sessions', id, { status: 'active', endedAt: null });
+  return true;
+}
+
 export async function deleteSession(id: string): Promise<void> {
   for (const it of await sessionItemsOf(id)) await softDelete('sessionItems', it.id);
   await softDelete('sessions', id);

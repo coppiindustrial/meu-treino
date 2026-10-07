@@ -83,7 +83,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{ confirm, prompt, toast }}>
       {children}
       <Sheet open={!!confirmState} onClose={() => closeConfirm(false)} title={confirmState?.title} hideClose>
-        {confirmState?.message && <p className="muted" style={{ lineHeight: 1.5 }}>{confirmState.message}</p>}
+        {confirmState?.message && <p className="muted" style={{ lineHeight: 1.5, whiteSpace: 'pre-line' }}>{confirmState.message}</p>}
         <div className="stack">
           <button
             type="button"

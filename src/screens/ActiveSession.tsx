@@ -127,18 +127,27 @@ export function ActiveSession() {
   };
 
   const finish = async () => {
+    // Pergunta sempre (um toque sem querer não conclui), mostrando o que foi feito.
     const empty = items.filter((i) => !i.sets.some((s) => s.done) && !i.done).length;
-    if (items.length === 0 || empty > 0) {
-      const ok = await confirm({
-        title: 'Finalizar o treino?',
-        message:
-          items.length === 0 || empty === items.length
-            ? 'Nenhuma série foi marcada.'
-            : `${empty} ${empty === 1 ? 'exercício ficou' : 'exercícios ficaram'} sem nenhuma série marcada.`,
-        confirmLabel: 'Finalizar treino',
-      });
-      if (!ok) return;
-    }
+    const planItems = items.filter((i) => !i.extra).length;
+    const parts = [
+      elapsedText(elapsed),
+      `${stats.setsDone} ${stats.setsDone === 1 ? 'série' : 'séries'}`,
+      `${stats.planExercises} de ${planItems} ${planItems === 1 ? 'exercício' : 'exercícios'}`,
+    ];
+    const warning =
+      items.length === 0 || empty === items.length
+        ? 'Nenhuma série foi marcada.'
+        : empty > 0
+          ? `${empty} ${empty === 1 ? 'exercício ficou' : 'exercícios ficaram'} sem nenhuma série marcada.`
+          : '';
+    const ok = await confirm({
+      title: 'Concluir o treino?',
+      message: [parts.join(' · '), warning].filter(Boolean).join('\n'),
+      confirmLabel: 'Concluir treino',
+      cancelLabel: 'Continuar treinando',
+    });
+    if (!ok) return;
     await finishSession(session.id);
     rest.stop();
     cardioTimer.cancel();

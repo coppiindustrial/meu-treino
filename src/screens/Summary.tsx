@@ -1,9 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigationType, useParams } from 'react-router-dom';
 import { useSlideNavigate } from '../lib/nav';
 import { Duration } from '../components/Duration';
 import { Icon } from '../components/Icon';
+import { useDialogs } from '../components/Dialogs';
 import { BackButton, EmptyState, LoadingScreen, TopBar } from '../components/Layout';
 import { ExerciseThumb } from '../components/Media';
 import { MuscleBadge } from '../components/MuscleBadge';
@@ -12,7 +13,7 @@ import { db } from '../lib/db';
 import { loadText, setLabels } from '../lib/equipment';
 import { exerciseOrMissing, useExercises, type ExerciseView } from '../lib/exercises';
 import { longDate, num, plural, sessionMinutes, timeHM } from '../lib/format';
-import { sessionItemsOf, updateSession } from '../lib/repo';
+import { reopenSession, sessionItemsOf, updateSession } from '../lib/repo';
 import { cardioSetText, cardioTotals, distText, formatDuration, isCardio } from '../lib/cardio';
 import { bestSet, sessionRecords, summarize, type RecordHit } from '../lib/stats';
 import type { Session, SessionItem } from '../lib/types';
@@ -31,6 +32,7 @@ function readView(): View {
 export function Summary() {
   const { sessionId = '' } = useParams();
   const go = useSlideNavigate();
+  const { confirm, toast } = useDialogs();
   const { map } = useExercises();
   const [view, setView] = useState<View>(readView);
 
@@ -48,14 +50,16 @@ export function Summary() {
   }, [data?.session?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A tela abre no topo quando o conteúdo chega. A volta ao topo da troca de tela acontece ainda no
-  // "carregando", e a rolagem/foco que sobrava levava a tela até a anotação.
+  // "carregando", e a rolagem/foco que sobrava levava a tela até a anotação. Ao voltar para cá (POP),
+  // fica onde estava (quem cuida disso é o Shell, em App.tsx).
+  const navType = useNavigationType();
   const loaded = !!data;
   useLayoutEffect(() => {
     if (!loaded) return;
     const active = document.activeElement;
     if (active instanceof HTMLElement && active !== document.body) active.blur();
-    window.scrollTo(0, 0);
-  }, [loaded]);
+    if (navType !== 'POP') window.scrollTo(0, 0);
+  }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!data) return <LoadingScreen back="/historico" />;
   const { session, items = [], records = [] } = data;
@@ -94,26 +98,54 @@ export function Summary() {
     facts.push({ label: 'Cardio', value: [stats.cardioSecs > 0 ? formatDuration(stats.cardioSecs) : '', stats.km > 0 ? `${num(stats.km, 2)} km` : ''].filter(Boolean).join(' · ') });
   }
 
+  // Concluído sem querer: volta o treino para o andamento (só logo depois de concluir).
+  const reopen = async () => {
+    const ok = await confirm({
+      title: 'Reabrir o treino?',
+      message: 'Ele volta para o andamento. O tempo continua contando desde o início.',
+      confirmLabel: 'Reabrir treino',
+      cancelLabel: 'Cancelar',
+    });
+    if (!ok) return;
+    if (!(await reopenSession(session.id))) {
+      toast('Já tem um treino em andamento. Conclua ou descarte ele antes.');
+      return;
+    }
+    go('/sessao', { dir: 'back', replace: true });
+  };
+
   return (
     <main className="screen no-tabs">
-      {!justFinished && (
-        <TopBar
-          left={<BackButton to="/historico" />}
-          right={
-            <Link to={`/dia/${session.id}`} className="glass pill">
-              Editar
-            </Link>
-          }
-        />
-      )}
+      <TopBar
+        left={
+          justFinished ? (
+            <button type="button" className="glass circle" aria-label="Fechar" onClick={() => go('/', { dir: 'back', replace: true })}>
+              <Icon name="x" size={20} />
+            </button>
+          ) : (
+            <BackButton to="/historico" />
+          )
+        }
+        right={
+          <Link to={`/dia/${session.id}`} className="glass pill">
+            Editar
+          </Link>
+        }
+      />
 
-      <div className="col" style={{ gap: 2, marginTop: justFinished ? 16 : 0 }}>
+      <div className="col" style={{ gap: 2 }}>
         {justFinished && (
-          <span className="sum-done">
-            <span className="sum-done-icon">
-              <Icon name="check" size={13} stroke={3} />
+          <span className="row" style={{ gap: 6, alignItems: 'center', marginBottom: 4 }}>
+            <span className="sum-done">
+              <span className="sum-done-icon">
+                <Icon name="check" size={13} stroke={3} />
+              </span>
+              Treino concluído
             </span>
-            Treino concluído
+            <span className="small muted">·</span>
+            <button type="button" className="sum-reopen" onClick={reopen}>
+              Reabrir
+            </button>
           </span>
         )}
         <h1 className="display" style={{ fontSize: 26 }}>
@@ -185,16 +217,6 @@ export function Summary() {
         />
       </label>
 
-      {justFinished && (
-        <div className="stack">
-          <button type="button" className="btn big primary block" onClick={() => go('/', { dir: 'back', replace: true })}>
-            Concluir
-          </button>
-          <Link to={`/dia/${session.id}`} className="btn block">
-            <Icon name="pencil" size={18} /> Ajustar data ou horário
-          </Link>
-        </div>
-      )}
     </main>
   );
 }
