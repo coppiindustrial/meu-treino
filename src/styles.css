@@ -4882,3 +4882,289 @@ body:has(.rest-bar:not(.cardio-bar)) .cardio-bar {
 .sum-reopen:active {
   opacity: 0.6;
 }
+
+/* Calendário: números do mês em texto e uma linha fina embaixo de cada semana. */
+.cal-stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 0.5px solid var(--border);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-stats .muted {
+  font-weight: 500;
+}
+
+.cal-week {
+  padding-bottom: 4px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.cal-week:last-child {
+  border-bottom: 0;
+}
+
+/* Adicionar/editar treino à mão: campos em linhas dentro de um cartão. */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.form-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-bottom: 0.5px solid var(--border-2);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+}
+
+.form-group > :last-child {
+  border-bottom: 0;
+}
+
+button.form-row:active,
+label.form-row:has(.form-overlay):active {
+  opacity: 0.6;
+}
+
+.form-key {
+  flex: 0 0 auto;
+  color: var(--text-2);
+}
+
+.form-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
+  font-weight: 600;
+}
+
+.form-row .caret {
+  display: inline-flex;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.form-row.open .caret {
+  transform: rotate(180deg);
+}
+
+/* Campo de data invisível por cima da linha: o toque abre o calendário do sistema. */
+.form-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.form-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: right;
+  outline: none;
+}
+
+.form-time {
+  flex: 0 1 96px;
+  width: 96px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.form-row:has(.form-time) .form-key {
+  margin-right: auto;
+}
+
+.form-dur {
+  flex: 0 0 auto;
+}
+
+.form-section {
+  padding: 0 4px;
+}
+
+/* Exercícios feitos: foto, nome, séries e o check redondo. */
+.done-ex {
+  border-bottom: 0.5px solid var(--border-2);
+}
+
+.form-group > .done-ex:last-child {
+  border-bottom: 0;
+}
+
+.done-ex-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+}
+
+.done-ex-thumb .thumb {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 11px;
+}
+
+.done-ex-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+}
+
+.done-ex-toggle:active {
+  opacity: 0.6;
+}
+
+.done-check {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--border-2);
+  background: transparent;
+  color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.3s var(--spring),
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.done-check.on {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+
+.done-check:active {
+  transform: scale(0.88);
+  transition-duration: 0.08s;
+}
+
+/* Séries anotadas: nº, carga e reps. */
+.done-sets {
+  display: grid;
+  grid-template-columns: 28px 1fr 1fr;
+  gap: 6px 8px;
+  padding: 0 0 12px 56px;
+  align-items: center;
+}
+
+.done-sets-line {
+  display: contents;
+}
+
+.done-sets-head {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+}
+
+.done-sets-line > .muted {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.done-sets-input {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: var(--raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.done-sets-input:focus {
+  border-color: var(--accent);
+}
+
+.done-sets-add {
+  grid-column: 2 / 4;
+  justify-self: start;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+/* Letra do treino no menu "Qual treino você fez?". */
+.letter-tile {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+/* "Apagar este treino": texto vermelho, sem caixa. */
+.text-danger-btn {
+  align-self: center;
+  padding: 10px 16px;
+  border: 0;
+  background: none;
+  color: var(--danger);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.text-danger-btn:active {
+  opacity: 0.6;
+}

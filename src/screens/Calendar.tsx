@@ -1,7 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Duration } from '../components/Duration';
 import { Icon } from '../components/Icon';
 import { duration, monthName, num, pad2, relativeDay, sessionMinutes, timeHM, todayISO } from '../lib/format';
 import { doneSessions } from '../lib/stats';
@@ -56,6 +55,9 @@ export function Calendar() {
   const cells: (string | null)[] = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(`${prefix}-${pad2(d)}`);
+  while (cells.length % 7) cells.push(null);
+  const weeks: (string | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
   const shift = (delta: number) => {
     setMonth((cur) => {
@@ -87,25 +89,17 @@ export function Calendar() {
         </button>
       </div>
 
-      <div className="grid-3">
-        <div className="tile">
-          <span className="tiny muted">Treinos</span>
-          <span className="tile-value" style={{ fontSize: 20 }}>
-            {monthSessions.length}
-          </span>
-        </div>
-        <div className="tile">
-          <span className="tiny muted">Tempo total</span>
-          <span className="tile-value" style={{ fontSize: 20 }}>
-            {totalMinutes > 0 ? <Duration minutes={totalMinutes} /> : '—'}
-          </span>
-        </div>
-        <div className="tile">
-          <span className="tiny muted">Por semana</span>
-          <span className="tile-value" style={{ fontSize: 20 }}>
-            {num(perWeek)}
-          </span>
-        </div>
+      {/* Números do mês em texto, numa linha (como no resumo do treino). */}
+      <div className="cal-stats">
+        <span>
+          <span className="muted">Treinos</span> {monthSessions.length}
+        </span>
+        <span>
+          <span className="muted">Tempo</span> {totalMinutes > 0 ? duration(totalMinutes) : '—'}
+        </span>
+        <span>
+          <span className="muted">Por semana</span> {num(perWeek)}
+        </span>
       </div>
 
       <div className="stack" style={{ gap: 6 }}>
@@ -116,8 +110,11 @@ export function Calendar() {
             </span>
           ))}
         </div>
-        <div className="cal-grid">
-          {cells.map((iso, i) => {
+        {/* Uma grade por semana, com uma linha fina embaixo de cada uma. */}
+        {weeks.map((week, w) => (
+        <div key={w} className="cal-grid cal-week">
+          {week.map((iso, j) => {
+            const i = w * 7 + j;
             if (!iso) return <span key={`b${i}`} />;
             const list = byDate.get(iso) ?? [];
             const timed = list.some((s) => !s.manual);
@@ -144,6 +141,7 @@ export function Calendar() {
             );
           })}
         </div>
+        ))}
       </div>
 
       <div className="row" style={{ gap: 18 }}>

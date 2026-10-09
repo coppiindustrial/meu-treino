@@ -802,6 +802,35 @@ export async function updateSession(id: string, changes: Partial<Session>): Prom
 }
 
 /** Cria um treino registrado à mão (sem cronômetro). */
+/** Uma série anotada à mão (carga e/ou repetições). */
+export interface ManualSet {
+  load: number | null;
+  reps: number | null;
+}
+
+/**
+ * Séries de um exercício registrado à mão: as planejadas, com as anotadas preenchidas e marcadas como
+ * feitas (séries a mais anotadas entram no fim). Série sem nada anotado fica como não feita.
+ */
+export function manualSets(planned: PlannedSet[], typed: ManualSet[] | undefined): DoneSet[] {
+  const count = Math.max(planned.length, typed?.length ?? 0);
+  const out: DoneSet[] = [];
+  for (let i = 0; i < count; i++) {
+    const p = planned[i];
+    const t = typed?.[i];
+    const filled = !!t && (t.load !== null || t.reps !== null);
+    out.push({
+      type: p?.type ?? 'N',
+      load: filled ? t!.load : p?.load ?? null,
+      reps: filled ? t!.reps : null,
+      done: filled,
+      target: p?.reps,
+      ...(p ? {} : { extra: true }),
+    });
+  }
+  return out;
+}
+
 export async function createManualSession(input: {
   date: string;
   workoutId: string | null;
@@ -810,6 +839,8 @@ export async function createManualSession(input: {
   endedAt: number | null;
   note: string;
   doneExerciseIds: string[];
+  /** Cargas e repetições anotadas por exercício (opcional). Só as séries preenchidas contam como feitas. */
+  setsByExercise?: Record<string, ManualSet[]>;
 }): Promise<string> {
   const id = newId();
   let programId: string | null = null;
@@ -828,7 +859,7 @@ export async function createManualSession(input: {
         supersetNext: wi.supersetNext,
         unit,
         done: input.doneExerciseIds.includes(wi.exerciseId),
-        sets: wi.sets.map((p) => ({ type: p.type, load: p.load, reps: null, done: false, target: p.reps })),
+        sets: manualSets(wi.sets, input.setsByExercise?.[wi.exerciseId]),
         note: '',
         updatedAt: Date.now(),
       });
