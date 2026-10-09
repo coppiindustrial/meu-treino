@@ -4883,31 +4883,6 @@ body:has(.rest-bar:not(.cardio-bar)) .cardio-bar {
   opacity: 0.6;
 }
 
-/* Calendário: números do mês em texto e uma linha fina embaixo de cada semana. */
-.cal-stats {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 10px;
-  border-bottom: 0.5px solid var(--border);
-  font-size: 14px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.cal-stats .muted {
-  font-weight: 500;
-}
-
-.cal-week {
-  padding-bottom: 4px;
-  border-bottom: 0.5px solid var(--border);
-}
-
-.cal-week:last-child {
-  border-bottom: 0;
-}
-
 /* Adicionar/editar treino à mão: campos em linhas dentro de um cartão. */
 .form-group {
   display: flex;
@@ -4991,18 +4966,55 @@ label.form-row:has(.form-overlay):active {
 }
 
 .form-time {
-  flex: 0 1 96px;
-  width: 96px;
-  min-width: 0;
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
   height: 32px;
-  padding: 0 8px;
-  border: 0;
+  padding: 0 10px;
   border-radius: 8px;
   background: var(--raised);
   color: var(--text);
-  font: inherit;
   font-size: 15px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.form-time.empty {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.form-time:active {
+  opacity: 0.6;
+}
+
+/* Menu "Qual treino você fez?": rotina com chevron e os treinos dela embaixo. */
+.picker-program {
+  border-bottom: 0.5px solid var(--border-2);
+}
+
+.picker-program > .chooser-row {
+  border-bottom: 0;
+}
+
+.picker-head .caret {
+  display: inline-flex;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.picker-head.open .caret {
+  transform: rotate(180deg);
+}
+
+.picker-workouts {
+  padding: 0 0 4px 12px;
+}
+
+.picker-workouts > .chooser-row:last-child {
+  border-bottom: 0;
 }
 
 .form-row:has(.form-time) .form-key {
@@ -5167,4 +5179,286 @@ label.form-row:has(.form-overlay):active {
 
 .text-danger-btn:active {
   opacity: 0.6;
+}
+
+/* Treinos › Outras rotinas: um cartão só, linhas finas e chevron para abrir os treinos. */
+.lp-sort.other-list {
+  gap: 0;
+  background: var(--card);
+  border-radius: 16px;
+}
+
+.other-prog {
+  position: relative;
+  padding: 0 14px;
+}
+
+.other-list > .lp-item:not(:first-child) > .other-prog::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 0;
+  border-top: 0.5px solid var(--border-2);
+}
+
+.other-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.other-head:active {
+  opacity: 0.6;
+}
+
+.other-head .caret {
+  display: inline-flex;
+  padding: 6px;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.other-head.open .caret {
+  transform: rotate(180deg);
+}
+
+.other-body {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 6px 10px;
+}
+
+.other-workout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 6px 0;
+  border-top: 0.5px solid var(--border-2);
+  color: var(--text);
+}
+
+.other-workout:active {
+  opacity: 0.6;
+}
+
+.other-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 50px;
+  border-top: 0.5px solid var(--border-2);
+}
+
+.letter-tile.sm {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  font-size: 14px;
+}
+
+/* Histórico por mês: título do mês preso no topo e os treinos em linhas finas num cartão só. */
+.hist-month {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hist-month-head {
+  position: sticky;
+  top: calc(var(--safe-top) + 66px);
+  z-index: 5;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 -20px;
+  padding: 8px 24px 6px;
+  background: rgba(0, 0, 0, 0.85);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.hist-group {
+  display: flex;
+  flex-direction: column;
+  padding: 0 14px 0 10px;
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.hist-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--border-2);
+  color: var(--text);
+}
+
+.hist-row:last-child {
+  border-bottom: 0;
+}
+
+.hist-row:active {
+  opacity: 0.6;
+}
+
+/* ------------------------------------------------------------ Calendário estilo Hevy: meses seguidos */
+
+/* Sequência de semanas na meta | dias de descanso. */
+.cal-streak {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-radius: 14px;
+  background: var(--card);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cal-streak > span {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.cal-streak > span + span {
+  border-left: 0.5px solid var(--border-2);
+}
+
+/* D S T Q Q S S preso embaixo do cabeçalho enquanto os meses rolam. */
+.cal-dows {
+  position: sticky;
+  top: calc(var(--safe-top) + 58px);
+  z-index: 6;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin: 0 -20px -12px;
+  padding: 6px 20px;
+  border-bottom: 0.5px solid var(--border);
+  background: rgba(0, 0, 0, 0.85);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+html.vt-running .cal-dows,
+html.vt-running .hist-month-head {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: rgba(0, 0, 0, 0.94);
+}
+
+.cal-months {
+  display: flex;
+  flex-direction: column;
+}
+
+.cal-month {
+  scroll-margin-top: calc(var(--safe-top) + 88px);
+}
+
+.cal-month-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 18px 2px 10px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.cal-hgrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+/* Cada dia tem uma linha fina em cima: as semanas se separam e a linha quebra na virada do mês. */
+.cal-hday {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  height: 58px;
+  padding: 7px 1px 0;
+  border: 0;
+  border-top: 0.5px solid var(--border-2);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cal-hnum {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.25s var(--spring);
+}
+
+.cal-hday:active .cal-hnum {
+  transform: scale(0.88);
+  transition-duration: 0.08s;
+}
+
+.cal-hday.trained .cal-hnum {
+  background: var(--accent);
+  color: #fff;
+}
+
+.cal-hday.manual .cal-hnum {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.cal-hday.today:not(.trained) .cal-hnum {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.cal-hday.selected .cal-hnum {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.cal-hday.future {
+  color: var(--muted);
+  opacity: 0.55;
+}
+
+.cal-hlabel {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 9.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text-2);
 }

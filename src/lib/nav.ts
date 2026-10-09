@@ -165,3 +165,6 @@ function blurless(): () => void {
     if (blurlessCount === 0) setTimeout(() => blurlessCount === 0 && root.classList.remove('vt-running'), 30);
   };
 }
+
+/** Onde cada tela do histórico estava rolada (pela chave da entrada), para voltar no mesmo ponto. */
+export const scrollPositions = new Map<string, number>();

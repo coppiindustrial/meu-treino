@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
-import { type NavDir, withTransition } from './lib/nav';
+import { type NavDir, scrollPositions, withTransition } from './lib/nav';
 import { DialogProvider } from './components/Dialogs';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { isTabRoute, TabBar } from './components/Layout';
@@ -33,8 +33,6 @@ import { WorkoutDetail } from './screens/WorkoutDetail';
 // restaurava a rolagem antiga no meio da animação de voltar.
 if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
 
-/** Onde cada tela do histórico estava rolada (pela chave da entrada), para voltar no mesmo ponto. */
-const scrollPositions = new Map<string, number>();
 
 /** Volta a rolagem para `y`. A tela carrega os dados depois, então espera ela crescer (até ~1 s). */
 function restoreScroll(y: number): () => void {

@@ -17,6 +17,15 @@ export function Programs() {
   const go = useSlideNavigate();
   const { prompt, confirm, toast } = useDialogs();
   const [newOpen, setNewOpen] = useState(false);
+  // Outras rotinas abertas no chevron.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (id: string) =>
+    setExpanded((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const data = useLiveQuery(async () => {
     const programs = (await db.programs.filter((p) => !p.deleted).toArray()).sort((a, b) => b.createdAt - a.createdAt);
@@ -141,23 +150,61 @@ export function Programs() {
           <div className="section-head">
             <h2 className="h2">Outras rotinas</h2>
           </div>
-          <LongPressSort ids={others.map((p) => p.id)} onReorder={(ids) => void reorderPrograms(ids)}>
+          {/* Todas num cartão só, com linhas finas; o chevron abre os treinos da rotina e o "Ativar". */}
+          <LongPressSort ids={others.map((p) => p.id)} onReorder={(ids) => void reorderPrograms(ids)} className="other-list">
             {(id) => {
               const p = others.find((x) => x.id === id)!;
               const ws = workoutsOf(p.id);
+              const open = expanded.has(p.id);
               const status =
                 p.status === 'ready'
                   ? `Pronta para usar · ${ws.length} ${ws.length === 1 ? 'treino' : 'treinos'}`
                   : `Encerrada${p.endedAt ? ` em ${fullDate(toISODate(new Date(p.endedAt)))}` : ''} · ${sessionCount(p.id)} no histórico`;
               return (
-                <div className="list-row" style={{ padding: 6 }}>
-                  <Link to={`/ficha/${p.id}`} className="tap-head col grow" draggable={false} aria-label={`Abrir a rotina ${p.name}`}>
-                    <span style={{ fontWeight: 700 }}>{p.name}</span>
-                    <span className="tiny muted">{status}</span>
-                  </Link>
-                  <button type="button" className="btn small outline-accent" onClick={() => activate(p)}>
-                    Ativar
+                <div className="other-prog">
+                  <button type="button" className={`other-head ${open ? 'open' : ''}`} aria-expanded={open} onClick={() => toggle(p.id)}>
+                    <span className="col grow" style={{ minWidth: 0 }}>
+                      <span className="ellipsis" style={{ fontWeight: 700 }}>
+                        {p.name}
+                      </span>
+                      <span className="tiny muted">{status}</span>
+                    </span>
+                    <span className="caret">
+                      <Icon name="caret" size={13} stroke={2.5} color={open ? 'var(--accent)' : 'var(--muted)'} />
+                    </span>
                   </button>
+                  {open && (
+                    <div className="other-body">
+                      {ws.map((w) => {
+                        const last = lastDone(w.id);
+                        const count = itemCount(w.id);
+                        return (
+                          <Link key={w.id} to={`/treino/${w.id}`} className="other-workout" draggable={false}>
+                            <span className="letter-tile sm">{w.letter}</span>
+                            <span className="col grow" style={{ minWidth: 0 }}>
+                              <span className="ellipsis" style={{ fontWeight: 600 }}>
+                                {w.name}
+                              </span>
+                              <span className="tiny muted">
+                                {count} {count === 1 ? 'exercício' : 'exercícios'}
+                                {last ? ` · feito em ${dayMonth(last.date)}` : ''}
+                              </span>
+                            </span>
+                            <Icon name="next" size={18} color="var(--muted)" />
+                          </Link>
+                        );
+                      })}
+                      {ws.length === 0 && <span className="small muted other-workout">Nenhum treino nesta rotina.</span>}
+                      <div className="other-foot">
+                        <Link to={`/ficha/${p.id}`} className="sum-reopen" draggable={false} style={{ fontSize: 15 }}>
+                          Abrir rotina
+                        </Link>
+                        <button type="button" className="btn small outline-accent" onClick={() => activate(p)}>
+                          Ativar
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             }}

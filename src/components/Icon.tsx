@@ -131,6 +131,9 @@ const PATHS: Record<string, ReactNode> = {
   ),
   // Triângulo cheio de cantos arredondados (abre um menu; gira 180° quando ele está aberto).
   caret: <path d="M5 8.5h14L12 16.5z" fill="currentColor" />,
+  // Calendário: sequência de semanas (chama) e dias de descanso (lua).
+  flame: <path d="M12 22c-3.9 0-7-2.9-7-6.8 0-2.9 1.7-5 3.3-6.8.5 1.6 1.4 2.6 2.4 3.1C10.4 8 11.6 4.8 14.6 2c.2 3.5 1.6 5.5 3 7.4 1 1.4 1.4 3 1.4 4.6 0 4.6-3 8-7 8z" fill="currentColor" stroke="none" />,
+  moon: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="currentColor" stroke="none" />,
   // Alongamento: Tabler Icons "stretching" (licença MIT, @tabler/icons 3.49.0).
   stretch: (
     <>

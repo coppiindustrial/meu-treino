@@ -76,8 +76,10 @@ export function DayEdit() {
   const isNew = !sessionId;
 
   const data = useLiveQuery(async () => {
-    const programs = (await db.programs.filter((p) => !p.deleted).toArray()).sort((a, b) =>
-      a.status === 'active' ? -1 : b.status === 'active' ? 1 : b.createdAt - a.createdAt,
+    // Ativa, depois as prontas para usar, depois as encerradas (mais novas primeiro).
+    const rank = (s: string) => (s === 'active' ? 0 : s === 'ready' ? 1 : 2);
+    const programs = (await db.programs.filter((p) => !p.deleted).toArray()).sort(
+      (a, b) => rank(a.status) - rank(b.status) || b.createdAt - a.createdAt,
     );
     const workouts = await db.workouts.filter((w) => !w.deleted).toArray();
     const session = sessionId ? await db.sessions.get(sessionId) : undefined;
@@ -101,6 +103,7 @@ export function DayEdit() {
   const [drafts, setDrafts] = useState<Record<string, SetDraft[]>>({});
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [openPrograms, setOpenPrograms] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
 
   // Preenche o formulário ao editar um dia existente.
@@ -262,6 +265,12 @@ export function DayEdit() {
     go('/calendario', { dir: 'back', replace: true });
   };
 
+  const openPicker = () => {
+    const current = data.workouts.find((w) => w.id === workoutId)?.programId ?? data.programs.find((p) => p.status === 'active')?.id;
+    setOpenPrograms(new Set(current ? [current] : []));
+    setPickerOpen(true);
+  };
+
   const unitHead = (u: LoadUnit) => (u === 'placa' ? 'Placa' : u);
 
   return (
@@ -290,7 +299,7 @@ export function DayEdit() {
           <input className="form-overlay" type="date" value={date} max={todayISO()} aria-label="Data" onChange={(e) => e.target.value && setDate(e.target.value)} />
         </label>
         {isNew ? (
-          <button type="button" className={`form-row chooser-title-row ${pickerOpen ? 'open' : ''}`} aria-expanded={pickerOpen} onClick={() => setPickerOpen(true)}>
+          <button type="button" className={`form-row chooser-title-row ${pickerOpen ? 'open' : ''}`} aria-expanded={pickerOpen} onClick={openPicker}>
             <span className="form-key">Treino</span>
             <span className="form-value ellipsis">{workoutId === OTHER ? 'Outra atividade' : derivedTitle || 'Escolher'}</span>
             <span className="caret">
@@ -311,9 +320,16 @@ export function DayEdit() {
         )}
         <div className="form-row">
           <span className="form-key">Horário</span>
-          <input className="form-time" type="time" value={start} aria-label="Início" onChange={(e) => setStart(e.target.value)} />
+          {/* "Início"/"Fim" em cinza quando vazio (o iPhone deixa o campo de hora em branco); o relógio do sistema abre por cima. */}
+          <label className={`form-time ${start ? '' : 'empty'}`}>
+            {start || 'Início'}
+            <input className="form-overlay" type="time" value={start} aria-label="Início" onChange={(e) => setStart(e.target.value)} />
+          </label>
           <span className="muted">–</span>
-          <input className="form-time" type="time" value={end} aria-label="Fim" onChange={(e) => setEnd(e.target.value)} />
+          <label className={`form-time ${end ? '' : 'empty'}`}>
+            {end || 'Fim'}
+            <input className="form-overlay" type="time" value={end} aria-label="Fim" onChange={(e) => setEnd(e.target.value)} />
+          </label>
           {minutes !== null && <span className="small muted form-dur">{duration(minutes)}</span>}
         </div>
       </div>
@@ -419,13 +435,43 @@ export function DayEdit() {
 
       <Sheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="Qual treino você fez?">
         <div className="chooser-list">
-          {workoutGroups.map(({ program, workouts }) => (
-            <div key={program.id}>
-              <span className="chooser-label">
-                {program.name}
-                {program.status === 'active' ? ' · ativa' : ''}
-              </span>
-              <div className="chooser-group">
+          {/* Uma linha por rotina: a do treino escolhido (ou a ativa) vem aberta, as outras abrem no chevron. */}
+          <div className="chooser-group">
+          {workoutGroups.map(({ program, workouts }) => {
+            const open = openPrograms.has(program.id);
+            return (
+            <div key={program.id} className="picker-program">
+              <button
+                type="button"
+                className={`chooser-row picker-head ${open ? 'open' : ''}`}
+                aria-expanded={open}
+                onClick={() =>
+                  setOpenPrograms((cur) => {
+                    const next = new Set(cur);
+                    if (open) next.delete(program.id);
+                    else next.add(program.id);
+                    return next;
+                  })
+                }
+              >
+                <span className="col grow" style={{ gap: 1, minWidth: 0 }}>
+                  <span className="row" style={{ gap: 6 }}>
+                    <span className="ellipsis" style={{ fontWeight: 600, fontSize: 16 }}>
+                      {program.name}
+                    </span>
+                    {program.status === 'active' && <span className="chip soft-accent">ativa</span>}
+                  </span>
+                  <span className="tiny muted" style={{ fontWeight: 500 }}>
+                    {workouts.length} {workouts.length === 1 ? 'treino' : 'treinos'}
+                    {program.status === 'ready' ? ' · pronta' : program.status === 'active' ? '' : ' · encerrada'}
+                  </span>
+                </span>
+                <span className="caret">
+                  <Icon name="caret" size={12} stroke={2.5} color={open ? 'var(--accent)' : 'var(--muted)'} />
+                </span>
+              </button>
+              {open && (
+              <div className="picker-workouts">
                 {workouts.map((w) => (
                   <button
                     key={w.id}
@@ -447,10 +493,10 @@ export function DayEdit() {
                   </button>
                 ))}
               </div>
+              )}
             </div>
-          ))}
-          <span className="chooser-label">Outros</span>
-          <div className="chooser-group">
+            );
+          })}
             <button
               type="button"
               className="chooser-row"

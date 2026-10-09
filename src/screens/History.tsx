@@ -5,7 +5,7 @@ import { Icon } from '../components/Icon';
 import { BackButton, EmptyState, LoadingScreen, TopBar } from '../components/Layout';
 import { Sheet } from '../components/Sheet';
 import { db } from '../lib/db';
-import { addDays, dayMonth, duration, sessionMinutes, todayISO, weekdayShort, weekStart } from '../lib/format';
+import { dayMonth, duration, monthName, sessionMinutes, weekdayShort } from '../lib/format';
 import { doneSessions } from '../lib/stats';
 import type { Session } from '../lib/types';
 
@@ -38,19 +38,14 @@ export function History() {
     setFilterOpen(false);
   };
 
-  const thisWeek = weekStart(todayISO());
+  // Agrupado por mês (como o Calendário), do mais novo para o mais antigo.
   const groups: { key: string; title: string; list: Session[] }[] = [];
   for (const s of filtered) {
-    const wk = weekStart(s.date);
-    let g = groups.find((x) => x.key === wk);
+    const key = s.date.slice(0, 7);
+    let g = groups.find((x) => x.key === key);
     if (!g) {
-      const title =
-        wk === thisWeek
-          ? 'Esta semana'
-          : wk === addDays(thisWeek, -7)
-            ? 'Semana passada'
-            : `${dayMonth(wk)} a ${dayMonth(addDays(wk, 6))}`;
-      g = { key: wk, title, list: [] };
+      const name = monthName(Number(key.slice(5, 7)) - 1);
+      g = { key, title: `${name.charAt(0).toUpperCase()}${name.slice(1)} ${key.slice(0, 4)}`, list: [] };
       groups.push(g);
     }
     g.list.push(s);
@@ -117,24 +112,24 @@ export function History() {
       {groups.map((g) => {
         const total = g.list.reduce((sum, s) => sum + (sessionMinutes(s.startedAt, s.endedAt) ?? 0), 0);
         return (
-          <section key={g.key} className="stack">
-            <div className="section-head" style={{ marginTop: 4 }}>
-              <span style={{ fontSize: 13, fontWeight: 800 }}>{g.title}</span>
+          <section key={g.key} className="hist-month">
+            {/* Título do mês preso no topo enquanto rola. */}
+            <div className="hist-month-head">
+              <span>{g.title}</span>
               <span className="tiny muted">
                 {g.list.length} {g.list.length === 1 ? 'treino' : 'treinos'}
                 {total > 0 ? ` · ${duration(total)}` : ''}
               </span>
             </div>
+            <div className="hist-group">
             {g.list.map((s) => {
               const minutes = sessionMinutes(s.startedAt, s.endedAt);
               const count = exerciseCount[s.id] ?? 0;
               return (
-                <Link key={s.id} to={`/sessao/${s.id}/resumo`} className="list-row" style={{ padding: '8px 12px 8px 8px', minHeight: 60 }}>
-                  <div className="col" style={{ width: 44, minWidth: 44, alignItems: 'center', gap: 0 }}>
-                    <span className="display" style={{ fontSize: 24 }}>
-                      {Number(s.date.slice(8))}
-                    </span>
-                    <span className="tiny muted" style={{ fontWeight: 700 }}>
+                <Link key={s.id} to={`/sessao/${s.id}/resumo`} className="hist-row">
+                  <div className="col" style={{ width: 36, minWidth: 36, alignItems: 'center', gap: 0 }}>
+                    <span style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.1 }}>{Number(s.date.slice(8))}</span>
+                    <span className="tiny muted" style={{ fontWeight: 600 }}>
                       {weekdayShort(s.date)}
                     </span>
                   </div>
@@ -152,6 +147,7 @@ export function History() {
                 </Link>
               );
             })}
+            </div>
           </section>
         );
       })}
