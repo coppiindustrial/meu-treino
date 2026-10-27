@@ -4178,6 +4178,11 @@ html.vt-running .dock {
 /* Título das abas (Treino, Treinos, Calendário, Progresso, Perfil) menor. */
 .tab-head .h1 {
   font-size: 22px;
+  /* Mesma altura dos botões redondos: o cabeçalho não muda de tamanho quando o botão aparece ou some
+     (ex.: o + só existe em Progresso › Corpo). */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 
 /* Os cabeçalhos ficam presos no topo ao rolar (ex.: "Atualizar" no Editar treino sempre à mão).
