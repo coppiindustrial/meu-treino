@@ -70,3 +70,13 @@ select cron.schedule(
     where exists (select 1 from public.push_jobs where send_at <= now() + interval '1 second');
   $$
 );
+
+-- O pg_cron guarda uma linha de registro a cada execução (17 mil por dia com o agendador acima).
+-- Sem limpeza isso enche o banco grátis; a cada hora apaga o registro com mais de 1 hora.
+select cron.unschedule(jobid) from cron.job where jobname = 'meu-treino-limpa-registro';
+
+select cron.schedule(
+  'meu-treino-limpa-registro',
+  '0 * * * *',
+  $$ delete from cron.job_run_details where start_time < now() - interval '1 hour' $$
+);
