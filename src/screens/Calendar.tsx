@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { Link, useLocation, useNavigationType, useSearchParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
@@ -90,8 +90,9 @@ export function Calendar() {
   const restDays = lastDate ? Math.round((fromISODate(today).getTime() - fromISODate(lastDate).getTime()) / 86400000) : null;
 
   // Abre no mês do dia pedido (ou no atual), menos ao voltar para cá: aí a rolagem salva é que vale.
+  // Antes de desenhar (layout effect): a tela já aparece no mês certo, sem rolar na frente de quem vê.
   const scrolled = useRef(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!data || scrolled.current) return;
     scrolled.current = true;
     if (navType === 'POP' && scrollPositions.has(location.key)) return;
@@ -107,7 +108,8 @@ export function Calendar() {
   const daySessions = shownDay ? byDate.get(shownDay) ?? [] : [];
 
   return (
-    <main className="screen tight">
+    // Até os treinos chegarem, só o topo: os meses aparecem de uma vez, já com os círculos e no mês certo.
+    <main className="screen tight" data-loading={data ? undefined : ''}>
       <header className="tab-head">
         <h1 className="h1">Calendário</h1>
         <Link to={`/dia/novo?data=${today}`} className="glass circle" aria-label="Adicionar treino">
@@ -118,12 +120,20 @@ export function Calendar() {
       {/* Como no Hevy: semanas seguidas na meta e dias desde o último treino. */}
       <div className="cal-streak">
         <span>
-          <Icon name="flame" size={16} color="#ff8a3d" />
-          {streak} {streak === 1 ? 'semana' : 'semanas'} na meta
+          {data && (
+            <>
+              <Icon name="flame" size={16} color="#ff8a3d" />
+              {streak} {streak === 1 ? 'semana' : 'semanas'} na meta
+            </>
+          )}
         </span>
         <span>
-          <Icon name="moon" size={15} color="var(--accent)" />
-          {restDays === null ? 'Nenhum treino ainda' : restDays === 0 ? 'Treinou hoje' : `${restDays} ${restDays === 1 ? 'dia' : 'dias'} de descanso`}
+          {data && (
+            <>
+              <Icon name="moon" size={15} color="var(--accent)" />
+              {restDays === null ? 'Nenhum treino ainda' : restDays === 0 ? 'Treinou hoje' : `${restDays} ${restDays === 1 ? 'dia' : 'dias'} de descanso`}
+            </>
+          )}
         </span>
       </div>
 
@@ -134,7 +144,7 @@ export function Calendar() {
       </div>
 
       <div className="cal-months">
-        {months.map((ym) => {
+        {data && months.map((ym) => {
           const y = Number(ym.slice(0, 4));
           const m = Number(ym.slice(5, 7)) - 1;
           const daysInMonth = new Date(y, m + 1, 0).getDate();
@@ -190,6 +200,7 @@ export function Calendar() {
         })}
       </div>
 
+      {data && (
       <div className="row" style={{ gap: 18 }}>
         <span className="row tiny muted" style={{ gap: 6 }}>
           <span className="cal-legend-dot" style={{ background: 'var(--accent)' }} />
@@ -200,6 +211,7 @@ export function Calendar() {
           Adicionado à mão
         </span>
       </div>
+      )}
 
       <Sheet open={openDay !== null} onClose={() => pickDay(null)} title={shownDay ? capitalize(relativeDay(shownDay)) : ''}>
         <div className="stack" style={{ gap: 8, marginTop: 6 }}>
