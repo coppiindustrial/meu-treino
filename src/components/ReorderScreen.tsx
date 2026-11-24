@@ -7,6 +7,10 @@ export interface ReorderEntry {
   name: string;
   /** Faixa roxa de superset (exercícios). */
   ss?: boolean;
+  /** Linha pequena embaixo do nome (ex.: como o exercício está no treino). */
+  detail?: string;
+  /** Detalhe em verde (exercício feito). */
+  detailOk?: boolean;
 }
 
 interface Drag {
@@ -19,33 +23,25 @@ interface Drag {
 }
 
 /**
- * Tela "Reordenar" (como no Hevy): arrastar pelo ≡ muda a ordem e o ⊖ tira o item.
- * Serve para os exercícios de um treino e para os treinos de uma rotina.
+ * Lista "Reordenar" (como no Hevy): arrastar pelo ≡ muda a ordem e o ⊖ tira o item.
+ * Rola a página ou, dentro de um menu de baixo, o próprio menu.
  */
-export function ReorderScreen({
+export function ReorderList({
   entries,
-  noun,
+  order,
+  onOrder,
   lead,
-  onCancel,
-  onDone,
 }: {
-  entries: ReorderEntry[] | undefined;
-  /** "exercício" ou "treino", para os textos. */
-  noun: string;
+  entries: ReorderEntry[];
+  order: string[];
+  onOrder: (order: string[]) => void;
   /** O que aparece antes do nome (foto do exercício, letra do treino), já na posição nova. */
   lead: (entry: ReorderEntry, index: number) => ReactNode;
-  onCancel: () => void;
-  onDone: (order: string[]) => void;
 }) {
-  const [order, setOrder] = useState<string[] | null>(null);
   const [drag, setDrag] = useState<{ from: number; to: number; dy: number } | null>(null);
   const dragRef = useRef<Drag | null>(null);
   const rowsRef = useRef<HTMLDivElement>(null);
   const scrollTimer = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (entries && order === null) setOrder(entries.map((e) => e.id));
-  }, [entries]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(
     () => () => {
@@ -54,27 +50,32 @@ export function ReorderScreen({
     [],
   );
 
-  if (!entries || !order) return <main className="screen no-tabs" />;
   const byId = new Map(entries.map((e) => [e.id, e]));
   const list = order.map((id) => byId.get(id)).filter((e): e is ReorderEntry => !!e);
+
+  // Dentro de um menu de baixo quem rola é o menu; na tela "Reordenar", a página.
+  const scroller = () => rowsRef.current?.closest<HTMLElement>('.sheet') ?? null;
+  const scrollTop = () => scroller()?.scrollTop ?? window.scrollY;
 
   const update = () => {
     const d = dragRef.current;
     if (!d) return;
-    const dy = d.y - d.startY + (window.scrollY - d.startScroll);
+    const dy = d.y - d.startY + (scrollTop() - d.startScroll);
     const to = Math.max(0, Math.min(list.length - 1, Math.round(d.from + dy / d.rowH)));
     setDrag({ from: d.from, to, dy });
   };
 
-  // Perto das bordas da tela, a lista rola sozinha enquanto arrasta.
+  // Perto das bordas, a lista rola sozinha enquanto arrasta.
   const autoScroll = () => {
     const d = dragRef.current;
     if (!d) return;
-    const edge = 90;
-    const bottom = window.innerHeight - 130;
-    const speed = d.y < edge ? -(edge - d.y) / 6 : d.y > bottom ? (d.y - bottom) / 6 : 0;
+    const box = scroller();
+    const top = box ? box.getBoundingClientRect().top + 70 : 90;
+    const bottom = box ? box.getBoundingClientRect().bottom - 70 : window.innerHeight - 130;
+    const speed = d.y < top ? -(top - d.y) / 6 : d.y > bottom ? (d.y - bottom) / 6 : 0;
     if (speed) {
-      window.scrollBy(0, speed);
+      if (box) box.scrollBy(0, speed);
+      else window.scrollBy(0, speed);
       update();
     }
     scrollTimer.current = requestAnimationFrame(autoScroll);
@@ -89,7 +90,7 @@ export function ReorderScreen({
       // sem captura
     }
     const row = rowsRef.current?.children[i] as HTMLElement | undefined;
-    dragRef.current = { from: i, pointerId: e.pointerId, startY: e.clientY, startScroll: window.scrollY, y: e.clientY, rowH: row?.offsetHeight || 64 };
+    dragRef.current = { from: i, pointerId: e.pointerId, startY: e.clientY, startScroll: scrollTop(), y: e.clientY, rowH: row?.offsetHeight || 64 };
     setDrag({ from: i, to: i, dy: 0 });
     scrollTimer.current = requestAnimationFrame(autoScroll);
   };
@@ -112,10 +113,10 @@ export function ReorderScreen({
     }
     const { from, to } = drag;
     if (from !== to) {
-      const next = order.slice();
+      const next = list.map((e) => e.id);
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
-      setOrder(next);
+      onOrder(next);
     }
     setDrag(null);
   };
@@ -130,6 +131,66 @@ export function ReorderScreen({
   };
 
   return (
+    <div className={`reorder-list ${drag ? 'dragging' : ''}`} ref={rowsRef}>
+      {list.map((entry, k) => (
+        <div key={entry.id} className={`reorder-row ${drag?.from === k ? 'moving' : ''} ${entry.ss ? 'ss' : ''}`} style={{ transform: shift(k) }}>
+          <button type="button" className="reorder-minus" aria-label={`Tirar ${entry.name}`} onClick={() => onOrder(order.filter((id) => id !== entry.id))}>
+            <i />
+          </button>
+          {lead(entry, k)}
+          <span className="col grow" style={{ minWidth: 0, gap: 1 }}>
+            <span className="ellipsis" style={{ fontWeight: 600 }}>
+              {entry.name}
+            </span>
+            {entry.detail && <span className={`tiny ${entry.detailOk ? 'ok-text' : 'muted'}`}>{entry.detail}</span>}
+          </span>
+          <span className="reorder-grip" aria-label={`Arrastar ${entry.name}`} onPointerDown={onDown(k)} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
+            <Icon name="lines" size={24} color="var(--text-2)" />
+          </span>
+        </div>
+      ))}
+      {list.length === 0 && (
+        <p className="muted small" style={{ padding: '16px' }}>
+          Todos foram tirados. Toque em Concluído para salvar ou em Cancelar para voltar.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Dica do topo da lista: como arrastar e o que o ⊖ faz. */
+export function ReorderHint({ remove }: { remove: string }) {
+  return (
+    <p className="small muted" style={{ margin: 0 }}>
+      Arraste pelo <Icon name="lines" size={15} /> para mudar a ordem. O <span style={{ color: 'var(--danger)', fontWeight: 700 }}>⊖</span> {remove}.
+    </p>
+  );
+}
+
+/** Tela "Reordenar": serve para os exercícios de um treino e para os treinos de uma rotina. */
+export function ReorderScreen({
+  entries,
+  noun,
+  lead,
+  onCancel,
+  onDone,
+}: {
+  entries: ReorderEntry[] | undefined;
+  /** "exercício" ou "treino", para os textos. */
+  noun: string;
+  lead: (entry: ReorderEntry, index: number) => ReactNode;
+  onCancel: () => void;
+  onDone: (order: string[]) => void;
+}) {
+  const [order, setOrder] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    if (entries && order === null) setOrder(entries.map((e) => e.id));
+  }, [entries]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!entries || !order) return <main className="screen no-tabs" />;
+
+  return (
     <main className="screen no-tabs with-dock">
       <TopBar
         left={
@@ -139,32 +200,8 @@ export function ReorderScreen({
         }
         title="Reordenar"
       />
-      <p className="small muted" style={{ margin: 0 }}>
-        Arraste pelo <Icon name="lines" size={15} /> para mudar a ordem. O <span style={{ color: 'var(--danger)', fontWeight: 700 }}>⊖</span> tira o {noun}.
-      </p>
-
-      <div className={`reorder-list ${drag ? 'dragging' : ''}`} ref={rowsRef}>
-        {list.map((entry, k) => (
-          <div key={entry.id} className={`reorder-row ${drag?.from === k ? 'moving' : ''} ${entry.ss ? 'ss' : ''}`} style={{ transform: shift(k) }}>
-            <button type="button" className="reorder-minus" aria-label={`Tirar ${entry.name}`} onClick={() => setOrder(order.filter((id) => id !== entry.id))}>
-              <i />
-            </button>
-            {lead(entry, k)}
-            <span className="grow ellipsis" style={{ fontWeight: 600 }}>
-              {entry.name}
-            </span>
-            <span className="reorder-grip" aria-label={`Arrastar ${entry.name}`} onPointerDown={onDown(k)} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
-              <Icon name="lines" size={24} color="var(--text-2)" />
-            </span>
-          </div>
-        ))}
-        {list.length === 0 && (
-          <p className="muted small" style={{ padding: '16px' }}>
-            Todos foram tirados. Toque em Concluído para salvar ou em Cancelar para voltar.
-          </p>
-        )}
-      </div>
-
+      <ReorderHint remove={`tira o ${noun}`} />
+      <ReorderList entries={entries} order={order} onOrder={setOrder} lead={lead} />
       <div className="dock">
         <button type="button" className="btn primary block" onClick={() => onDone(order)}>
           Concluído

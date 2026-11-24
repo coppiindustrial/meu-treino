@@ -667,17 +667,27 @@ export async function removeSessionItem(id: string): Promise<void> {
   for (const [i, it] of rest.entries()) if (it.position !== i) await patch('sessionItems', it.id, { position: i });
 }
 
-export async function moveSessionItem(sessionId: string, from: number, to: number): Promise<void> {
-  const items = await sessionItemsOf(sessionId);
-  if (to < 0 || to >= items.length || from === to) return;
-  const [moved] = items.splice(from, 1);
-  items.splice(to, 0, moved);
-  for (const [i, it] of items.entries()) {
-    const changes: Partial<SessionItem> = {};
-    if (it.position !== i) changes.position = i;
-    if (i === items.length - 1 && it.supersetNext) changes.supersetNext = false;
-    if (Object.keys(changes).length) await patch('sessionItems', it.id, changes);
-  }
+/**
+ * Nova ordem dos exercícios do treino em andamento (só deste treino; a rotina não muda). Os que ficaram
+ * de fora saem do treino, e o superset desfaz quando o exercício de baixo deixa de ser o mesmo.
+ */
+export async function reorderSessionItems(sessionId: string, orderedIds: string[]): Promise<void> {
+  // Numa transação só: a lista muda uma vez, sem a faixa do superset piscar.
+  await db.transaction('rw', db.sessionItems, async () => {
+    const items = await sessionItemsOf(sessionId);
+    const byId = new Map(items.map((it) => [it.id, it]));
+    const keep = new Set(orderedIds);
+    for (const it of items) if (!keep.has(it.id)) await softDelete('sessionItems', it.id);
+    const nextBefore = new Map(items.map((it, i) => [it.id, items[i + 1]?.id]));
+    const ordered = orderedIds.map((id) => byId.get(id)).filter((it): it is SessionItem => !!it);
+    for (const [i, it] of ordered.entries()) {
+      const changes: Partial<SessionItem> = {};
+      if (it.position !== i) changes.position = i;
+      const next = ordered[i + 1]?.id;
+      if (it.supersetNext && (!next || nextBefore.get(it.id) !== next)) changes.supersetNext = false;
+      if (Object.keys(changes).length) await patch('sessionItems', it.id, changes);
+    }
+  });
 }
 
 export async function updateSessionItem(id: string, changes: Partial<SessionItem>): Promise<void> {

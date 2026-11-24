@@ -10,6 +10,7 @@ import { cardioElapsed, useCardio, useCardioNow } from '../components/CardioTime
 import { useRest } from '../components/RestTimer';
 import { IntervalConfigButtons, TirosRunner } from '../components/Intervals';
 import { RestSheet, SetRow, SetTypeSheet } from '../components/SetRow';
+import { ReorderHint, ReorderList, type ReorderEntry } from '../components/ReorderScreen';
 import { SwipeRow } from '../components/SwipeRow';
 import { LogTypePicker } from '../components/LogTypePicker';
 import { Sheet } from '../components/Sheet';
@@ -25,7 +26,7 @@ import {
   finishSession,
   getActiveSession,
   getProfile,
-  moveSessionItem,
+  reorderSessionItems,
   removeSessionItem,
   removeSet,
   sessionItemsOf,
@@ -60,6 +61,7 @@ export function ActiveSession() {
   const [typeMenu, setTypeMenu] = useState<{ itemId: string; index: number } | null>(null);
   const [restFor, setRestFor] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [reorderOpen, setReorderOpen] = useState(false);
 
   const data = useLiveQuery(async () => {
     const session = await getActiveSession();
@@ -385,16 +387,17 @@ export function ActiveSession() {
                 <Icon name="chart" color="var(--text-2)" />
                 <span className="grow">Ver exercício e progresso</span>
               </Link>
-              {menuIndex > 0 && (
-                <button type="button" className="list-item" onClick={() => moveSessionItem(session.id, menuIndex, menuIndex - 1)}>
-                  <Icon name="up" color="var(--text-2)" />
-                  <span className="grow">Mover para cima</span>
-                </button>
-              )}
-              {menuIndex < items.length - 1 && (
-                <button type="button" className="list-item" onClick={() => moveSessionItem(session.id, menuIndex, menuIndex + 1)}>
-                  <Icon name="down" color="var(--text-2)" />
-                  <span className="grow">Mover para baixo</span>
+              {items.length > 1 && (
+                <button
+                  type="button"
+                  className="list-item"
+                  onClick={() => {
+                    setMenuFor(null);
+                    setReorderOpen(true);
+                  }}
+                >
+                  <Icon name="sort" color="var(--text-2)" />
+                  <span className="grow">Reordenar exercícios</span>
                 </button>
               )}
               {menuIndex < items.length - 1 && (
@@ -428,7 +431,87 @@ export function ActiveSession() {
           </>
         )}
       </Sheet>
+
+      {reorderOpen && <ReorderSheet sessionId={session.id} items={items} onClose={() => setReorderOpen(false)} />}
     </main>
+  );
+}
+
+/** Como o exercício está no treino, para a lista de reordenar. */
+function progressText(it: SessionItem): { detail: string; detailOk?: boolean } {
+  const done = it.sets.filter((s) => s.done).length;
+  if (it.done || (it.sets.length > 0 && done === it.sets.length)) return { detail: '✓ Feito', detailOk: true };
+  if (done > 0) return { detail: `${done}/${it.sets.length} séries` };
+  return { detail: 'Não começado' };
+}
+
+/**
+ * Reordenar no treino: a mesma lista da rotina, numa aba por cima do treino. Muda só este treino
+ * (a rotina continua igual), e o ⊖ tira o exercício do treino.
+ */
+function ReorderSheet({ sessionId, items, onClose }: { sessionId: string; items: SessionItem[]; onClose: () => void }) {
+  const { map } = useExercises();
+  const { confirm, toast } = useDialogs();
+  const cardioTimer = useCardio();
+  const [order, setOrder] = useState(() => items.map((it) => it.id));
+
+  const inSuperset = new Set<string>();
+  items.forEach((it, i) => {
+    if (it.supersetNext && items[i + 1]) {
+      inSuperset.add(it.id);
+      inSuperset.add(items[i + 1].id);
+    }
+  });
+  const entries: ReorderEntry[] = items.map((it) => ({
+    id: it.id,
+    name: exerciseOrMissing(map, it.exerciseId).name,
+    ss: inSuperset.has(it.id),
+    ...progressText(it),
+  }));
+
+  const save = async () => {
+    const same = order.length === items.length && order.every((id, i) => items[i].id === id);
+    if (same) return onClose();
+    const removed = items.filter((it) => !order.includes(it.id));
+    const withSets = removed.filter((it) => it.sets.some((s) => s.done));
+    if (withSets.length > 0) {
+      const ok = await confirm({
+        title: withSets.length === 1 ? `Tirar ${exerciseOrMissing(map, withSets[0].exerciseId).name} do treino?` : `Tirar ${withSets.length} exercícios do treino?`,
+        message: 'As séries já marcadas serão apagadas.',
+        confirmLabel: 'Tirar',
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    if (removed.some((it) => cardioTimer.state?.itemId === it.id)) cardioTimer.cancel();
+    await reorderSessionItems(sessionId, order);
+    toast(removed.length > 0 ? `Ordem salva · ${removed.length} ${removed.length === 1 ? 'tirado' : 'tirados'}` : 'Ordem salva');
+    onClose();
+  };
+
+  return (
+    <Sheet open onClose={onClose} hideClose>
+      <div className="reorder-head">
+        <button type="button" className="text-btn" style={{ justifySelf: 'start' }} onClick={onClose}>
+          Cancelar
+        </button>
+        <span className="sheet-title">Reordenar</span>
+        <button type="button" className="pill-primary" onClick={() => void save()}>
+          Concluído
+        </button>
+      </div>
+      <ReorderHint remove="tira do treino" />
+      <ReorderList
+        entries={entries}
+        order={order}
+        onOrder={setOrder}
+        lead={(entry) => (
+          <span className="ex-avatar">
+            <ExerciseThumb exercise={exerciseOrMissing(map, items.find((x) => x.id === entry.id)?.exerciseId ?? '')} />
+          </span>
+        )}
+      />
+    </Sheet>
   );
 }
 

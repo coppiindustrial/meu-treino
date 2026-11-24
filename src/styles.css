@@ -3716,6 +3716,31 @@ body:has(.session-strip) .rest-bar {
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.6);
 }
 
+.ok-text {
+  color: var(--success);
+}
+
+/* Reordenar dentro do treino: a lista no menu de baixo, sem o fundo do menu por trás. */
+.sheet .reorder-list,
+.sheet .reorder-row {
+  background: var(--raised);
+}
+
+.sheet .reorder-row.moving {
+  background: var(--raised-2);
+}
+
+.reorder-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.reorder-head > :last-child {
+  justify-self: end;
+}
+
 .reorder-minus {
   flex: none;
   width: 26px;
