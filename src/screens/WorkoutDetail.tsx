@@ -25,7 +25,8 @@ import {
   snapshotWorkout,
   type WorkoutSnapshot,
   getActiveSession,
-  lastDoneItemFor,
+  lastDoneFor,
+  prevSetsFor,
   itemsOf,
   editPlannedSets,
   setItemDistUnit,
@@ -38,7 +39,7 @@ import {
   updateWorkout,
   updateWorkoutItem,
 } from '../lib/repo';
-import type { DoneSet, PlannedSet, RepMode, Workout, WorkoutItem } from '../lib/types';
+import type { PlannedSet, RepMode, Workout, WorkoutItem } from '../lib/types';
 import { clearAdded, useSlideNavigate, wasAdded } from '../lib/nav';
 import { num } from '../lib/format';
 import { groupSupersets, itemSummary, plannedSetCount, plannedSummary, plannedVolumeKg, restText } from '../lib/workout';
@@ -438,9 +439,8 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
   const cardio = isCardio(logType);
 
   // "Anterior": o que foi feito da última vez em cada série (mesma regra do treino).
-  const lastItem = useLiveQuery(() => lastDoneItemFor(item.exerciseId), [item.exerciseId]);
-  const lastDone = lastItem ? lastItem.sets.filter((x) => x.done) : [];
-  const prevOf = (i: number): DoneSet | undefined => (lastItem?.sets[i]?.done ? lastItem.sets[i] : lastDone[i]);
+  const lastItem = useLiveQuery(() => lastDoneFor(item.exerciseId), [item.exerciseId]);
+  const prevs = prevSetsFor(item.sets, lastItem);
 
   return (
     <section className="ex-card">
@@ -493,7 +493,7 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
                 label={labels[i]}
                 set={s}
                 hint={i > 0 ? item.sets[i - 1] : undefined}
-                prev={prevOf(i)}
+                prev={prevs[i]}
                 unit={ex.unit}
                 name={ex.name}
                 repMode={mode}
@@ -529,10 +529,12 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
         onClose={() => setTypeIdx(null)}
         current={typeIdx !== null ? item.sets[typeIdx]?.type : undefined}
         subtitle={ex.name}
+        uni={typeIdx !== null ? item.sets[typeIdx]?.uni : undefined}
         onPick={async (t) => {
           if (typeIdx !== null) await save((sets) => sets.map((s, i) => (i === typeIdx ? { ...s, type: t } : s)));
           setTypeIdx(null);
         }}
+        onUni={cardio ? undefined : (uni) => typeIdx !== null && save((sets) => sets.map((s, i) => (i === typeIdx ? { ...s, uni } : s)))}
         onRemove={async () => {
           if (typeIdx !== null) await save((sets) => sets.filter((_, i) => i !== typeIdx));
           setTypeIdx(null);

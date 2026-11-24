@@ -122,6 +122,8 @@ export interface PlannedSet {
   /** Cardio: meta de tempo (s) e de distância (na unidade do exercício). */
   secs?: number | null;
   dist?: number | null;
+  /** Unilateral: um lado de cada vez, e a carga anotada é a de cada lado. */
+  uni?: boolean;
 }
 
 /** Repetições fixas ("10") ou faixa ("8-12"). */
@@ -179,6 +181,8 @@ export interface DoneSet {
   targetDist?: number | null;
   /** Série incluída durante o treino, além das planejadas na ficha. */
   extra?: boolean;
+  /** Unilateral: um lado de cada vez, e a carga anotada é a de cada lado. */
+  uni?: boolean;
 }
 
 export interface SessionItem extends Synced {

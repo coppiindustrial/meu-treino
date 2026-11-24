@@ -13,8 +13,12 @@ export function plannedSummary(sets: PlannedSet[], unit: LoadUnit): string {
   if (sets.length === 0) return 'Sem séries';
   const reps = [...new Set(work.map((s) => s.reps).filter(Boolean))].map(repsText);
   const loads = work.map((s) => s.load).filter((l): l is number => l !== null);
+  const uni = work.filter((s) => s.uni).length;
   let text = `${work.length} × ${reps.length === 0 ? '—' : reps.join('/')}`;
   if (loads.length) text += ` · ${loadText(Math.max(...loads), unit)}`;
+  // Todas unilaterais: "cada lado". Só algumas: quantas.
+  if (uni && uni === work.length) text += loads.length ? ' cada lado' : ' · cada lado';
+  else if (uni) text += ` · ${uni} ${uni === 1 ? 'unilateral' : 'unilaterais'}`;
   if (warm) text += ` · ${warm} aquec.`;
   return text;
 }
@@ -54,7 +58,8 @@ export function plannedVolumeKg(items: { sets: PlannedSet[]; logType?: LogType }
     const ex = exerciseOf(i);
     if ((it.logType ?? ex.logType) !== 'carga' || ex.unit === 'placa') return;
     const factor = ex.unit === 'lb' ? 0.4536 : 1;
-    for (const s of it.sets) if (s.type !== 'A' && s.load) total += s.load * repsValue(s.reps) * factor;
+    // Unilateral: a carga é de cada lado, então conta os dois.
+    for (const s of it.sets) if (s.type !== 'A' && s.load) total += s.load * repsValue(s.reps) * factor * (s.uni ? 2 : 1);
   });
   return Math.round(total);
 }

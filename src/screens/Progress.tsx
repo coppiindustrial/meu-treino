@@ -13,7 +13,7 @@ import { muscleName } from '../lib/muscles';
 import { addDays, dayMonth, num, shortDate, todayISO } from '../lib/format';
 import { cardioTotals, formatDuration, isCardio } from '../lib/cardio';
 import { exerciseHistory, type HistoryPoint } from '../lib/stats';
-import { setsSummary } from './ExerciseDetail';
+import { historyInMode, setsSummary, UniSeg } from './ExerciseDetail';
 import { BodyPanel } from './Body';
 import { PERIODS } from '../lib/periods';
 
@@ -74,6 +74,7 @@ function LoadsPanel() {
   const [chosen, setChosen] = useState<string | null>(null);
   const [period, setPeriod] = useState('3M');
   const [picked, setPicked] = useState<number | null>(null);
+  const [uniChosen, setUniChosen] = useState<boolean | null>(null);
 
   // Exercícios já feitos (do mais recente para o mais antigo) e a data do último treino de cada um.
   const used = useLiveQuery(async () => {
@@ -104,7 +105,10 @@ function LoadsPanel() {
   const valueOf = (p: HistoryPoint): number | null =>
     cardio ? cardioTotals(p.sets, p.distUnit).secs || null : ex && p.unit === ex.unit && !isCardio(p.logType) ? p.best : null;
   const show = (v: number) => (cardio ? formatDuration(v) : ex ? loadText(v, ex.unit) : '');
-  const points = (history ?? [])
+  // Unilateral e bilateral em gráficos separados (a carga unilateral é de cada lado).
+  const mode = cardio ? { both: false, uni: false, shown: history ?? [] } : historyInMode((history ?? []).filter((p) => !!ex && p.unit === ex.unit && !isCardio(p.logType)), uniChosen);
+  const shownBy = new Map(mode.shown.map((p) => [p.itemId, p]));
+  const points = mode.shown
     .filter((p) => p.date >= cutoff)
     .map((p) => ({ date: p.date, value: valueOf(p) }))
     .filter((p): p is { date: string; value: number } => p.value !== null);
@@ -126,6 +130,7 @@ function LoadsPanel() {
               last={used.last}
               onPick={(id) => {
                 setChosen(id);
+                setUniChosen(null);
                 setPicked(null);
               }}
             />
@@ -133,9 +138,18 @@ function LoadsPanel() {
               Ver exercício
             </Link>
           </div>
+          {mode.both && (
+            <UniSeg
+              uni={mode.uni}
+              onChange={(v) => {
+                setUniChosen(v);
+                setPicked(null);
+              }}
+            />
+          )}
 
           <div className="col" style={{ gap: 2 }}>
-            <span className="small muted">{cardio ? 'Maior tempo no período' : 'Maior carga no período'}</span>
+            <span className="small muted">{cardio ? 'Maior tempo no período' : mode.uni ? 'Maior carga no período · cada lado' : 'Maior carga no período'}</span>
             <span className="display" style={{ fontSize: 40 }}>
               {best !== null ? show(best) : '—'}
             </span>
@@ -197,7 +211,7 @@ function LoadsPanel() {
                 <span className="grow" style={{ fontSize: 14, fontWeight: 600 }}>
                   {setsSummary(p)}
                 </span>
-                {best !== null && valueOf(p) === best && <Icon name="trophy" size={16} color="var(--record)" />}
+                {best !== null && shownBy.has(p.itemId) && valueOf(shownBy.get(p.itemId)!) === best && <Icon name="trophy" size={16} color="var(--record)" />}
                 <Icon name="next" size={16} color="var(--muted)" />
               </Link>
             ))}

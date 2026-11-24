@@ -372,7 +372,7 @@ export function propagatePlanned(sets: PlannedSet[], index: number, changes: Par
     if (!(f in changes) || changes[f] === old[f]) continue;
     for (let j = index + 1; j < out.length; j++) {
       const s = out[j];
-      if (s.type === 'A') continue;
+      if (s.type === 'A' || !!s.uni !== !!old.uni) continue;
       const empty = s[f] === null || s[f] === undefined || s[f] === '';
       if (empty || s[f] === old[f]) out[j] = { ...s, [f]: changes[f] } as PlannedSet;
       else break;
@@ -480,26 +480,33 @@ function sessionSortKey(s: Session): string {
   return `${s.date}|${String(s.startedAt ?? 0).padStart(15, '0')}`;
 }
 
-/** Último registro feito de um exercício (para mostrar "anterior" e sugerir a carga). */
-export async function lastDoneItemFor(exerciseId: string, excludeSessionId?: string): Promise<SessionItem | undefined> {
+/** Último registro feito de um exercício, do jeito bilateral e do unilateral (para o "anterior" e a carga sugerida). */
+export interface LastDone {
+  bi?: SessionItem;
+  uni?: SessionItem;
+}
+
+export async function lastDoneFor(exerciseId: string, excludeSessionId?: string): Promise<LastDone> {
   const items = await db.sessionItems.where('exerciseId').equals(exerciseId).filter((i) => !i.deleted).toArray();
-  if (items.length === 0) return undefined;
+  if (items.length === 0) return {};
   const ids = [...new Set(items.map((i) => i.sessionId))];
   const sessions = await db.sessions.bulkGet(ids);
   const map = new Map(sessions.filter(alive).map((s) => [s.id, s]));
-  let best: SessionItem | undefined;
-  let bestKey = '';
+  const last: LastDone = {};
+  const keys = { bi: '', uni: '' };
   for (const it of items) {
     const s = map.get(it.sessionId);
     if (!s || s.status !== 'done' || s.id === excludeSessionId) continue;
-    if (!it.sets.some((x) => x.done)) continue;
     const key = sessionSortKey(s);
-    if (key > bestKey) {
-      bestKey = key;
-      best = it;
+    for (const mode of ['bi', 'uni'] as const) {
+      if (!it.sets.some((x) => x.done && !!x.uni === (mode === 'uni'))) continue;
+      if (key > keys[mode]) {
+        keys[mode] = key;
+        last[mode] = it;
+      }
     }
   }
-  return best;
+  return last;
 }
 
 function firstNumber(text: string | undefined): number | null {
@@ -508,12 +515,29 @@ function firstNumber(text: string | undefined): number | null {
   return m ? Number(m[0]) : null;
 }
 
-function buildSets(planned: PlannedSet[], prev: SessionItem | undefined): DoneSet[] {
-  const prevDone = prev ? prev.sets.filter((s) => s.done) : [];
+/**
+ * "Anterior" de cada série: a mesma série da última vez ou, se ela não foi feita, a feita na mesma
+ * posição. Unilateral vem da última vez feita unilateral (e bilateral, da última bilateral).
+ */
+export function prevSetsFor(sets: { uni?: boolean }[], last: LastDone | undefined): (DoneSet | undefined)[] {
+  const seen = [0, 0];
+  return sets.map((s, i) => {
+    const uni = !!s.uni;
+    const k = seen[+uni]++;
+    const prev = uni ? last?.uni : last?.bi;
+    const same = prev?.sets[i];
+    if (same?.done && !!same.uni === uni) return same;
+    return prev?.sets.filter((x) => x.done && !!x.uni === uni)[k];
+  });
+}
+
+function buildSets(planned: PlannedSet[], prev: LastDone): DoneSet[] {
+  const prevs = prevSetsFor(planned, prev);
   return planned.map((p, i) => {
-    const pv = prev?.sets[i]?.done ? prev.sets[i] : prevDone[i];
+    const pv = prevs[i];
     return {
       type: p.type,
+      ...(p.uni ? { uni: true } : {}),
       load: pv?.load ?? p.load ?? null,
       reps: null,
       done: false,
@@ -551,7 +575,7 @@ async function sessionItemFrom(
   note: string,
   extra: Pick<SessionItem, 'repMode' | 'restSeconds' | 'logType' | 'distUnit' | 'interval'> = {},
 ): Promise<SessionItem> {
-  const prev = await lastDoneItemFor(exerciseId);
+  const prev = await lastDoneFor(exerciseId);
   const log = await exerciseLog(exerciseId);
   const logType = extra.logType ?? log.logType;
   const cardio = cardioFields(logType, extra.distUnit ?? log.distUnit);
@@ -697,7 +721,7 @@ function updatedSets(item: SessionItem, index: number, changes: Partial<DoneSet>
     if (!(f in changes) || changes[f] === old[f]) continue;
     for (let j = index + 1; j < sets.length; j++) {
       const s = sets[j];
-      if (s.done || s.type === 'A') continue;
+      if (s.done || s.type === 'A' || !!s.uni !== !!old.uni) continue;
       if (s[f] === null || s[f] === undefined || s[f] === old[f]) sets[j] = { ...s, [f]: changes[f] ?? null };
       else break;
     }
@@ -711,6 +735,7 @@ export async function addSet(itemId: string): Promise<void> {
     const last = item.sets[item.sets.length - 1];
     const next: DoneSet = {
       type: last && last.type !== 'A' ? last.type : 'N',
+      ...(last?.uni ? { uni: true } : {}),
       load: last?.load ?? null,
       reps: null,
       done: false,
@@ -724,6 +749,25 @@ export async function addSet(itemId: string): Promise<void> {
       extra: true,
     };
     return { sets: [...item.sets, next], done: false };
+  });
+}
+
+/**
+ * Marca uma série do treino como unilateral (ou volta para bilateral). O "Anterior" passa a ser o da
+ * última vez feita do mesmo jeito, e a carga sugerida (se ainda não foi mexida) acompanha.
+ */
+export async function setSetUni(itemId: string, index: number, uni: boolean): Promise<void> {
+  const item = await db.sessionItems.get(itemId);
+  if (!item?.sets[index]) return;
+  const last = await lastDoneFor(item.exerciseId, item.sessionId);
+  const pv = prevSetsFor(item.sets.map((s, i) => (i === index ? { uni } : s)), last)[index];
+  await editSessionItem(itemId, (it) => {
+    const s = it.sets[index];
+    if (!s) return undefined;
+    const sets = it.sets.slice();
+    const untouched = !s.done && s.load === (s.prevLoad ?? null);
+    sets[index] = { ...s, uni, prevLoad: pv?.load ?? null, prevReps: pv?.reps ?? null, ...(untouched ? { load: pv?.load ?? null } : {}) };
+    return { sets };
   });
 }
 
@@ -825,6 +869,7 @@ export function manualSets(planned: PlannedSet[], typed: ManualSet[] | undefined
       reps: filled ? t!.reps : null,
       done: filled,
       target: p?.reps,
+      ...(p?.uni ? { uni: true } : {}),
       ...(p ? {} : { extra: true }),
     });
   }

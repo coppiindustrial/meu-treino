@@ -33,6 +33,7 @@ import {
   setItemDistUnit,
   setItemLogType,
   setSessionItemUnit,
+  setSetUni,
   toggleSessionSuperset,
   updateSessionItem,
   updateSet,
@@ -326,10 +327,16 @@ export function ActiveSession() {
         onClose={() => setTypeMenu(null)}
         current={typeSet?.type}
         subtitle={typeItem ? exerciseOrMissing(map, typeItem.exerciseId).name : undefined}
+        uni={typeSet?.uni}
         onPick={async (t) => {
           if (typeMenu) await updateSet(typeMenu.itemId, typeMenu.index, { type: t });
           setTypeMenu(null);
         }}
+        onUni={
+          typeItem && !isCardio(typeItem.logType ?? exerciseOrMissing(map, typeItem.exerciseId).logType)
+            ? (uni) => typeMenu && setSetUni(typeMenu.itemId, typeMenu.index, uni)
+            : undefined
+        }
         onRemove={async () => {
           if (typeMenu) await deleteSet(typeMenu.itemId, typeMenu.index);
           setTypeMenu(null);

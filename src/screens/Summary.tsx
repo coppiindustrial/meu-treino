@@ -8,14 +8,14 @@ import { useDialogs } from '../components/Dialogs';
 import { BackButton, EmptyState, LoadingScreen, TopBar } from '../components/Layout';
 import { ExerciseThumb } from '../components/Media';
 import { MuscleBadge } from '../components/MuscleBadge';
-import { prevSetText } from '../components/SetRow';
+import { prevSetText, UniMark } from '../components/SetRow';
 import { db } from '../lib/db';
 import { loadText, setLabels } from '../lib/equipment';
 import { exerciseOrMissing, useExercises, type ExerciseView } from '../lib/exercises';
 import { longDate, num, plural, sessionMinutes, timeHM } from '../lib/format';
 import { reopenSession, sessionItemsOf, updateSession } from '../lib/repo';
 import { cardioSetText, cardioTotals, distText, formatDuration, isCardio } from '../lib/cardio';
-import { bestSet, sessionRecords, summarize, type RecordHit } from '../lib/stats';
+import { bestLoadsText, sessionRecords, summarize, type RecordHit } from '../lib/stats';
 import type { Session, SessionItem } from '../lib/types';
 
 type View = 'lista' | 'detalhado';
@@ -77,7 +77,8 @@ export function Summary() {
   const stats = summarize(items);
   const planItems = items.filter((it) => !it.extra).length;
   const justFinished = !session.manual && !!session.endedAt && Date.now() - session.endedAt < 15 * 60 * 1000;
-  const recordOf = new Map(records.map((r) => [r.exerciseId, r]));
+  // Um exercício pode bater dois recordes: o bilateral e o unilateral (carga de cada lado).
+  const recordsOf = (exerciseId: string) => records.filter((r) => r.exerciseId === exerciseId);
 
   const pickView = (v: View) => {
     setView(v);
@@ -191,13 +192,13 @@ export function Summary() {
           {view === 'lista' ? (
             <div className="sum-rows fade-in" key="lista">
               {items.map((it) => (
-                <ListRow key={it.id} it={it} ex={exerciseOrMissing(map, it.exerciseId)} session={session} record={recordOf.get(it.exerciseId)} />
+                <ListRow key={it.id} it={it} ex={exerciseOrMissing(map, it.exerciseId)} session={session} records={recordsOf(it.exerciseId)} />
               ))}
             </div>
           ) : (
             <div className="sum-detail fade-in" key="detalhado">
               {items.map((it) => (
-                <DetailBlock key={it.id} it={it} ex={exerciseOrMissing(map, it.exerciseId)} session={session} record={recordOf.get(it.exerciseId)} />
+                <DetailBlock key={it.id} it={it} ex={exerciseOrMissing(map, it.exerciseId)} session={session} records={recordsOf(it.exerciseId)} />
               ))}
             </div>
           )}
@@ -233,27 +234,35 @@ function itemParts(it: SessionItem, session: Session) {
 }
 
 /** Selos ao lado do nome: extra, séries extras e recorde. */
-function Badges({ it, extraSets, record, recordDetail = false }: { it: SessionItem; extraSets: number; record?: RecordHit; recordDetail?: boolean }) {
+function Badges({ it, extraSets, records, recordDetail = false }: { it: SessionItem; extraSets: number; records: RecordHit[]; recordDetail?: boolean }) {
   return (
     <>
       {it.extra && <span className="chip soft-accent">Extra</span>}
       {extraSets > 0 && <span className="chip neutral">+{plural(extraSets, 'série extra', 'séries extras')}</span>}
-      {record && <span className="chip record-badge">{recordDetail ? `Recorde · antes ${loadText(record.previous, record.unit)}` : 'Recorde'}</span>}
+      {it.sets.some((s) => s.done && s.uni) && <span className="chip uni">Unilateral</span>}
+      {recordDetail
+        ? records.map((r) => (
+            <span key={String(r.uni)} className="chip record-badge">
+              Recorde · antes {loadText(r.previous, r.unit)}
+              {r.uni ? ' cada lado' : ''}
+            </span>
+          ))
+        : records.length > 0 && <span className="chip record-badge">Recorde</span>}
     </>
   );
 }
 
 /** Linha da lista, no mesmo visual da ficha: foto, músculos, nome e o que foi feito. */
-function ListRow({ it, ex, session, record }: { it: SessionItem; ex: ExerciseView; session: Session; record?: RecordHit }) {
+function ListRow({ it, ex, session, records }: { it: SessionItem; ex: ExerciseView; session: Session; records: RecordHit[] }) {
   const { done, warmups, extraSets } = itemParts(it, session);
-  const b = bestSet(it.sets);
+  const loads = bestLoadsText(it.sets, it.unit);
   const cardio = isCardio(it.logType);
   const totals = cardioTotals(it.sets, it.distUnit ?? 'km');
   const text =
     done.length > 0 && cardio
       ? [totals.km ? `${num(totals.km, 2)} km` : '', totals.secs ? formatDuration(totals.secs) : '', `${done.length} ${it.logType === 'tiros' ? (done.length === 1 ? 'tiro' : 'tiros') : done.length === 1 ? 'série' : 'séries'}`].filter(Boolean).join(' · ')
       : done.length > 0
-        ? `${done.length} × ${[...new Set(done.map((s) => s.reps ?? 0))].join('/')}${b.load !== null ? ` · ${loadText(b.load, it.unit)}` : ''}`
+        ? `${done.length} × ${[...new Set(done.map((s) => s.reps ?? 0))].join('/')}${loads ? ` · ${loads}` : ''}`
         : it.done
           ? 'Feito'
           : 'Não feito';
@@ -270,7 +279,7 @@ function ListRow({ it, ex, session, record }: { it: SessionItem; ex: ExerciseVie
             <span className="ex-row-name" style={did ? undefined : { color: 'var(--muted)' }}>
               {ex.name}
             </span>
-            <Badges it={it} extraSets={extraSets} record={record} />
+            <Badges it={it} extraSets={extraSets} records={records} />
           </span>
           <span className="small muted">{text}</span>
           {warmups.length > 0 && (
@@ -287,7 +296,7 @@ function ListRow({ it, ex, session, record }: { it: SessionItem; ex: ExerciseVie
 }
 
 /** Vista detalhada: as séries feitas numa tabela limpa, com as mesmas colunas do treino. */
-function DetailBlock({ it, ex, session, record }: { it: SessionItem; ex: ExerciseView; session: Session; record?: RecordHit }) {
+function DetailBlock({ it, ex, session, records }: { it: SessionItem; ex: ExerciseView; session: Session; records: RecordHit[] }) {
   const { extraSets } = itemParts(it, session);
   const logType = it.logType ?? ex.logType;
   const distUnit = it.distUnit ?? ex.distUnit;
@@ -306,7 +315,7 @@ function DetailBlock({ it, ex, session, record }: { it: SessionItem; ex: Exercis
         <span className="col grow" style={{ gap: 1, minWidth: 0 }}>
           <span className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
             <span className="ex-row-name">{ex.name}</span>
-            <Badges it={it} extraSets={extraSets} record={record} recordDetail />
+            <Badges it={it} extraSets={extraSets} records={records} recordDetail />
           </span>
           {it.note ? <span className="tiny muted">{it.note}</span> : null}
         </span>
@@ -335,7 +344,10 @@ function DetailBlock({ it, ex, session, record }: { it: SessionItem; ex: Exercis
             const prev = prevSetText(cardio ? { secs: s.prevSecs, dist: s.prevDist } : { load: s.prevLoad, reps: s.prevReps }, it.unit, cardio ? logType : 'carga', distUnit);
             return (
               <div key={i} className={`sum-row ${warm ? 'warm' : ''}`}>
-                <span className={warm ? 'st-a' : 'muted'}>{label}</span>
+                <span className={warm ? 'st-a' : 'muted'}>
+                  {label}
+                  {s.uni && <UniMark />}
+                </span>
                 <span className="muted ellipsis">{prev}</span>
                 {cardio ? (
                   <>

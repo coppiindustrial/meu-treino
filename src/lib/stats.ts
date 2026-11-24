@@ -1,5 +1,6 @@
 import { cardioTotals, isCardio } from './cardio';
 import { db } from './db';
+import { loadText } from './equipment';
 import type { DistUnit, DoneSet, LoadUnit, LogType, Session, SessionItem } from './types';
 
 export interface HistoryPoint {
@@ -17,12 +18,26 @@ export interface HistoryPoint {
   sets: DoneSet[];
   logType?: LogType;
   distUnit: DistUnit;
+  /** A melhor série é unilateral (todas as séries de trabalho foram de um lado por vez). */
+  uni: boolean;
 }
 
-/** Melhor série: maior carga entre as séries normais/até a falha feitas. */
-export function bestSet(sets: DoneSet[]): { load: number | null; reps: number | null } {
-  const work = sets.filter((s) => s.done && (s.type === 'N' || s.type === 'F'));
-  const pool = work.length ? work : sets.filter((s) => s.done && s.type !== 'A');
+const isUni = (s: { uni?: boolean }) => !!s.uni;
+
+/**
+ * Unilateral e bilateral não se comparam (a carga unilateral é de cada lado). O treino conta como
+ * unilateral só quando todas as séries de trabalho feitas foram unilaterais.
+ */
+export function mainlyUni(sets: DoneSet[]): boolean {
+  const work = sets.filter((s) => s.done && s.type !== 'A');
+  return work.length > 0 && work.every(isUni);
+}
+
+/** Melhor série: maior carga entre as séries normais/até a falha feitas (só as do mesmo jeito: uni ou bilateral). */
+export function bestSet(sets: DoneSet[], uni = mainlyUni(sets)): { load: number | null; reps: number | null } {
+  const mine = sets.filter((s) => isUni(s) === uni);
+  const work = mine.filter((s) => s.done && (s.type === 'N' || s.type === 'F'));
+  const pool = work.length ? work : mine.filter((s) => s.done && s.type !== 'A');
   let best: DoneSet | undefined;
   for (const s of pool) {
     if (s.load === null || s.load === undefined) continue;
@@ -35,19 +50,49 @@ export function bestSet(sets: DoneSet[]): { load: number | null; reps: number | 
   return { load: best.load, reps: best.reps };
 }
 
+/** Maior carga feita: "25 kg", "12,5 kg cada lado" ou os dois, se o exercício teve séries dos dois jeitos. */
+export function bestLoadsText(sets: DoneSet[], unit: LoadUnit): string {
+  return [false, true]
+    .map((uni) => {
+      const b = bestSet(sets, uni);
+      return b.load !== null ? `${loadText(b.load, unit)}${uni ? ' cada lado' : ''}` : '';
+    })
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** O treino só com as séries de um jeito (unilateral ou bilateral); null se não teve nenhuma assim. */
+export function pointInMode(p: HistoryPoint, uni: boolean): HistoryPoint | null {
+  const sets = p.sets.filter((s) => isUni(s) === uni);
+  if (sets.length === 0) return null;
+  const b = bestSet(sets, uni);
+  return { ...p, sets, uni, best: b.load, bestReps: b.reps };
+}
+
+/** Se o histórico tem séries de trabalho bilaterais e/ou unilaterais. */
+export function historyModes(points: HistoryPoint[]): { bi: boolean; uni: boolean } {
+  const work = points.flatMap((p) => p.sets.filter((s) => s.type !== 'A'));
+  return { bi: work.some((s) => !isUni(s)), uni: work.some(isUni) };
+}
+
+/** Carga × repetições de uma série; na unilateral, conta os dois lados. */
+export function setVolume(s: DoneSet): number {
+  return (s.load ?? 0) * (s.reps ?? 0) * (isUni(s) ? 2 : 1);
+}
+
 /** Volume em kg (carga × repetições), ignorando aquecimento. Placas não entram. */
 export function volumeKg(sets: DoneSet[], unit: LoadUnit): number {
   if (unit === 'placa') return 0;
   const factor = unit === 'lb' ? 0.4536 : 1;
   return sets
     .filter((s) => s.done && s.type !== 'A')
-    .reduce((sum, s) => sum + (s.load ?? 0) * (s.reps ?? 0) * factor, 0);
+    .reduce((sum, s) => sum + setVolume(s) * factor, 0);
 }
 
 /** Volume dos exercícios anotados em placa: nº da placa × repetições, ignorando aquecimento. Não soma com kg. */
 export function volumePlates(sets: DoneSet[], unit: LoadUnit): number {
   if (unit !== 'placa') return 0;
-  return sets.filter((s) => s.done && s.type !== 'A').reduce((sum, s) => sum + (s.load ?? 0) * (s.reps ?? 0), 0);
+  return sets.filter((s) => s.done && s.type !== 'A').reduce((sum, s) => sum + setVolume(s), 0);
 }
 
 function sortKey(s: Pick<Session, 'date' | 'startedAt'>): string {
@@ -65,7 +110,8 @@ export async function exerciseHistory(exerciseId: string): Promise<HistoryPoint[
     const s = map.get(it.sessionId);
     if (!s || s.status !== 'done') continue;
     if (!it.sets.some((x) => x.done)) continue;
-    const b = bestSet(it.sets);
+    const uni = mainlyUni(it.sets);
+    const b = bestSet(it.sets, uni);
     points.push({
       key: sortKey(s),
       sessionId: s.id,
@@ -80,6 +126,7 @@ export async function exerciseHistory(exerciseId: string): Promise<HistoryPoint[
       sets: it.sets.filter((x) => x.done),
       logType: it.logType,
       distUnit: it.distUnit ?? 'km',
+      uni,
     });
   }
   return points.sort((a, b) => (a.key < b.key ? -1 : 1)).map(({ key: _k, ...p }) => p);
@@ -155,6 +202,8 @@ export interface RecordHit {
   reps: number | null;
   unit: LoadUnit;
   previous: number;
+  /** Recorde da carga de cada lado (séries unilaterais). */
+  uni: boolean;
 }
 
 /** Recordes batidos num treino (comparando com os treinos anteriores do mesmo exercício). */
@@ -162,18 +211,22 @@ export async function sessionRecords(session: Session, items: SessionItem[]): Pr
   const hits: RecordHit[] = [];
   const key = sortKey(session);
   for (const it of items) {
-    const b = bestSet(it.sets);
-    if (b.load === null) continue;
-    const history = await exerciseHistory(it.exerciseId);
-    let previous: number | null = null;
-    for (const p of history) {
-      if (p.sessionId === session.id) continue;
-      if (sortKey(p) >= key) continue;
-      if (p.unit !== (it.unit ?? 'kg') || p.best === null) continue;
-      previous = previous === null ? p.best : Math.max(previous, p.best);
-    }
-    if (previous !== null && b.load > previous) {
-      hits.push({ exerciseId: it.exerciseId, load: b.load, reps: b.reps, unit: it.unit ?? 'kg', previous });
+    // Unilateral e bilateral têm recordes separados.
+    for (const uni of [false, true]) {
+      const b = bestSet(it.sets, uni);
+      if (b.load === null) continue;
+      const history = await exerciseHistory(it.exerciseId);
+      let previous: number | null = null;
+      for (const p of history) {
+        if (p.sessionId === session.id) continue;
+        if (sortKey(p) >= key) continue;
+        const q = pointInMode(p, uni);
+        if (!q || q.unit !== (it.unit ?? 'kg') || q.best === null) continue;
+        previous = previous === null ? q.best : Math.max(previous, q.best);
+      }
+      if (previous !== null && b.load > previous) {
+        hits.push({ exerciseId: it.exerciseId, load: b.load, reps: b.reps, unit: it.unit ?? 'kg', previous, uni });
+      }
     }
   }
   return hits;

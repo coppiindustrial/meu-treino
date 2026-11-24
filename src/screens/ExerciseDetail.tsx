@@ -14,7 +14,8 @@ import { useExercises, type ExerciseView } from '../lib/exercises';
 import { addDays, dayMonth, longDate, num, shortDate, timeHM, todayISO } from '../lib/format';
 import { isGroup, muscleName } from '../lib/muscles';
 import { savePref } from '../lib/repo';
-import { exerciseHistory, type HistoryPoint } from '../lib/stats';
+import { bestLoadsText, exerciseHistory, historyModes, pointInMode, setVolume, type HistoryPoint } from '../lib/stats';
+import { UniMark } from '../components/SetRow';
 import type { DoneSet, LoadUnit } from '../lib/types';
 
 export function setsSummary(p: HistoryPoint): string {
@@ -26,7 +27,33 @@ export function setsSummary(p: HistoryPoint): string {
   if (work.length === 0) return `${p.sets.length} séries`;
   const reps = [...new Set(work.map((s) => s.reps ?? 0))];
   const text = `${work.length} × ${reps.join('/')}`;
-  return p.best !== null ? `${text} · ${loadText(p.best, p.unit)}` : text;
+  const loads = bestLoadsText(p.sets, p.unit);
+  return loads ? `${text} · ${loads}` : text;
+}
+
+/** Gráfico unilateral ou bilateral: só aparece quando o exercício já foi feito dos dois jeitos. */
+export function UniSeg({ uni, onChange }: { uni: boolean; onChange: (uni: boolean) => void }) {
+  return (
+    <div className="seg" role="tablist" aria-label="Bilateral ou unilateral">
+      {[false, true].map((v) => (
+        <button key={String(v)} type="button" role="tab" aria-selected={uni === v} className={uni === v ? (v ? 'on uni' : 'on') : ''} onClick={() => onChange(v)}>
+          {v ? 'Unilateral' : 'Bilateral'}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * O histórico de um jeito só (unilateral e bilateral não se comparam). `chosen` é a escolha no seletor;
+ * sem escolha, mostra o bilateral, ou o unilateral se o exercício só foi feito assim.
+ */
+export function historyInMode(points: HistoryPoint[], chosen: boolean | null) {
+  const modes = historyModes(points);
+  const both = modes.bi && modes.uni;
+  const uni = both ? chosen ?? false : modes.uni && !modes.bi;
+  const shown = points.map((p) => pointInMode(p, uni)).filter((p): p is HistoryPoint => p !== null);
+  return { both, uni, shown };
 }
 
 // ---------------------------------------------------------------- Métricas
@@ -34,7 +61,6 @@ export function setsSummary(p: HistoryPoint): string {
 const work = (sets: DoneSet[]) => sets.filter((s) => s.type !== 'A' && s.load !== null && (s.reps ?? 0) > 0);
 /** 1RM estimado (fórmula de Epley): carga × (1 + reps / 30). */
 const oneRm = (s: DoneSet) => (s.load ?? 0) * (1 + (s.reps ?? 0) / 30);
-const setVolume = (s: DoneSet) => (s.load ?? 0) * (s.reps ?? 0);
 
 interface Metric {
   name: string;
@@ -94,10 +120,12 @@ export function ExerciseDetail() {
     setParams(next, { replace: true });
   };
   const [metricIdx, setMetricIdx] = useState(0);
+  const [uniChosen, setUniChosen] = useState<boolean | null>(null);
   const history = useLiveQuery(() => exerciseHistory(exerciseId), [exerciseId]);
   // Outro exercício: volta para a primeira métrica (a aba vem do endereço, que é outro).
   useEffect(() => {
     setMetricIdx(0);
+    setUniChosen(null);
   }, [exerciseId]);
   const ex = map.get(exerciseId);
 
@@ -120,7 +148,9 @@ export function ExerciseDetail() {
 
   const cardio = isCardio(ex.logType);
   const all = history ?? [];
-  const relevant = all.filter((p) => (cardio ? true : p.unit === ex.unit && !isCardio(p.logType)));
+  const sameUnit = all.filter((p) => (cardio ? true : p.unit === ex.unit && !isCardio(p.logType)));
+  const mode = cardio ? { both: false, uni: false, shown: sameUnit } : historyInMode(sameUnit, uniChosen);
+  const relevant = mode.shown;
   const metrics = metricsFor(ex, cardio);
   const metric = metrics[Math.min(metricIdx, metrics.length - 1)];
   const series = relevant.map((p) => ({ p, v: metric.value(p) })).filter((x): x is { p: HistoryPoint; v: number } => x.v !== null);
@@ -169,10 +199,11 @@ export function ExerciseDetail() {
 
       {tab === 0 && (
         <div className="stack fade-in" key="resumo">
+          {mode.both && <UniSeg uni={mode.uni} onChange={setUniChosen} />}
           {series.length === 0 ? (
             <EmptyState title="Ainda sem dados" text="Depois que você fizer este exercício num treino, a evolução aparece aqui." />
           ) : (
-            <Summary key={metric.name} metric={metric} series={series} />
+            <Summary key={`${metric.name}-${mode.uni}`} metric={metric} series={series} />
           )}
           <div className="chips-scroll">
             {metrics.map((m, i) => (
@@ -307,13 +338,17 @@ function loadDiffText(diff: number, unit: LoadUnit): string {
 function HistoryCard({ p, earlier }: { p: HistoryPoint; earlier: HistoryPoint[] }) {
   const cardio = isCardio(p.logType);
   const labels = setLabels(p.sets.map((x) => x.type));
-  const comparable = earlier.filter((q) => q.unit === p.unit && isCardio(q.logType) === cardio);
+  // Compara só com os treinos feitos do mesmo jeito (unilateral com unilateral).
+  const comparable = earlier
+    .map((q) => (cardio ? q : pointInMode(q, p.uni)))
+    .filter((q): q is HistoryPoint => q !== null && q.unit === p.unit && isCardio(q.logType) === cardio);
   const prev = comparable[comparable.length - 1];
+  const hasUni = p.sets.some((s) => s.uni);
 
   // Recorde: a melhor carga deste dia passou de todas as anteriores (na mesma unidade).
   const priorBests = comparable.map((q) => q.best).filter((v): v is number => v !== null);
   const record = !cardio && p.best !== null && priorBests.length > 0 && p.best > Math.max(...priorBests);
-  const recordIdx = record ? p.sets.findIndex((s) => s.type !== 'A' && s.load === p.best && s.reps === p.bestReps) : -1;
+  const recordIdx = record ? p.sets.findIndex((s) => s.type !== 'A' && !!s.uni === p.uni && s.load === p.best && s.reps === p.bestReps) : -1;
 
   let delta: { text: string; tone: 'up' | 'down' | 'same' } | null = null;
   if (!cardio && prev && p.best !== null && prev.best !== null) {
@@ -343,6 +378,7 @@ function HistoryCard({ p, earlier }: { p: HistoryPoint; earlier: HistoryPoint[] 
           </span>
         </span>
         <span className="row" style={{ gap: 6 }}>
+          {hasUni && <span className="chip uni">Unilateral</span>}
           {p.extra && <span className="chip soft-accent">Extra no treino</span>}
           <Icon name="next" size={18} color="var(--muted)" />
         </span>
@@ -367,7 +403,10 @@ function HistoryCard({ p, earlier }: { p: HistoryPoint; earlier: HistoryPoint[] 
           const warm = s.type === 'A';
           return (
             <div key={i} className={`hist-row ${warm ? 'warm' : ''} ${i === recordIdx ? 'rec' : ''}`}>
-              <span className={warm ? 'st-a' : 'muted'}>{labels[i]}</span>
+              <span className={warm ? 'st-a' : 'muted'}>
+                {labels[i]}
+                {s.uni && <UniMark />}
+              </span>
               {cardio ? (
                 <>
                   {withDist && <span>{s.dist !== null && s.dist !== undefined ? distText(s.dist, p.distUnit).replace(/ (km|m)$/, '') : '—'}</span>}

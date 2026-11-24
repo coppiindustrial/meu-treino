@@ -68,6 +68,11 @@ function DistanceInput({ value, unit, placeholder, label, fieldId, onCommit }: {
 const distPlaceholder = (v: number | null | undefined, unit: DistUnit) => (v === null || v === undefined ? '' : distText(v, unit).replace(/ (km|m)$/, ''));
 
 /** "24 kg × 10" (ou "9,4 km · 30:00" no cardio) do que foi feito da última vez. */
+/** "U" ao lado do número da série unilateral (a carga anotada é a de cada lado). */
+export function UniMark() {
+  return <span className="uni-mark">U</span>;
+}
+
 export function prevSetText(p: { load?: number | null; reps?: number | null; secs?: number | null; dist?: number | null } | undefined, unit: LoadUnit, logType: LogType, distUnit: DistUnit): string {
   if (!p) return '—';
   if (logType !== 'carga') return p.secs || p.dist ? cardioSetText({ secs: p.secs, dist: p.dist }, distUnit) : '—';
@@ -112,8 +117,9 @@ export function SetRow({
   const repsPlaceholder = set.prevReps ? String(set.prevReps) : set.target ? repsText(set.target) : '';
 
   const typeButton = (
-    <button type="button" className={`set-type ${info.className}`} aria-label={`Série ${label}, ${info.name}. Trocar tipo`} onClick={onOpenMenu}>
+    <button type="button" className={`set-type ${info.className}`} aria-label={`Série ${label}, ${info.name}${set.uni ? ', unilateral' : ''}. Trocar tipo`} onClick={onOpenMenu}>
       {label}
+      {set.uni && <UniMark />}
     </button>
   );
   const check = (values: Partial<DoneSet>) => (
@@ -261,8 +267,9 @@ export function PlannedSetRow({
 
   return (
     <div className="set-row plan">
-      <button type="button" className={`set-type ${info.className}`} aria-label={`Série ${label}, ${info.name}. Trocar tipo`} onClick={onOpenMenu}>
+      <button type="button" className={`set-type ${info.className}`} aria-label={`Série ${label}, ${info.name}${set.uni ? ', unilateral' : ''}. Trocar tipo`} onClick={onOpenMenu}>
         {label}
+        {set.uni && <UniMark />}
       </button>
       {prevCell}
       <button type="button" className={`set-input dur-input ${set.load === null ? 'blank' : ''}`} aria-label={`Carga da série ${label}`} onClick={() => setWheelOpen(true)}>
@@ -310,43 +317,68 @@ export function SetTypeSheet({
   onClose,
   current,
   subtitle,
+  uni,
   onPick,
+  onUni,
   onRemove,
 }: {
   open: boolean;
   onClose: () => void;
   current: SetType | undefined;
   subtitle?: string;
+  /** Unilateral: só aparece quando há onUni (séries de carga). */
+  uni?: boolean;
   onPick: (type: SetType) => void;
+  onUni?: (uni: boolean) => void;
   onRemove: () => void;
 }) {
   return (
     <Sheet open={open} onClose={onClose} title="Tipo da série" subtitle={subtitle}>
-      <div className="list-group">
-        {SET_TYPES.map((t) => (
-          <button type="button" key={t.id} className="list-item" style={{ minHeight: 60 }} aria-pressed={current === t.id} onClick={() => onPick(t.id)}>
-            <span className={t.className} style={{ width: 28, textAlign: 'center', fontSize: 20, fontWeight: 800 }}>
-              {t.letter}
-            </span>
-            <span className="col grow">
-              <span style={{ fontSize: 16, fontWeight: 700 }}>{t.name}</span>
-              <span className="tiny muted" style={{ fontWeight: 500 }}>
-                {t.desc}
+      <div className="stack" style={{ gap: 12 }}>
+        <div className="list-group">
+          {SET_TYPES.map((t) => (
+            <button type="button" key={t.id} className="list-item" style={{ minHeight: 60 }} aria-pressed={current === t.id} onClick={() => onPick(t.id)}>
+              <span className={t.className} style={{ width: 28, textAlign: 'center', fontSize: 20, fontWeight: 800 }}>
+                {t.letter}
               </span>
-            </span>
-            {current === t.id && (
-              <span className="check-dot">
-                <Icon name="check" size={14} stroke={3} />
+              <span className="col grow">
+                <span style={{ fontSize: 16, fontWeight: 700 }}>{t.name}</span>
+                <span className="tiny muted" style={{ fontWeight: 500 }}>
+                  {t.desc}
+                </span>
               </span>
-            )}
+              {current === t.id && (
+                <span className="check-dot">
+                  <Icon name="check" size={14} stroke={3} />
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="list-group">
+          {onUni && (
+            <button type="button" className="list-item" role="switch" aria-checked={!!uni} style={{ minHeight: 60 }} onClick={() => onUni(!uni)}>
+              <span className="st-u" style={{ width: 28, textAlign: 'center', fontSize: 20, fontWeight: 800 }}>
+                U
+              </span>
+              <span className="col grow">
+                <span style={{ fontSize: 16, fontWeight: 700 }}>Unilateral</span>
+                <span className="tiny muted" style={{ fontWeight: 500 }}>
+                  Um lado de cada vez. A carga anotada é a de cada lado.
+                </span>
+              </span>
+              <span className="switch" aria-hidden="true" aria-checked={!!uni}>
+                <span />
+              </span>
+            </button>
+          )}
+          <button type="button" className="list-item danger" onClick={onRemove}>
+            <span style={{ width: 28, display: 'flex', justifyContent: 'center' }}>
+              <Icon name="x" stroke={2.5} />
+            </span>
+            <span className="grow">Remover série</span>
           </button>
-        ))}
-        <button type="button" className="list-item danger" onClick={onRemove}>
-          <span style={{ width: 28, display: 'flex', justifyContent: 'center' }}>
-            <Icon name="x" stroke={2.5} />
-          </span>
-          <span className="grow">Remover série</span>
-        </button>
+        </div>
       </div>
     </Sheet>
   );
