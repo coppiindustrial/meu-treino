@@ -209,16 +209,12 @@ export function SetRow({
           range={false}
           canClear={set.load !== null || set.reps !== null}
           onSave={(load, [reps]) => {
-            setWheelOpen(false);
             const changes: Partial<DoneSet> = {};
             if (load !== set.load) changes.load = load;
             if (reps !== set.reps) changes.reps = reps;
             if (Object.keys(changes).length) onCommit(changes);
           }}
-          onClear={() => {
-            setWheelOpen(false);
-            onCommit({ load: null, reps: null });
-          }}
+          onClear={() => onCommit({ load: null, reps: null })}
         />
       )}
     </div>
@@ -318,17 +314,13 @@ export function PlannedSetRow({
           range={faixa}
           canClear={set.load !== null || !!set.reps}
           onSave={(load, [a, b]) => {
-            setWheelOpen(false);
             const reps = faixa ? `${a}-${b ?? a}` : String(a);
             const changes: Partial<PlannedSet> = {};
             if (load !== set.load) changes.load = load;
             if (reps !== set.reps) changes.reps = reps;
             if (Object.keys(changes).length) onChange(changes);
           }}
-          onClear={() => {
-            setWheelOpen(false);
-            onChange({ load: null, reps: '' });
-          }}
+          onClear={() => onChange({ load: null, reps: '' })}
         />
       )}
     </div>

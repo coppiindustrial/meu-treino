@@ -2,7 +2,7 @@ import { useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { num, parseNum } from '../lib/format';
 import type { LoadUnit } from '../lib/types';
 import { focusField, range, Wheel, WheelGroup, WheelSep } from './DurationWheel';
-import { Sheet } from './Sheet';
+import { Sheet, useSheetDismiss } from './Sheet';
 
 const KG = range(0, 500);
 const LB = range(0, 700);
@@ -50,20 +50,17 @@ interface Pick {
  * Janela de roletas de uma série (como no BeFit): carga à esquerda (kg/lb com casas, ou nº da placa)
  * e repetições à direita (uma roleta, ou "de – até" na faixa de repetições do Editar).
  * Tocar no número escolhido (o com tracejado) passa a digitar; o ‹ volta para a roleta.
+ * Salvar e Limpar guardam na hora e a janela desce; `onClose` só vem depois da descida.
  */
-export function SetWheelSheet({
-  onClose,
-  title,
-  subtitle,
-  unit,
-  load,
-  loadStart,
-  reps,
-  range: isRange,
-  canClear,
-  onSave,
-  onClear,
-}: {
+export function SetWheelSheet(props: SetWheelProps) {
+  return (
+    <Sheet open onClose={props.onClose} title={props.title} subtitle={props.subtitle}>
+      <SetWheelBody {...props} />
+    </Sheet>
+  );
+}
+
+interface SetWheelProps {
   onClose: () => void;
   title: string;
   subtitle?: string;
@@ -78,7 +75,19 @@ export function SetWheelSheet({
   canClear: boolean;
   onSave: (load: number | null, reps: [number, number?]) => void;
   onClear: () => void;
-}) {
+}
+
+function SetWheelBody({ unit, load, loadStart, reps, range: isRange, canClear, onSave, onClear }: SetWheelProps) {
+  const dismiss = useSheetDismiss();
+  // Guarda uma vez só (dois toques rápidos em Salvar não salvam duas vezes) e desce a janela.
+  const finished = useRef(false);
+  const finish = (apply: () => void) => {
+    if (finished.current) return;
+    finished.current = true;
+    (document.activeElement as HTMLElement | null)?.blur?.(); // o teclado desce junto
+    apply();
+    dismiss();
+  };
   const placa = unit === 'placa';
   const ints = unit === 'lb' ? LB : KG;
   const [initial] = useState<Pick>(() => {
@@ -147,14 +156,16 @@ export function SetWheelSheet({
   const save = () => {
     if (typing) {
       const { l, a, b } = typed();
-      onSave(l, isRange ? [Math.min(a, b), Math.max(a, b)] : [a]);
+      finish(() => onSave(l, isRange ? [Math.min(a, b), Math.max(a, b)] : [a]));
       return;
     }
     const p = pick.current;
     const a = REPS[p.a];
     const b = REPS[p.b];
-    onSave(wheelLoad(), isRange ? [Math.min(a, b), Math.max(a, b)] : [a]);
+    const l = wheelLoad();
+    finish(() => onSave(l, isRange ? [Math.min(a, b), Math.max(a, b)] : [a]));
   };
+  const clear = () => finish(onClear);
 
   // No teclado: "OK" salva.
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -173,7 +184,7 @@ export function SetWheelSheet({
   const typeRepA = () => startTyping(repAIn);
   const typeRepB = () => startTyping(repBIn);
   return (
-    <Sheet open onClose={onClose} title={title} subtitle={subtitle}>
+    <>
       {typing && (
         <button type="button" className="text-btn wheel-back" onClick={backToWheels}>
           ‹ Voltar para a roleta
@@ -231,11 +242,11 @@ export function SetWheelSheet({
           Salvar
         </button>
         {canClear && (
-          <button type="button" className="btn big block soft" onClick={onClear}>
+          <button type="button" className="btn big block soft" onClick={clear}>
             Limpar
           </button>
         )}
       </div>
-    </Sheet>
+    </>
   );
 }
