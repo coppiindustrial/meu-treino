@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { useSlideNavigate } from '../lib/nav';
 import { useDialogs } from '../components/Dialogs';
@@ -62,6 +63,14 @@ export function ActiveSession() {
   const [restFor, setRestFor] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [reorderOpen, setReorderOpen] = useState(false);
+  // Anotação aberta pelo botão Nota (com texto, ela aparece sempre).
+  const [noteFor, setNoteFor] = useState<string | null>(null);
+  const noteShown = (it: SessionItem) => !!it.note || noteFor === it.id;
+  // Abre o campo e já põe o cursor nele ainda dentro do toque, para o iPhone abrir o teclado.
+  const openNote = (id: string) => {
+    flushSync(() => setNoteFor(id));
+    document.getElementById(`note-${id}`)?.focus();
+  };
 
   const data = useLiveQuery(async () => {
     const session = await getActiveSession();
@@ -206,16 +215,19 @@ export function ActiveSession() {
             <Icon name="more" />
           </button>
         </div>
-        <NoteField item={it} />
-        <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+        <div className="chip-row">
           {cardio && <span className="log-tag">{logTypeName(logType)}</span>}
           {logType !== 'tiros' && (
             <button type="button" className="rest-link" onClick={() => setRestFor(it.id)}>
               <Icon name="timer" size={16} /> Descanso: {restText(restOf(it))}
             </button>
           )}
+          <button type="button" className={`chip-btn ${noteShown(it) ? 'on' : ''}`} aria-expanded={noteShown(it)} onClick={() => openNote(it.id)}>
+            <Icon name="note" size={16} /> Nota
+          </button>
           {!cardio && <UniChip sets={it.sets} />}
         </div>
+        {noteShown(it) && <NoteField item={it} onEmpty={() => setNoteFor((cur) => (cur === it.id ? null : cur))} />}
         {logType === 'tiros' && (
           <div className="stack">
             <IntervalConfigButtons value={it.interval} onChange={(interval) => updateSessionItem(it.id, { interval })} />
@@ -266,7 +278,7 @@ export function ActiveSession() {
   };
 
   return (
-    <main className="screen no-tabs tight">
+    <main className="screen no-tabs tight session-live">
       <div className="topbar sticky-top">
         <Link to="/" data-nav="back" className="glass circle" aria-label="Recolher o treino (ele continua)">
           <Icon name="down" size={22} />
@@ -594,20 +606,31 @@ function CardioPanel({ item, label, onFinish }: { item: SessionItem; label: stri
   );
 }
 
-function NoteField({ item }: { item: SessionItem }) {
+/** Anotação do exercício: aparece quando já tem texto ou depois de tocar em "Nota". Vazia, some ao sair do campo. */
+function NoteField({ item, onEmpty }: { item: SessionItem; onEmpty: () => void }) {
   const [note, setNote] = useState(item.note ?? '');
   useEffect(() => setNote(item.note ?? ''), [item.note]);
   return (
-    <input
-      className="ex-note"
-      value={note}
-      placeholder="Adicionar anotação…"
-      aria-label="Anotação do exercício"
-      onChange={(e) => setNote(e.target.value)}
-      onBlur={() => {
-        if (note !== (item.note ?? '')) void updateSessionItem(item.id, { note: note.trim() });
-      }}
-    />
+    <label className="ex-note-row">
+      <Icon name="note" size={16} />
+      <input
+        id={`note-${item.id}`}
+        className="ex-note"
+        value={note}
+        placeholder="Adicionar anotação…"
+        aria-label="Anotação do exercício"
+        enterKeyHint="done"
+        onChange={(e) => setNote(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+        }}
+        onBlur={() => {
+          const clean = note.trim();
+          if (clean !== (item.note ?? '')) void updateSessionItem(item.id, { note: clean });
+          if (!clean) onEmpty();
+        }}
+      />
+    </label>
   );
 }
 

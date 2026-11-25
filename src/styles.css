@@ -5574,3 +5574,182 @@ html.vt-running .hist-month-head {
   line-height: 1.2;
   color: var(--text-2);
 }
+
+/* ------------------------------------------------------------ Treino mais nítido: Descanso e Nota em botões, campos só com
+   contorno, número da série em etiqueta e o ✓ sempre à vista */
+
+:root {
+  --tag-bg: #1c1c1e;
+  --chip-line: #2c2c2e;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.rest-link,
+.chip-btn {
+  align-self: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--chip-line);
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.chip-btn.on {
+  border-color: #2f5f99;
+  background: var(--accent-soft);
+  color: #8cc4ff;
+}
+
+.chip-btn:active {
+  opacity: 0.55;
+}
+
+/* Selos ao lado dos botões, na mesma altura. */
+.chip-row .uni-chip,
+.chip-row .log-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.ex-note-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.ex-note-row .ex-note {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Carga e reps: só o contorno, número em peso médio. */
+.set-input {
+  background: transparent;
+  border: 1px solid var(--border-2);
+  font-weight: 500;
+}
+
+.set-input:focus {
+  border-color: var(--accent);
+}
+
+.dur-input.blank {
+  font-weight: 500;
+}
+
+.set-row.done .set-input {
+  background: transparent;
+  border-color: transparent;
+}
+
+.set-row.head {
+  font-weight: 600;
+}
+
+.ex-card .set-row {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+/* Número da série: etiqueta cheia (é para tocar e trocar o tipo, não para digitar). */
+.set-type {
+  width: 36px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--tag-bg);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.set-row.done .set-type {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ✓ contornado com o tique cinza à vista; feito, fica verde. */
+.set-check {
+  width: 36px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-2);
+  background: transparent;
+  color: var(--muted);
+}
+
+.set-check:not(.on) .check-draw {
+  opacity: 1;
+}
+
+.set-check:not(.on) .check-draw path {
+  stroke-dashoffset: 0;
+}
+
+.set-check.on {
+  border-color: var(--success);
+  background: var(--success);
+  color: #fff;
+}
+
+.ex-card .sets > .btn.soft {
+  background: var(--tag-bg);
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+/* Topo do treino: preto liso, botão redondo só com contorno e Concluir sem brilho em volta. */
+.session-live .sticky-top {
+  background: #000;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-bottom-color: #1f1f22;
+}
+
+.session-live .sticky-top .glass.circle {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  background: transparent;
+  border: 1px solid var(--border-2);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.session-live .sticky-top .glass.circle:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.session-live .sticky-top .pill-primary {
+  height: 36px;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.session-live .stats-row span {
+  color: var(--muted);
+}
+
+.session-live .stats-row b {
+  font-size: 16px;
+  font-weight: 500;
+}

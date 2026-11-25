@@ -455,7 +455,7 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
           <Icon name="more" />
         </button>
       </div>
-      <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+      <div className="chip-row">
         {cardio && <span className="log-tag">{logTypeName(logType)}</span>}
         {logType !== 'tiros' && (
           <button type="button" className="rest-link" onClick={() => setRestOpen(true)}>
