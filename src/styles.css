@@ -931,6 +931,14 @@ p {
   transition: padding-bottom 0.2s ease-out;
 }
 
+/* Fechando: o fundo clareia junto com a descida e já deixa tocar na tela de trás. */
+.sheet-backdrop.closing {
+  pointer-events: none;
+  transition:
+    padding-bottom 0.2s ease-out,
+    background-color 0.24s ease-out;
+}
+
 .sheet {
   width: 100%;
   max-width: 560px;

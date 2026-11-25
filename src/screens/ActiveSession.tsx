@@ -13,7 +13,7 @@ import { RestSheet, SetRow, SetTypeSheet, UniChip } from '../components/SetRow';
 import { ReorderHint, ReorderList, type ReorderEntry } from '../components/ReorderScreen';
 import { SwipeRow } from '../components/SwipeRow';
 import { LogTypePicker } from '../components/LogTypePicker';
-import { Sheet } from '../components/Sheet';
+import { Sheet, useSheetDismiss } from '../components/Sheet';
 import { formatDuration, isCardio, logTypeName } from '../lib/cardio';
 import { db } from '../lib/db';
 import { UNITS, setLabels } from '../lib/equipment';
@@ -450,7 +450,16 @@ function progressText(it: SessionItem): { detail: string; detailOk?: boolean } {
  * Reordenar no treino: a mesma lista da rotina, numa aba por cima do treino. Muda só este treino
  * (a rotina continua igual), e o ⊖ tira o exercício do treino.
  */
-function ReorderSheet({ sessionId, items, onClose }: { sessionId: string; items: SessionItem[]; onClose: () => void }) {
+function ReorderSheet(props: { sessionId: string; items: SessionItem[]; onClose: () => void }) {
+  return (
+    <Sheet open onClose={props.onClose} hideClose>
+      <ReorderSheetBody {...props} />
+    </Sheet>
+  );
+}
+
+function ReorderSheetBody({ sessionId, items }: { sessionId: string; items: SessionItem[] }) {
+  const onClose = useSheetDismiss();
   const { map } = useExercises();
   const { confirm, toast } = useDialogs();
   const cardioTimer = useCardio();
@@ -491,7 +500,7 @@ function ReorderSheet({ sessionId, items, onClose }: { sessionId: string; items:
   };
 
   return (
-    <Sheet open onClose={onClose} hideClose>
+    <>
       <div className="reorder-head">
         <button type="button" className="text-btn" style={{ justifySelf: 'start' }} onClick={onClose}>
           Cancelar
@@ -512,7 +521,7 @@ function ReorderSheet({ sessionId, items, onClose }: { sessionId: string; items:
           </span>
         )}
       />
-    </Sheet>
+    </>
   );
 }
 
