@@ -20,7 +20,7 @@ import { db } from '../lib/db';
 import { UNITS, setLabels } from '../lib/equipment';
 import { exerciseOrMissing, useExercises } from '../lib/exercises';
 import { num, pad2 } from '../lib/format';
-import { useNow, useWakeLock } from '../lib/hooks';
+import { useNow, useStatusBarColor, useWakeLock } from '../lib/hooks';
 import {
   addSet,
   deleteSession,
@@ -80,6 +80,8 @@ export function ActiveSession() {
     return { session, items, workout, profile };
   }, []);
   useWakeLock(!!data?.session);
+  // A barra do relógio fica da cor do topo do treino (--session-head no CSS).
+  useStatusBarColor('#1c1c1e', !!data?.session);
 
   if (!data) return <LoadingScreen back="/" />;
   const { session, items, workout, profile } = data;

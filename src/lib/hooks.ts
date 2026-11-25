@@ -41,6 +41,23 @@ export function useKeyboardInset(active = true): { inset: number; viewportHeight
 
 type WakeLockSentinelLike = { release: () => Promise<void> };
 
+/**
+ * Pinta a barra de status do iPhone (a do relógio) com outra cor enquanto a tela está aberta,
+ * e devolve a cor de antes ao sair. Ex.: cinza em cima do topo cinza do treino.
+ */
+export function useStatusBarColor(color: string, active: boolean): void {
+  useEffect(() => {
+    if (!active) return;
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!meta) return;
+    const before = meta.content;
+    meta.content = color;
+    return () => {
+      meta.content = before;
+    };
+  }, [color, active]);
+}
+
 /** Mantém a tela acesa enquanto o treino está aberto (quando o aparelho permite). */
 export function useWakeLock(active: boolean): void {
   useEffect(() => {
