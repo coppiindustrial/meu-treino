@@ -5716,27 +5716,33 @@ html.vt-running .hist-month-head {
   font-weight: 500;
 }
 
-/* Topo do treino: preto liso, botão redondo só com contorno e Concluir sem brilho em volta. */
-.session-live .sticky-top {
-  background: #000;
+/* Topo do treino: faixa cinza lisa (sem vidro nem desfoque) que vai até a área do relógio,
+   botão redondo cheio um pouco mais claro e Concluir sem brilho em volta. */
+.session-live {
+  --session-head: #1c1c1e;
+}
+
+.session-live .sticky-top,
+html.vt-running .screen.session-live > .topbar {
+  background: var(--session-head);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  border-bottom-color: #1f1f22;
+  border-bottom: 0;
 }
 
 .session-live .sticky-top .glass.circle {
   width: 40px;
   height: 40px;
   min-width: 40px;
-  background: transparent;
-  border: 1px solid var(--border-2);
+  background: rgba(255, 255, 255, 0.1);
+  border: 0;
   box-shadow: none;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
 
 .session-live .sticky-top .glass.circle:active {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .session-live .sticky-top .pill-primary {
@@ -5745,11 +5751,17 @@ html.vt-running .hist-month-head {
   box-shadow: none;
 }
 
+/* Duração, Volume e Séries em letra normal (mais leve), no preto logo abaixo da faixa. */
+.session-live .stats-row {
+  padding-top: 12px;
+}
+
 .session-live .stats-row span {
   color: var(--muted);
+  font-weight: 400;
 }
 
 .session-live .stats-row b {
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 400;
 }
