@@ -9,7 +9,7 @@ import { ExerciseThumb } from '../components/Media';
 import { cardioElapsed, useCardio, useCardioNow } from '../components/CardioTimer';
 import { useRest } from '../components/RestTimer';
 import { IntervalConfigButtons, TirosRunner } from '../components/Intervals';
-import { RestSheet, SetRow, SetTypeSheet } from '../components/SetRow';
+import { RestSheet, SetRow, SetTypeSheet, UniChip } from '../components/SetRow';
 import { ReorderHint, ReorderList, type ReorderEntry } from '../components/ReorderScreen';
 import { SwipeRow } from '../components/SwipeRow';
 import { LogTypePicker } from '../components/LogTypePicker';
@@ -214,6 +214,7 @@ export function ActiveSession() {
               <Icon name="timer" size={16} /> Descanso: {restText(restOf(it))}
             </button>
           )}
+          {!cardio && <UniChip sets={it.sets} />}
         </div>
         {logType === 'tiros' && (
           <div className="stack">

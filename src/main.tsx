@@ -5,9 +5,13 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { App } from './App';
 import { installTouchFeedback } from './lib/touch';
+import { installViewportFix } from './lib/viewport';
 
 // Efeito de pressionar e vibração leve nos botões.
 installTouchFeedback();
+
+// Descanso e abas no lugar certo depois que o teclado do iPhone fecha.
+installViewportFix();
 
 // Sem zoom com dois dedos: o Safari do iPhone ignora o "user-scalable=no" da página, então o gesto é cancelado aqui.
 for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {

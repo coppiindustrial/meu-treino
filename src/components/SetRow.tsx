@@ -67,12 +67,37 @@ function DistanceInput({ value, unit, placeholder, label, fieldId, onCommit }: {
 
 const distPlaceholder = (v: number | null | undefined, unit: DistUnit) => (v === null || v === undefined ? '' : distText(v, unit).replace(/ (km|m)$/, ''));
 
-/** "24 kg × 10" (ou "9,4 km · 30:00" no cardio) do que foi feito da última vez. */
-/** "U" ao lado do número da série unilateral (a carga anotada é a de cada lado). */
+/** "U" ao lado do número da série unilateral nas tabelas (a carga anotada é a de cada lado). */
 export function UniMark() {
   return <span className="uni-mark">U</span>;
 }
 
+/** Número da série no botão do tipo; na unilateral, "UNI" embaixo (o botão fica roxo). */
+function SetLabel({ label, uni }: { label: string; uni?: boolean }) {
+  if (!uni) return <>{label}</>;
+  return (
+    <>
+      <span>{label}</span>
+      <small className="uni-tag">UNI</small>
+    </>
+  );
+}
+
+/** Selo ao lado do descanso: o exercício (ou parte das séries) é unilateral. */
+export function UniChip({ sets }: { sets: { type: SetType; uni?: boolean }[] }) {
+  const uni = sets.filter((s) => s.uni).length;
+  if (uni === 0) return null;
+  const work = sets.filter((s) => s.type !== 'A');
+  const all = work.length > 0 && work.every((s) => s.uni);
+  return (
+    <span className="uni-chip">
+      <Icon name="swap" size={14} stroke={2.4} />
+      {all ? 'Unilateral' : `${uni} ${uni === 1 ? 'série unilateral' : 'séries unilaterais'}`}
+    </span>
+  );
+}
+
+/** "24 kg × 10" (ou "9,4 km · 30:00" no cardio) do que foi feito da última vez. */
 export function prevSetText(p: { load?: number | null; reps?: number | null; secs?: number | null; dist?: number | null } | undefined, unit: LoadUnit, logType: LogType, distUnit: DistUnit): string {
   if (!p) return '—';
   if (logType !== 'carga') return p.secs || p.dist ? cardioSetText({ secs: p.secs, dist: p.dist }, distUnit) : '—';
@@ -117,9 +142,8 @@ export function SetRow({
   const repsPlaceholder = set.prevReps ? String(set.prevReps) : set.target ? repsText(set.target) : '';
 
   const typeButton = (
-    <button type="button" className={`set-type ${info.className}`} aria-label={`Série ${label}, ${info.name}${set.uni ? ', unilateral' : ''}. Trocar tipo`} onClick={onOpenMenu}>
-      {label}
-      {set.uni && <UniMark />}
+    <button type="button" className={`set-type ${info.className} ${set.uni ? 'uni' : ''}`} aria-label={`Série ${label}, ${info.name}${set.uni ? ', unilateral' : ''}. Trocar tipo`} onClick={onOpenMenu}>
+      <SetLabel label={label} uni={set.uni} />
     </button>
   );
   const check = (values: Partial<DoneSet>) => (
@@ -267,9 +291,8 @@ export function PlannedSetRow({
 
   return (
     <div className="set-row plan">
-      <button type="button" className={`set-type ${info.className}`} aria-label={`Série ${label}, ${info.name}${set.uni ? ', unilateral' : ''}. Trocar tipo`} onClick={onOpenMenu}>
-        {label}
-        {set.uni && <UniMark />}
+      <button type="button" className={`set-type ${info.className} ${set.uni ? 'uni' : ''}`} aria-label={`Série ${label}, ${info.name}${set.uni ? ', unilateral' : ''}. Trocar tipo`} onClick={onOpenMenu}>
+        <SetLabel label={label} uni={set.uni} />
       </button>
       {prevCell}
       <button type="button" className={`set-input dur-input ${set.load === null ? 'blank' : ''}`} aria-label={`Carga da série ${label}`} onClick={() => setWheelOpen(true)}>

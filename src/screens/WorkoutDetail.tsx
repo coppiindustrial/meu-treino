@@ -9,7 +9,7 @@ import { ExerciseThumb } from '../components/Media';
 import { MuscleBadge } from '../components/MuscleBadge';
 import { IntervalConfigButtons } from '../components/Intervals';
 import { LogTypePicker } from '../components/LogTypePicker';
-import { PlannedSetRow, RepModeSheet, RestSheet, SetTypeSheet } from '../components/SetRow';
+import { PlannedSetRow, RepModeSheet, RestSheet, SetTypeSheet, UniChip } from '../components/SetRow';
 import { SwipeRow } from '../components/SwipeRow';
 import { LongPressSort } from '../components/LongPressSort';
 import { isCardio, logTypeName } from '../lib/cardio';
@@ -462,6 +462,7 @@ function EditorCard({ item, index, total, workout, ex }: { item: WorkoutItem; in
             <Icon name="timer" size={16} /> Descanso: {restText(item.restSeconds ?? workout.restSeconds)}
           </button>
         )}
+        {!cardio && <UniChip sets={item.sets} />}
       </div>
       {logType === 'tiros' ? (
         <IntervalConfigButtons value={item.interval} onChange={(interval) => updateWorkoutItem(item.id, { interval })} />
