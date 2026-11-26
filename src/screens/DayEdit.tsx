@@ -11,6 +11,7 @@ import { isCardio } from '../lib/cardio';
 import { db } from '../lib/db';
 import { exerciseOrMissing, useExercises, type ExerciseView } from '../lib/exercises';
 import { combineDateTime, dayMonth, duration, longDate, num, parseNum, timeHM, todayISO } from '../lib/format';
+import { useStatusBarColor } from '../lib/hooks';
 import {
   createManualSession,
   deleteSession,
@@ -24,6 +25,8 @@ import type { DoneSet, LoadUnit, PlannedSet } from '../lib/types';
 import { repsText } from '../lib/workout';
 
 const OTHER = '__outro__';
+/** Cor do topo (a mesma do topo do treino e do calendário). */
+const HEAD_GRAY = '#1c1c1e';
 
 /** Uma série na tela: o que foi digitado (texto) e a sugestão em cinza. */
 interface SetDraft {
@@ -105,6 +108,8 @@ export function DayEdit() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [openPrograms, setOpenPrograms] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
+  // A barra do relógio fica cinza, emendada no topo.
+  useStatusBarColor(HEAD_GRAY, true);
 
   // Preenche o formulário ao editar um dia existente.
   useEffect(() => {
@@ -274,36 +279,42 @@ export function DayEdit() {
   const unitHead = (u: LoadUnit) => (u === 'placa' ? 'Placa' : u);
 
   return (
-    <main className="screen no-tabs">
-      <TopBar
-        left={
-          <button type="button" className="glass pill accent-text" onClick={() => go(-1)}>
-            Cancelar
-          </button>
-        }
-        title={isNew ? 'Adicionar treino' : 'Editar treino'}
-        right={
-          <button type="button" className="pill-primary" onClick={save}>
-            Salvar
-          </button>
-        }
-      />
+    <main className="screen no-tabs day-edit">
+      {/* Topo cinza como o do treino: X para sair, título no meio e Salvar. */}
+      <div className="topbar day-top">
+        <button type="button" className="glass circle" aria-label="Cancelar" onClick={() => go(-1)}>
+          <Icon name="x" size={18} stroke={2.2} />
+        </button>
+        <div className="topbar-title">{isNew ? 'Adicionar treino' : 'Editar treino'}</div>
+        <button type="button" className="pill-primary" onClick={save}>
+          Salvar
+        </button>
+      </div>
 
-      {/* Data, treino e horário em linhas, no padrão do app (sem a roleta do sistema para o treino). */}
-      <div className="form-group">
+      {/* Data, treino e horário em linhas soltas no preto (sem a roleta do sistema para o treino). */}
+      <div className="form-group day-fields">
         <label className="form-row">
           <span className="form-key">Data</span>
           <span className="form-value">{longDate(date)}</span>
-          <Icon name="next" size={16} color="var(--muted)" />
+          <Icon name="next" size={16} stroke={2.2} color="var(--muted)" />
           {/* O seletor de data do sistema abre ao tocar em qualquer parte da linha. */}
           <input className="form-overlay" type="date" value={date} max={todayISO()} aria-label="Data" onChange={(e) => e.target.value && setDate(e.target.value)} />
         </label>
         {isNew ? (
-          <button type="button" className={`form-row chooser-title-row ${pickerOpen ? 'open' : ''}`} aria-expanded={pickerOpen} onClick={openPicker}>
+          <button type="button" className={`form-row ${pickerOpen ? 'open' : ''}`} aria-expanded={pickerOpen} onClick={openPicker}>
             <span className="form-key">Treino</span>
-            <span className="form-value ellipsis">{workoutId === OTHER ? 'Outra atividade' : derivedTitle || 'Escolher'}</span>
+            <span className="form-value form-pick">
+              {workoutId === OTHER ? (
+                <span className="form-tag other">
+                  <Icon name="heart" size={13} />
+                </span>
+              ) : (
+                selectedWorkout && <span className="form-tag">{selectedWorkout.letter}</span>
+              )}
+              <span className="ellipsis">{workoutId === OTHER ? 'Outra atividade' : selectedWorkout?.name || derivedTitle || 'Escolher'}</span>
+            </span>
             <span className="caret">
-              <Icon name="caret" size={12} stroke={2.5} color="var(--accent)" />
+              <Icon name="down" size={16} stroke={2.2} color="var(--muted)" />
             </span>
           </button>
         ) : (
@@ -335,42 +346,43 @@ export function DayEdit() {
       </div>
 
       {rows.length > 0 && (
-        <section className="stack" style={{ gap: 6 }}>
-          <div className="section-head form-section">
+        <section className="day-section">
+          <div className="day-section-head">
             <span>
               Exercícios feitos · {doneCount} de {rows.length}
             </span>
-            <button type="button" className="sum-reopen" onClick={() => setDone(Object.fromEntries(rows.map((r) => [r.key, !allDone])))}>
+            <button type="button" onClick={() => setDone(Object.fromEntries(rows.map((r) => [r.key, !allDone])))}>
               {allDone ? 'Desmarcar todos' : 'Marcar todos'}
             </button>
           </div>
-          <div className="form-group">
+          {/* Cada exercício numa linha fina: o chevron abre as séries deslizando, o círculo marca como feito. */}
+          <div className="done-list">
             {rows.map((r) => {
               const cardio = isCardio(r.ex.logType);
               const open = openKey === r.key;
-              const draft = open ? draftFor(r) : [];
               return (
                 <div key={r.key} className="done-ex">
                   <div className="done-ex-row">
                     <span className="done-ex-thumb">
                       <ExerciseThumb exercise={r.ex} />
                     </span>
-                    <span className="col grow" style={{ gap: 1, minWidth: 0 }}>
-                      <span className="ellipsis" style={{ fontWeight: 600 }}>
-                        {r.ex.name}
-                      </span>
-                      <span className="tiny muted">
-                        {r.summary}
-                        {!cardio && (
-                          <>
-                            {r.summary ? ' · ' : ''}
-                            <button type="button" className="done-ex-toggle" aria-expanded={open} onClick={() => setOpenKey(open ? null : r.key)}>
-                              {isNew ? 'Anotar cargas' : 'Ver séries'} {open ? '▴' : '▾'}
-                            </button>
-                          </>
-                        )}
-                      </span>
+                    <span className="col grow done-ex-text">
+                      <span className="ellipsis done-ex-name">{r.ex.name}</span>
+                      {r.summary && <span className="done-ex-sub">{r.summary}</span>}
                     </span>
+                    {cardio ? (
+                      <span className="done-ex-gap" />
+                    ) : (
+                      <button
+                        type="button"
+                        className={`done-ex-chev ${open ? 'open' : ''}`}
+                        aria-expanded={open}
+                        aria-label={`${open ? 'Fechar' : isNew ? 'Anotar' : 'Ver'} as séries de ${r.ex.name}`}
+                        onClick={() => setOpenKey(open ? null : r.key)}
+                      >
+                        <Icon name="down" size={18} stroke={2.4} />
+                      </button>
+                    )}
                     <button
                       type="button"
                       className={`done-check ${done[r.key] ? 'on' : ''}`}
@@ -378,51 +390,56 @@ export function DayEdit() {
                       aria-label={done[r.key] ? `Desmarcar ${r.ex.name}` : `Marcar ${r.ex.name} como feito`}
                       onClick={() => setDone((d) => ({ ...d, [r.key]: !d[r.key] }))}
                     >
-                      <Icon name="check" size={15} stroke={3} />
+                      <Icon name="check" size={15} stroke={3.2} />
                     </button>
                   </div>
-                  {open && (
-                    <div className="done-sets">
-                      <span />
-                      <span className="done-sets-head">{unitHead(r.unit)}</span>
-                      <span className="done-sets-head">Reps</span>
-                      {draft.map((d, i) => (
-                        <div key={i} className="done-sets-line">
-                          <span className="muted">{i + 1}</span>
-                          <input
-                            className="done-sets-input"
-                            inputMode="decimal"
-                            value={d.load}
-                            placeholder={d.hintLoad}
-                            aria-label={`${unitHead(r.unit)} da série ${i + 1}`}
-                            onChange={(e) => editDraft(r, i, 'load', e.target.value)}
-                          />
-                          <input
-                            className="done-sets-input"
-                            inputMode="numeric"
-                            value={d.reps}
-                            placeholder={d.hintReps}
-                            aria-label={`Repetições da série ${i + 1}`}
-                            onChange={(e) => editDraft(r, i, 'reps', e.target.value)}
-                          />
+                  {/* Fechadas continuam na tela (altura zero) para abrir e fechar deslizando; "inert" tira do toque. */}
+                  {!cardio && (
+                    <div className={`done-sets-wrap ${open ? 'open' : ''}`} inert={!open}>
+                      <div>
+                        <div className="done-sets">
+                          <span className="done-sets-head">Série</span>
+                          <span className="done-sets-head">{unitHead(r.unit)}</span>
+                          <span className="done-sets-head">Reps</span>
+                          {draftFor(r).map((d, i) => (
+                            <div key={i} className="done-sets-line">
+                              <span className="done-sets-num">{i + 1}</span>
+                              <input
+                                className="done-sets-input"
+                                inputMode="decimal"
+                                value={d.load}
+                                placeholder={d.hintLoad}
+                                aria-label={`${unitHead(r.unit)} da série ${i + 1}`}
+                                onChange={(e) => editDraft(r, i, 'load', e.target.value)}
+                              />
+                              <input
+                                className="done-sets-input"
+                                inputMode="numeric"
+                                value={d.reps}
+                                placeholder={d.hintReps}
+                                aria-label={`Repetições da série ${i + 1}`}
+                                onChange={(e) => editDraft(r, i, 'reps', e.target.value)}
+                              />
+                            </div>
+                          ))}
+                          <button type="button" className="done-sets-add" onClick={() => addSetRow(r)}>
+                            + Adicionar série
+                          </button>
                         </div>
-                      ))}
-                      <button type="button" className="done-ex-toggle done-sets-add" onClick={() => addSetRow(r)}>
-                        + Adicionar série
-                      </button>
+                      </div>
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
-          <span className="tiny muted" style={{ padding: '0 4px' }}>
-            {isNew ? 'Anotar as cargas é opcional. Só entram as séries que você preencher.' : 'Séries vazias ficam como não feitas.'}
+          <span className="tiny muted day-hint">
+            {isNew ? 'Toque na setinha para anotar as cargas. É opcional: só entram as séries que você preencher.' : 'Séries vazias ficam como não feitas.'}
           </span>
         </section>
       )}
 
-      <label className="field">
+      <label className="field day-note">
         <span className="label">Observação</span>
         <textarea className="textarea" value={note} placeholder="Como foi o treino?" onChange={(e) => setNote(e.target.value)} />
       </label>
@@ -434,87 +451,91 @@ export function DayEdit() {
       )}
 
       <Sheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="Qual treino você fez?">
-        <div className="chooser-list">
-          {/* Uma linha por rotina: a do treino escolhido (ou a ativa) vem aberta, as outras abrem no chevron. */}
-          <div className="chooser-group">
+        {/* Cada rotina num cartão: a do treino escolhido (ou a ativa) vem aberta, as outras abrem deslizando no chevron. */}
+        <div className="pick-list">
           {workoutGroups.map(({ program, workouts }) => {
             const open = openPrograms.has(program.id);
             return (
-            <div key={program.id} className="picker-program">
-              <button
-                type="button"
-                className={`chooser-row picker-head ${open ? 'open' : ''}`}
-                aria-expanded={open}
-                onClick={() =>
-                  setOpenPrograms((cur) => {
-                    const next = new Set(cur);
-                    if (open) next.delete(program.id);
-                    else next.add(program.id);
-                    return next;
-                  })
-                }
-              >
-                <span className="col grow" style={{ gap: 1, minWidth: 0 }}>
-                  <span className="row" style={{ gap: 6 }}>
-                    <span className="ellipsis" style={{ fontWeight: 600, fontSize: 16 }}>
-                      {program.name}
+              <div key={program.id} className="pick-card">
+                <button
+                  type="button"
+                  className={`pick-head ${open ? 'open' : ''}`}
+                  aria-expanded={open}
+                  onClick={() =>
+                    setOpenPrograms((cur) => {
+                      const next = new Set(cur);
+                      if (open) next.delete(program.id);
+                      else next.add(program.id);
+                      return next;
+                    })
+                  }
+                >
+                  <span className="col grow" style={{ gap: 2, minWidth: 0 }}>
+                    <span className="row" style={{ gap: 8 }}>
+                      <span className="ellipsis pick-name">{program.name}</span>
+                      {program.status === 'active' && <span className="chip soft-accent">ativa</span>}
                     </span>
-                    {program.status === 'active' && <span className="chip soft-accent">ativa</span>}
-                  </span>
-                  <span className="tiny muted" style={{ fontWeight: 500 }}>
-                    {workouts.length} {workouts.length === 1 ? 'treino' : 'treinos'}
-                    {program.status === 'ready' ? ' · pronta' : program.status === 'active' ? '' : ' · encerrada'}
-                  </span>
-                </span>
-                <span className="caret">
-                  <Icon name="caret" size={12} stroke={2.5} color={open ? 'var(--accent)' : 'var(--muted)'} />
-                </span>
-              </button>
-              {open && (
-              <div className="picker-workouts">
-                {workouts.map((w) => (
-                  <button
-                    key={w.id}
-                    type="button"
-                    className="chooser-row"
-                    onClick={() => {
-                      setWorkoutId(w.id);
-                      setPickerOpen(false);
-                    }}
-                  >
-                    <span className="letter-tile">{w.letter}</span>
-                    <span className="col grow" style={{ gap: 1, minWidth: 0 }}>
-                      <span className="ellipsis" style={{ fontWeight: 600 }}>
-                        {w.name}
-                      </span>
-                      <span className="tiny muted">{data.lastByWorkout[w.id] ? `feito ${dayMonth(data.lastByWorkout[w.id])}` : 'ainda não feito'}</span>
+                    <span className="pick-sub">
+                      {workouts.length} {workouts.length === 1 ? 'treino' : 'treinos'}
+                      {program.status === 'ready' ? ' · pronta' : program.status === 'active' ? '' : ' · encerrada'}
                     </span>
-                    {workoutId === w.id && <Icon name="check" size={18} stroke={3} color="var(--accent)" />}
-                  </button>
-                ))}
+                  </span>
+                  <span className="pick-chev">
+                    <Icon name="down" size={18} stroke={2.4} />
+                  </span>
+                </button>
+                {/* Fechada continua na tela (altura zero) para poder abrir e fechar animada; "inert" tira do toque e do leitor de tela. */}
+                <div className={`pick-body ${open ? 'open' : ''}`} inert={!open}>
+                  <div>
+                    {workouts.map((w) => {
+                      const on = workoutId === w.id;
+                      return (
+                        <button
+                          key={w.id}
+                          type="button"
+                          className={`pick-row ${on ? 'on' : ''}`}
+                          aria-pressed={on}
+                          onClick={() => {
+                            setWorkoutId(w.id);
+                            setPickerOpen(false);
+                          }}
+                        >
+                          <span className="pick-tile">{w.letter}</span>
+                          <span className="pick-text">
+                            <span className="col grow" style={{ gap: 2, minWidth: 0 }}>
+                              <span className="ellipsis pick-title">{w.name}</span>
+                              <span className="pick-sub">{data.lastByWorkout[w.id] ? `Feito em ${dayMonth(data.lastByWorkout[w.id])}` : 'Ainda não feito'}</span>
+                            </span>
+                            {on && <Icon name="check" size={20} stroke={2.8} color="var(--accent)" />}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              )}
-            </div>
             );
           })}
-            <button
-              type="button"
-              className="chooser-row"
-              onClick={() => {
-                setWorkoutId(OTHER);
-                setPickerOpen(false);
-              }}
-            >
-              <span className="letter-tile">
-                <Icon name="heart" size={18} />
+          <button
+            type="button"
+            className={`pick-card pick-row pick-other ${workoutId === OTHER ? 'on' : ''}`}
+            aria-pressed={workoutId === OTHER}
+            onClick={() => {
+              setWorkoutId(OTHER);
+              setPickerOpen(false);
+            }}
+          >
+            <span className="pick-tile">
+              <Icon name="heart" size={18} />
+            </span>
+            <span className="pick-text">
+              <span className="col grow" style={{ gap: 2, minWidth: 0 }}>
+                <span className="pick-title">Outra atividade</span>
+                <span className="pick-sub">Cardio, aula, esporte…</span>
               </span>
-              <span className="col grow" style={{ gap: 1 }}>
-                <span style={{ fontWeight: 600 }}>Outra atividade</span>
-                <span className="tiny muted">cardio, aula, esporte…</span>
-              </span>
-              {workoutId === OTHER && <Icon name="check" size={18} stroke={3} color="var(--accent)" />}
-            </button>
-          </div>
+              {workoutId === OTHER && <Icon name="check" size={20} stroke={2.8} color="var(--accent)" />}
+            </span>
+          </button>
         </div>
       </Sheet>
     </main>

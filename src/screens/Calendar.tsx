@@ -5,12 +5,21 @@ import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { addDays, duration, fromISODate, monthName, pad2, relativeDay, sessionMinutes, timeHM, toISODate, todayISO } from '../lib/format';
 import { scrollPositions } from '../lib/nav';
+import { useStatusBarColor } from '../lib/hooks';
 import { getProfile } from '../lib/repo';
 import { doneSessions } from '../lib/stats';
 import type { Session } from '../lib/types';
 
-const HEAD = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+const HEAD = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** Cor do topo do calendário (a mesma do topo do treino). */
+const HEAD_GRAY = '#1c1c1e';
+
+/** "A · Peito e Tríceps" → "A · Peito": cabe embaixo do dia sem ser cortado no meio. */
+function shortTitle(title: string): string {
+  const m = /^(\S{1,3}) · (\S+)/.exec(title);
+  return m ? `${m[1]} · ${m[2]}` : title;
+}
 
 export function SessionRow({ s, showDate = true }: { s: Session; showDate?: boolean }) {
   const minutes = sessionMinutes(s.startedAt, s.endedAt);
@@ -54,6 +63,8 @@ export function Calendar() {
   const asked = params.get('data');
   const openDay = asked && ISO_DAY.test(asked) ? asked : null;
   const data = useLiveQuery(async () => ({ sessions: await doneSessions(), profile: await getProfile() }), []);
+  // A barra do relógio fica cinza, emendada no topo.
+  useStatusBarColor(HEAD_GRAY, true);
 
   const sessions = data?.sessions ?? [];
   const byDate = new Map<string, Session[]>();
@@ -110,38 +121,42 @@ export function Calendar() {
   return (
     // Até os treinos chegarem, só o topo: os meses aparecem de uma vez, já com os círculos e no mês certo.
     <main className="screen tight" data-loading={data ? undefined : ''}>
-      <header className="tab-head">
-        <h1 className="h1">Calendário</h1>
-        <Link to={`/dia/novo?data=${today}`} className="glass circle" aria-label="Adicionar treino">
-          <Icon name="plus" size={22} stroke={2.4} />
-        </Link>
+      {/* Como no Hevy: topo cinza com o título no meio, a sequência e os dias da semana, tudo preso ao rolar. */}
+      <header className="tab-head cal-top">
+        <div className="cal-head-row">
+          <span aria-hidden="true" />
+          <h1 className="cal-title">Calendário</h1>
+          <Link to={`/dia/novo?data=${today}`} className="glass circle" aria-label="Adicionar treino">
+            <Icon name="plus" size={20} stroke={2.4} />
+          </Link>
+        </div>
+
+        {/* Semanas seguidas na meta e dias desde o último treino. */}
+        <div className="cal-streak">
+          <span>
+            {data && (
+              <>
+                <Icon name="flame" size={15} color="#ff8a3d" />
+                {streak} {streak === 1 ? 'semana' : 'semanas'} na meta
+              </>
+            )}
+          </span>
+          <span>
+            {data && (
+              <>
+                <Icon name="moon" size={14} color="var(--accent)" />
+                {restDays === null ? 'Nenhum treino ainda' : restDays === 0 ? 'Treinou hoje' : `${restDays} ${restDays === 1 ? 'dia' : 'dias'} de descanso`}
+              </>
+            )}
+          </span>
+        </div>
+
+        <div className="cal-dows" aria-hidden="true">
+          {HEAD.map((h) => (
+            <span key={h}>{h}</span>
+          ))}
+        </div>
       </header>
-
-      {/* Como no Hevy: semanas seguidas na meta e dias desde o último treino. */}
-      <div className="cal-streak">
-        <span>
-          {data && (
-            <>
-              <Icon name="flame" size={16} color="#ff8a3d" />
-              {streak} {streak === 1 ? 'semana' : 'semanas'} na meta
-            </>
-          )}
-        </span>
-        <span>
-          {data && (
-            <>
-              <Icon name="moon" size={15} color="var(--accent)" />
-              {restDays === null ? 'Nenhum treino ainda' : restDays === 0 ? 'Treinou hoje' : `${restDays} ${restDays === 1 ? 'dia' : 'dias'} de descanso`}
-            </>
-          )}
-        </span>
-      </div>
-
-      <div className="cal-dows" aria-hidden="true">
-        {HEAD.map((h, i) => (
-          <span key={i}>{h}</span>
-        ))}
-      </div>
 
       <div className="cal-months">
         {data && months.map((ym) => {
@@ -187,7 +202,7 @@ export function Calendar() {
                       <span className="cal-hnum">{day}</span>
                       {list.length > 0 && (
                         <span className="cal-hlabel">
-                          {list[0].title}
+                          {shortTitle(list[0].title)}
                           {list.length > 1 ? ` +${list.length - 1}` : ''}
                         </span>
                       )}

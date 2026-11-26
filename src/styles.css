@@ -4995,13 +4995,17 @@ body:has(.rest-bar:not(.cardio-bar)) .cardio-bar {
   opacity: 0.6;
 }
 
-/* Adicionar/editar treino à mão: campos em linhas dentro de um cartão. */
+/* Adicionar/editar treino à mão: sem cartão. Campos em linhas soltas no preto, com a linha fina
+   indo até a borda direita da tela (como nos Ajustes do iPhone). */
 .form-group {
   display: flex;
   flex-direction: column;
-  padding: 0 14px;
-  border-radius: 14px;
-  background: var(--card);
+  margin-right: -20px;
+}
+
+/* Os campos começam logo abaixo do topo cinza. */
+.day-fields {
+  margin-top: -16px;
 }
 
 .form-row {
@@ -5010,19 +5014,15 @@ body:has(.rest-bar:not(.cardio-bar)) .cardio-bar {
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 48px;
-  padding: 0;
+  min-height: 50px;
+  padding: 0 20px 0 0;
   border: 0;
-  border-bottom: 0.5px solid var(--border-2);
+  border-bottom: 1px solid #2c2c2e;
   background: none;
   color: var(--text);
   font: inherit;
   font-size: 15px;
   text-align: left;
-}
-
-.form-group > :last-child {
-  border-bottom: 0;
 }
 
 button.form-row:active,
@@ -5033,13 +5033,41 @@ label.form-row:has(.form-overlay):active {
 .form-key {
   flex: 0 0 auto;
   color: var(--text-2);
+  font-weight: 400;
 }
 
 .form-value {
   flex: 1 1 auto;
   min-width: 0;
   text-align: right;
-  font-weight: 600;
+  font-weight: 500;
+}
+
+/* Treino escolhido: a letra numa etiqueta azul e o nome. */
+.form-pick {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.form-tag {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: #4da1ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.form-tag.other {
+  background: rgba(255, 107, 138, 0.16);
+  color: #ff6b8a;
 }
 
 .form-row .caret {
@@ -5072,61 +5100,185 @@ label.form-row:has(.form-overlay):active {
   background: none;
   color: var(--text);
   font: inherit;
-  font-weight: 600;
+  font-weight: 500;
   text-align: right;
   outline: none;
 }
 
+/* Início e fim do horário em botões com contorno (como os campos do treino). */
 .form-time {
   position: relative;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 68px;
-  height: 32px;
+  min-width: 64px;
+  height: 34px;
   padding: 0 10px;
-  border-radius: 8px;
-  background: var(--raised);
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: transparent;
   color: var(--text);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
 .form-time.empty {
   color: var(--muted);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .form-time:active {
   opacity: 0.6;
 }
 
-/* Menu "Qual treino você fez?": rotina com chevron e os treinos dela embaixo. */
-.picker-program {
-  border-bottom: 0.5px solid var(--border-2);
+/* Menu "Qual treino você fez?": cada rotina num cartão, os treinos com a letra numa etiqueta cinza
+   (azul no escolhido) e linhas finas alinhadas ao texto. A rotina abre e fecha deslizando. */
+.pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 2px;
 }
 
-.picker-program > .chooser-row {
-  border-bottom: 0;
+.pick-card {
+  overflow: hidden;
+  border-radius: 14px;
+  background: #222224;
 }
 
-.picker-head .caret {
+.pick-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 62px;
+  padding: 10px 14px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.pick-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.pick-sub {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-2);
+}
+
+.pick-chev {
   display: inline-flex;
-  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  flex: 0 0 auto;
+  color: var(--muted);
+  transition:
+    transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
+    color 0.2s ease;
 }
 
-.picker-head.open .caret {
+.pick-head.open .pick-chev {
   transform: rotate(180deg);
+  color: var(--accent);
 }
 
-.picker-workouts {
-  padding: 0 0 4px 12px;
+/* Altura de 0 a "o que precisar": a linha de grade anima a abertura sem medir nada. */
+.pick-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.38s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.26s ease;
 }
 
-.picker-workouts > .chooser-row:last-child {
-  border-bottom: 0;
+.pick-body.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.pick-body > div {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pick-row {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  padding: 0 0 0 14px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.pick-head:active,
+.pick-row:active {
+  opacity: 0.6;
+}
+
+.pick-tile {
+  align-self: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #333336;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  transition: background-color 0.2s ease;
+}
+
+.pick-row.on .pick-tile {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* A linha fina fica só embaixo do texto (a etiqueta da letra não é cortada por ela). */
+.pick-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 14px;
+  border-top: 1px solid #2c2c2e;
+}
+
+.pick-title {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* "Outra atividade": um cartão só com a linha. */
+.pick-row.pick-other {
+  background: #222224;
+}
+
+.pick-other .pick-tile {
+  color: #ff6b8a;
+}
+
+.pick-other.on .pick-tile {
+  color: #fff;
+}
+
+.pick-other .pick-text {
+  min-height: 62px;
+  border-top: 0;
 }
 
 .form-row:has(.form-time) .form-key {
@@ -5135,55 +5287,131 @@ label.form-row:has(.form-overlay):active {
 
 .form-dur {
   flex: 0 0 auto;
+  min-width: 58px;
+  text-align: right;
 }
 
-.form-section {
-  padding: 0 4px;
+/* Exercícios feitos: título em maiúsculas e "Marcar todos" azul, acima da lista. */
+.day-section {
+  display: flex;
+  flex-direction: column;
+  padding-top: 6px;
 }
 
-/* Exercícios feitos: foto, nome, séries e o check redondo. */
+.day-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 6px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.day-section-head button {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.day-section-head button:active {
+  opacity: 0.6;
+}
+
+/* Cada exercício numa linha fina até a borda direita: foto, nome, chevron das séries e o check. */
+.done-list {
+  margin-right: -20px;
+  border-bottom: 1px solid #2c2c2e;
+}
+
 .done-ex {
-  border-bottom: 0.5px solid var(--border-2);
-}
-
-.form-group > .done-ex:last-child {
-  border-bottom: 0;
+  padding-right: 20px;
+  border-top: 1px solid #2c2c2e;
 }
 
 .done-ex-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 9px 0;
+  gap: 10px;
+  min-height: 64px;
 }
 
 .done-ex-thumb .thumb {
   width: 44px;
   height: 44px;
   min-width: 44px;
-  border-radius: 11px;
+  border-radius: 10px;
 }
 
-.done-ex-toggle {
+.done-ex-text {
+  gap: 2px;
+  min-width: 0;
+  padding-left: 2px;
+}
+
+.done-ex-name {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.done-ex-sub {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+/* Chevron: gira e fica azul com as séries abertas. */
+.done-ex-chev {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 40px;
   padding: 0;
   border: 0;
   background: none;
-  color: var(--accent);
-  font: inherit;
-  font-weight: 700;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
 }
 
-.done-ex-toggle:active {
+.done-ex-chev svg {
+  transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.done-ex-chev.open {
+  color: var(--accent);
+}
+
+.done-ex-chev.open svg {
+  transform: rotate(180deg);
+}
+
+.done-ex-chev:active {
   opacity: 0.6;
+}
+
+/* Cardio não tem séries: o espaço do chevron mantém os checks alinhados. */
+.done-ex-gap {
+  flex: 0 0 auto;
+  width: 32px;
 }
 
 .done-check {
   flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border-radius: 50%;
-  border: 2px solid var(--border-2);
+  border: 2px solid #48484a;
   background: transparent;
   color: transparent;
   display: flex;
@@ -5196,8 +5424,8 @@ label.form-row:has(.form-overlay):active {
 }
 
 .done-check.on {
-  background: var(--success);
-  border-color: var(--success);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 
@@ -5206,13 +5434,32 @@ label.form-row:has(.form-overlay):active {
   transition-duration: 0.08s;
 }
 
-/* Séries anotadas: nº, carga e reps. */
+/* Séries anotadas: abrem e fecham deslizando (altura de 0 até a do conteúdo). */
+.done-sets-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.36s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.24s ease;
+}
+
+.done-sets-wrap.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.done-sets-wrap > div {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .done-sets {
   display: grid;
-  grid-template-columns: 28px 1fr 1fr;
+  grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px 8px;
-  padding: 0 0 12px 56px;
   align-items: center;
+  padding: 0 0 14px 56px;
 }
 
 .done-sets-line {
@@ -5221,31 +5468,36 @@ label.form-row:has(.form-overlay):active {
 
 .done-sets-head {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--text-2);
   text-align: center;
 }
 
-.done-sets-line > .muted {
-  text-align: center;
-  font-size: 13px;
-  font-weight: 700;
+.done-sets-num {
+  height: 32px;
+  border-radius: 8px;
+  background: #1c1c1e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .done-sets-input {
   width: 100%;
   min-width: 0;
-  height: 36px;
+  height: 34px;
   padding: 0 8px;
-  border: 1px solid transparent;
-  border-radius: 9px;
-  background: var(--raised);
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: transparent;
   color: var(--text);
   font: inherit;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 500;
   text-align: center;
   font-variant-numeric: tabular-nums;
   outline: none;
@@ -5256,10 +5508,66 @@ label.form-row:has(.form-overlay):active {
 }
 
 .done-sets-add {
-  grid-column: 2 / 4;
+  grid-column: 2 / -1;
   justify-self: start;
   padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
   font-size: 13px;
+  font-weight: 500;
+}
+
+.done-sets-add:active {
+  opacity: 0.6;
+}
+
+.day-hint {
+  padding-top: 8px;
+}
+
+/* Observação no mesmo tom: título em maiúsculas e campo com contorno, letra normal. */
+.day-note .label {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.day-note .textarea {
+  border-color: var(--border-2);
+  background: transparent;
+  font-weight: 400;
+}
+
+/* Topo cinza liso, como o do treino (sem vidro nem desfoque), indo até a área do relógio. */
+html .screen.day-edit > .topbar.day-top {
+  padding: calc(var(--safe-top) + 6px) 16px 10px 12px;
+  background: #1c1c1e;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.day-top .glass.circle {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.day-top .glass.circle:active {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.day-top .pill-primary {
+  height: 36px;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 /* Letra do treino no menu "Qual treino você fez?". */
@@ -5430,14 +5738,58 @@ label.form-row:has(.form-overlay):active {
 
 /* ------------------------------------------------------------ Calendário estilo Hevy: meses seguidos */
 
-/* Sequência de semanas na meta | dias de descanso. */
+/* Topo cinza liso (como o do treino), sem vidro: título no meio, + à direita, a sequência e os dias
+   da semana embaixo. Fica todo preso no topo enquanto os meses rolam. "html" na frente para valer
+   também durante a troca de tela e depois de rolar (regras gerais do .tab-head). */
+html .screen > .tab-head.cal-top {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: calc(var(--safe-top) + 6px) 0 0;
+  background: #1c1c1e;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.cal-head-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  padding: 0 16px 10px;
+}
+
+.cal-title {
+  margin: 0;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.cal-top .glass.circle {
+  justify-self: end;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.cal-top .glass.circle:active {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Sequência de semanas na meta | dias de descanso, entre linhas finas, letra normal. */
 .cal-streak {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  border-radius: 14px;
-  background: var(--card);
-  font-size: 13px;
-  font-weight: 600;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  font-weight: 400;
 }
 
 .cal-streak > span {
@@ -5447,34 +5799,25 @@ label.form-row:has(.form-overlay):active {
   justify-content: center;
   gap: 6px;
   min-height: 42px;
-  padding: 6px 8px;
+  padding: 0 8px;
   text-align: center;
 }
 
 .cal-streak > span + span {
-  border-left: 0.5px solid var(--border-2);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* D S T Q Q S S preso embaixo do cabeçalho enquanto os meses rolam. */
+/* Dom Seg Ter… em cinza, letra fina. */
 .cal-dows {
-  position: sticky;
-  top: calc(var(--safe-top) + 58px);
-  z-index: 6;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  margin: 0 -20px -12px;
-  padding: 6px 20px;
-  border-bottom: 0.5px solid var(--border);
-  background: rgba(0, 0, 0, 0.85);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  padding: 8px 0 9px;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   text-align: center;
 }
 
-html.vt-running .cal-dows,
 html.vt-running .hist-month-head {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -5487,7 +5830,7 @@ html.vt-running .hist-month-head {
 }
 
 .cal-month {
-  scroll-margin-top: calc(var(--safe-top) + 88px);
+  scroll-margin-top: calc(var(--safe-top) + 128px);
 }
 
 .cal-month-title {
@@ -5495,14 +5838,21 @@ html.vt-running .hist-month-head {
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  padding: 18px 2px 10px;
-  font-size: 18px;
-  font-weight: 700;
+  padding: 20px 0 10px;
+  font-size: 17px;
+  font-weight: 600;
 }
 
+.cal-month-title .tiny {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+/* As linhas vão de uma borda à outra da tela (como no Hevy). */
 .cal-hgrid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin: 0 -20px;
 }
 
 /* Cada dia tem uma linha fina em cima: as semanas se separam e a linha quebra na virada do mês. */
@@ -5510,12 +5860,12 @@ html.vt-running .hist-month-head {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
   height: 58px;
-  padding: 7px 1px 0;
+  padding: 7px 2px 0;
   border: 0;
-  border-top: 0.5px solid var(--border-2);
+  border-top: 1px solid #2c2c2e;
   background: none;
   color: var(--text);
   font: inherit;
@@ -5523,14 +5873,15 @@ html.vt-running .hist-month-head {
 }
 
 .cal-hnum {
+  flex: 0 0 auto;
   width: 32px;
   height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   transition: transform 0.25s var(--spring);
 }
@@ -5543,15 +5894,17 @@ html.vt-running .hist-month-head {
 .cal-hday.trained .cal-hnum {
   background: var(--accent);
   color: #fff;
+  font-weight: 500;
 }
 
 .cal-hday.manual .cal-hnum {
   box-shadow: inset 0 0 0 1.5px var(--accent);
+  font-weight: 500;
 }
 
 .cal-hday.today:not(.trained) .cal-hnum {
   color: var(--accent);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .cal-hday.selected .cal-hnum {
@@ -5560,8 +5913,7 @@ html.vt-running .hist-month-head {
 }
 
 .cal-hday.future {
-  color: var(--muted);
-  opacity: 0.55;
+  color: #545458;
 }
 
 .cal-hlabel {
@@ -5569,8 +5921,8 @@ html.vt-running .hist-month-head {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 9.5px;
-  font-weight: 500;
+  font-size: 10px;
+  font-weight: 400;
   line-height: 1.2;
   color: var(--text-2);
 }
